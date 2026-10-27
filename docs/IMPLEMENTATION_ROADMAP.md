@@ -1,0 +1,50 @@
+# PadCare implementation roadmap
+
+This roadmap adapts the supplied Muse AI master prompt to the current Flutter repository. Preserve working local-preview flows while moving toward a real, testable product in small increments.
+
+## Phase 1 — Align the existing prototype
+
+- Adopt the turquoise/mint palette and shared design tokens consistently.
+- Build the splash and home dashboard around “Pads are within reach”.
+- Keep category chips, provider cards, and map/list navigation visually consistent.
+- Add a clearly labelled developer-support banner and a separate donation screen.
+- Remove hard-coded personal identity from the default landing experience.
+- Ensure every sample provider and stock figure is labelled as demonstration data; do not show sample data as genuinely verified or currently in stock.
+
+## Phase 2 — Discovery and provider details
+
+- Implement search and category filtering for schools, clinics, NGOs, community centres, and other providers.
+- Add provider details with address, operating hours, collection instructions, and last stock update.
+- Integrate a supported map provider only after keys/configuration are available.
+- Request location permission contextually; keep manual area/town search available when permission is denied.
+- Open directions using the selected provider's real coordinates/address.
+- Display “Availability unknown” for missing or stale stock data.
+
+## Phase 3 — Secure backend and provider management
+
+- Select Firebase or Supabase and document the choice.
+- Implement authentication, password recovery, logout, and role-aware access.
+- Store provider listings, inventory, update timestamps, verification status, and collection instructions remotely.
+- Enforce authorization on the backend, not only in UI logic.
+- Add a review workflow for provider verification; account creation alone must never grant a verified badge.
+- Use atomic inventory/request updates to avoid double reservations and overselling.
+
+## Phase 4 — Education and donations
+
+- Add a menstrual-health education area with age-appropriate, reviewed content.
+- Add a distinct “Donate to PadCare Project” page explaining that contributions support app development.
+- Keep developer donations separate from donations of pads or other supplies.
+- Integrate a supported payment provider only after merchant setup and credentials are available.
+- Never store raw payment-card details or display success before provider confirmation.
+
+## Phase 5 — Quality gates
+
+- Add tests for search/filtering, request lifecycle, inventory reservations, stale stock, and role permissions.
+- Run `flutter analyze`, `flutter test`, and platform builds in CI.
+- Check loading, empty, offline, permission-denied, payment-cancelled, and error states.
+- Verify accessibility: contrast, scalable text, semantics, and comfortable touch targets.
+- Document all required secrets and platform configuration; never commit credentials.
+
+## Honest delivery rule
+
+A screen that looks complete is not necessarily connected. Report each capability as one of: implemented and tested, implemented but unverified, demo-only, or awaiting configuration. Never imply that live providers, real stock, authentication, maps, or payments are operational until they have been tested end-to-end.

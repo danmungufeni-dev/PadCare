@@ -1710,6 +1710,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   String _selectedArea = 'Oli';
   String _selectedProduct = 'Disposable pads';
   int _quantity = 4;
+  int _selectedDonationAmount = 10000;
   List<_LocalRequest> _localRequests = [];
   bool _loadingRequests = true;
   bool _savingRequest = false;
@@ -2312,49 +2313,62 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               child: Container(
                 width: 40,
                 height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 18),
-            const Text(
-              '🎁 Donate to PadCare Project',
-              style: TextStyle(color: _ink, fontSize: 20, fontWeight: FontWeight.w800),
-            ),
+            const Text('Support PadCare development', style: TextStyle(color: _ink, fontSize: 20, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             const Text(
-              'Your voluntary contribution supports PadCare app development, maintenance, and future improvements. This is separate from donating sanitary products.',
+              'Choose an optional pledge to support app development, maintenance, and accessibility. This is separate from donating sanitary products. Recording a pledge does not take a payment.',
               style: TextStyle(color: _muted, fontSize: 13, height: 1.45),
             ),
             const SizedBox(height: 18),
             Row(
               children: [
-                _buildDonationTier('Supporter', 'UGX 5,000'),
+                _buildDonationTier('Supporter', 'UGX 5,000', value: 5000),
                 const SizedBox(width: 8),
-                _buildDonationTier('Builder', 'UGX 10,000', popular: true),
+                _buildDonationTier('Builder', 'UGX 10,000', value: 10000),
                 const SizedBox(width: 8),
-                _buildDonationTier('Champion', 'UGX 20,000'),
+                _buildDonationTier('Champion', 'UGX 20,000', value: 20000),
               ],
             ),
             const SizedBox(height: 18),
             FilledButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Payment setup is not connected yet. No payment has been taken.'),
-                  ),
-                );
+              onPressed: () async {
+                final navigator = Navigator.of(context);
+                final messenger = ScaffoldMessenger.of(this.context);
+                if (!PadCareBackend.isSignedIn) {
+                  navigator.pop();
+                  messenger.showSnackBar(const SnackBar(
+                    content: Text('Sign in with an online account to record a pledge. No payment is taken here.'),
+                  ));
+                  return;
+                }
+                try {
+                  await PadCareBackend.recordDonationPledge(
+                    amountUgx: _selectedDonationAmount,
+                    purpose: 'PadCare app development',
+                  );
+                  if (!mounted) return;
+                  navigator.pop();
+                  messenger.showSnackBar(SnackBar(
+                    content: Text('Your UGX $_selectedDonationAmount pledge was recorded. No payment was taken.'),
+                  ));
+                } catch (_) {
+                  if (!mounted) return;
+                  messenger.showSnackBar(const SnackBar(
+                    content: Text('Could not record your pledge. No payment was taken.'),
+                  ));
+                }
               },
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF2EA8B6),
+                backgroundColor: const Color(0xFF116B78),
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 48),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('Payments not available yet', style: TextStyle(fontWeight: FontWeight.w700)),
+              child: const Text('Record pledge (no payment)', style: TextStyle(fontWeight: FontWeight.w700)),
             ),
           ],
         ),
@@ -2362,34 +2376,33 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     );
   }
 
-  Widget _buildDonationTier(String title, String amount, {bool popular = false}) {
+  Widget _buildDonationTier(String title, String amount, {required int value}) {
+    final selected = _selectedDonationAmount == value;
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: popular ? const Color(0xFFE6F7F0) : Colors.white,
-          border: Border.all(
-            color: popular ? const Color(0xFF16A34A) : _line,
-            width: popular ? 1.5 : 1,
+      child: InkWell(
+        onTap: () => setState(() => _selectedDonationAmount = value),
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFE6F7F0) : Colors.white,
+            border: Border.all(
+              color: selected ? const Color(0xFF116B78) : _line,
+              width: selected ? 1.5 : 1,
+            ),
+            borderRadius: BorderRadius.circular(12),
           ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                color: popular ? const Color(0xFF16A34A) : _ink,
+          child: Column(
+            children: [
+              Text(title, style: TextStyle(
+                color: selected ? const Color(0xFF116B78) : _ink,
                 fontWeight: FontWeight.w800,
                 fontSize: 13,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              amount,
-              style: const TextStyle(color: _muted, fontSize: 11),
-            ),
-          ],
+              )),
+              const SizedBox(height: 4),
+              Text(amount, style: const TextStyle(color: _muted, fontSize: 11)),
+            ],
+          ),
         ),
       ),
     );

@@ -1,9 +1,17 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-void main() {
+import 'screens/online_account_screen.dart';
+import 'services/padcare_backend.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await PadCareBackend.initialize();
   runApp(const MyApp());
 }
 
@@ -207,6 +215,34 @@ class _AccessGateState extends State<AccessGate> {
     );
   }
 
+  Future<void> _openOnlineAccount() async {
+    final connected = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(builder: (_) => const OnlineAccountScreen()),
+    );
+    if (!mounted || connected != true) return;
+    final navigator = Navigator.of(context);
+    final profile = await PadCareBackend.loadCurrentProfile();
+    if (!mounted) return;
+    final role = profile['role']?.toString() ?? 'parent';
+    final signOut = () {
+      PadCareBackend.signOut();
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
+        (route) => false,
+      );
+    };
+    final Widget destination = role == 'schoolStaff'
+        ? HomeScreen(
+            facility: (profile['facilityName'] ?? profile['facilityId'] ?? 'School').toString(),
+            onSignOut: signOut,
+          )
+        : ParentHomeScreen(
+            parentName: PadCareBackend.currentDisplayName,
+            onSignOut: signOut,
+          );
+    navigator.pushReplacement(MaterialPageRoute<void>(builder: (_) => destination));
+  }
+
   Widget _buildRolePicker() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -268,7 +304,20 @@ class _AccessGateState extends State<AccessGate> {
         const _PrivacyNote(
           text: 'Requests do not ask for a girl\'s name, age, or class.',
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 12),
+        Center(
+          child: FilledButton.tonalIcon(
+            onPressed: _openOnlineAccount,
+            icon: const Icon(Icons.cloud_outlined),
+            label: const Text('Sign in or create online account'),
+            style: FilledButton.styleFrom(
+              foregroundColor: const Color(0xFF116B78),
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         Center(
           child: OutlinedButton.icon(
             onPressed: () {
@@ -1450,13 +1499,16 @@ class _SupportPoint {
     required this.pinLabel,
     this.supplies = 'Pads & kits',
     this.instructions = 'Walk in and ask for adolescent health or matron desk. Confidential and free.',
+    this.latitude,
+    this.longitude,
+    this.isLive = false,
   });
 
   final String id;
   final String name;
   final String category;
   final String area;
-  final double distanceKm;
+  final double? distanceKm;
   final String hours;
   final bool inStock;
   final bool isVerified;
@@ -1465,6 +1517,13 @@ class _SupportPoint {
   final String pinLabel;
   final String supplies;
   final String instructions;
+  final double? latitude;
+  final double? longitude;
+  final bool isLive;
+
+  String get distanceLabel => distanceKm == null
+      ? 'Distance unavailable'
+      : '${distanceKm!.toStringAsFixed(1)} km away';
 }
 
 const _kSupportPoints = <_SupportPoint>[
@@ -1565,6 +1624,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   _SupportSubTab _supportSubTab = _SupportSubTab.requestForm;
   _SupportPoint _selectedMapPoint = _kSupportPoints[1];
   bool _mapViewMode = true;
+  StreamSubscription<List<Map<String, dynamic>>>? _providerSubscription;
+  List<Map<String, dynamic>> _remoteProviderRecords = <Map<String, dynamic>>[];
+  List<_SupportPoint> _liveSupportPoints = <_SupportPoint>[];
+  Position? _currentPosition;
   String _selectedCategory = 'All';
   String _selectedMapFilter = 'Open Now';
   String _selectedArea = 'Oli';
@@ -1579,14 +1642,158 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   void initState() {
     super.initState();
     _loadLocalRequests();
+    _loadVerifiedProviders();
+  }
+
+  @override
+  void dispose() {
+    _providerSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _loadVerifiedProviders() {
+    if (!PadCareBackend.isConfigured) return;
+    try {
+      _providerSubscription = PadCareBackend.watchVerifiedProviders().listen(
+        (records) {
+          _remoteProviderRecords = records;
+          _applyVerifiedProviders();
+        },
+        onError: (Object _) {},
+      );
+    } catch (_) {
+      // Keep the local preview available if the service is unavailable.
+    }
+  }
+
+  void _applyVerifiedProviders() {
+    final now = DateTime.now();
+    final points = _remoteProviderRecords.map((record) {
+      final latitude = (record['latitude'] as num?)?.toDouble();
+      final longitude = (record['longitude'] as num?)?.toDouble();
+      final distance = _currentPosition != null && latitude != null && longitude != null
+          ? Geolocator.distanceBetween(
+                _currentPosition!.latitude,
+                _currentPosition!.longitude,
+                latitude,
+                longitude,
+              ) / 1000
+          : null;
+      final updatedAt = DateTime.tryParse(record['stockUpdatedAtIso']?.toString() ?? '');
+      final stockIsFresh = updatedAt != null &&
+          !updatedAt.isAfter(now) &&
+          now.difference(updatedAt) <= const Duration(hours: 24);
+      return _SupportPoint(
+        id: record['id']?.toString() ?? '',
+        name: record['name']?.toString() ?? 'Support point',
+        category: record['category']?.toString() ?? 'Community',
+        area: record['area']?.toString() ?? 'Area not provided',
+        distanceKm: distance,
+        hours: record['hours']?.toString() ?? 'Contact provider to confirm hours',
+        inStock: stockIsFresh && record['stockAvailable'] == true,
+        isVerified: record['isVerified'] == true,
+        directions: record['address']?.toString() ?? record['directions']?.toString() ?? '',
+        mapOffsetPercent: const Offset(0.5, 0.5),
+        pinLabel: record['category']?.toString() ?? 'Support',
+        supplies: record['supplies']?.toString() ?? 'Contact provider for current supplies',
+        instructions: record['instructions']?.toString() ?? 'Contact the provider to confirm collection instructions.',
+        latitude: latitude,
+        longitude: longitude,
+        isLive: true,
+      );
+    }).where((point) => point.id.isNotEmpty && point.name.isNotEmpty).toList();
+    if (!mounted) return;
+    setState(() {
+      _liveSupportPoints = points;
+      if (points.isNotEmpty) {
+        _selectedMapPoint = points.first;
+        _mapViewMode = false;
+      }
+    });
+  }
+
+  Future<void> _requestLocationAndRefresh() async {
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location is turned off. You can still browse by area.')),
+        );
+        return;
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Location permission was not granted. Distances remain unavailable; you can still browse by area.')),
+        );
+        return;
+      }
+      _currentPosition = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+      );
+      _applyVerifiedProviders();
+      if (mounted && _liveSupportPoints.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No verified online providers are available yet. Sample points are shown separately.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not get your location. You can still search by area.')),
+      );
+    }
+  }
+
+  Future<void> _openExternalDirections(_SupportPoint point) async {
+    final destination = point.latitude != null && point.longitude != null
+        ? '${point.latitude},${point.longitude}'
+        : point.directions;
+    if (destination.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This provider has no directions listed yet.')),
+      );
+      return;
+    }
+    final uri = Uri.https('www.google.com', '/maps/dir/', {
+      'api': '1',
+      'destination': destination,
+    });
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not open directions on this device.')),
+    );
   }
 
   Future<void> _loadLocalRequests() async {
     try {
       final localData = await _readLocalData();
+      var requests = localData.requests;
+      if (PadCareBackend.isSignedIn) {
+        try {
+          final remote = await PadCareBackend.loadMyRequests();
+          final byId = <String, _LocalRequest>{
+            for (final request in requests) request.id: request,
+          };
+          for (final record in remote) {
+            try {
+              final request = _LocalRequest.fromJson(Map<String, dynamic>.from(record));
+              byId[request.id] = request;
+            } catch (_) {
+              // Ignore malformed remote documents; keep valid local data.
+            }
+          }
+          requests = byId.values.toList()
+            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          await _saveLocalData(_LocalData(requests: requests, stock: localData.stock));
+        } catch (_) {
+          // Preserve offline functionality if the remote service is unavailable.
+        }
+      }
       if (!mounted) return;
       setState(() {
-        _localRequests = localData.requests;
+        _localRequests = requests;
         _loadingRequests = false;
       });
     } catch (_) {
@@ -1669,6 +1876,14 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       await _saveLocalData(
         _LocalData(requests: updatedRequests, stock: data.stock),
       );
+      var syncFailed = false;
+      if (PadCareBackend.isSignedIn) {
+        try {
+          await PadCareBackend.createPickupRequest(request.toJson());
+        } catch (_) {
+          syncFailed = true;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _localRequests = updatedRequests;
@@ -1676,6 +1891,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         _selectedIndex = 3;
         _supportSubTab = _SupportSubTab.activity;
       });
+      if (syncFailed && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request saved on this device, but online sync failed.')),
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _savingRequest = false);
@@ -1695,8 +1915,21 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       await _saveLocalData(
         _LocalData(requests: updatedRequests, stock: data.stock),
       );
+      var remoteDeleteFailed = false;
+      if (PadCareBackend.isSignedIn) {
+        try {
+          await PadCareBackend.deletePickupRequest(request.id);
+        } catch (_) {
+          remoteDeleteFailed = true;
+        }
+      }
       if (!mounted) return;
       setState(() => _localRequests = updatedRequests);
+      if (remoteDeleteFailed && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request removed locally, but the online copy could not be deleted.')),
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1769,7 +2002,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              '${point.category}  ·  ${point.area}  ·  ${point.distanceKm} km away',
+              '${point.category}  ·  ${point.area}  ·  ${point.distanceLabel}',
               style: const TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
@@ -1915,7 +2148,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${point.distanceKm} km away  ·  Estimated 14 mins walk',
+                        '${point.distanceLabel}${point.distanceKm == null ? '' : ' · Estimated ${(point.distanceKm! * 12).ceil()} mins walk'}',
                         style: const TextStyle(color: _muted, fontSize: 12),
                       ),
                     ],
@@ -2288,7 +2521,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   }
 
   Widget _buildHome() {
-    final filteredPoints = _kSupportPoints.where((p) {
+    final sourcePoints = _liveSupportPoints.isNotEmpty ? _liveSupportPoints : _kSupportPoints;
+    final filteredPoints = sourcePoints.where((p) {
       if (_selectedCategory == 'Schools' && p.category != 'Schools') return false;
       if (_selectedCategory == 'Clinics' && p.category != 'Clinics') return false;
       if (_selectedCategory == 'NGOs' && p.category != 'NGOs') return false;
@@ -2685,7 +2919,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${point.distanceKm} km away  •  ${point.hours}',
+                      '${point.distanceLabel}  •  ${point.hours}',
                       style: const TextStyle(color: _muted, fontSize: 12),
                     ),
                   ],
@@ -2734,7 +2968,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   }
 
   Widget _buildFindPads() {
-    final filtered = _kSupportPoints.where((p) {
+    final sourcePoints = _liveSupportPoints.isNotEmpty ? _liveSupportPoints : _kSupportPoints;
+    final filtered = sourcePoints.where((p) {
       if (_selectedMapFilter == 'In Stock' && !p.inStock) return false;
       if (_selectedMapFilter == 'Verified' && !p.isVerified) return false;
       if (_selectedMapFilter == 'NGO & Clinics' && p.category != 'Clinics' && p.category != 'NGOs') return false;
@@ -2758,7 +2993,13 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   children: [
                     Expanded(
                       child: InkWell(
-                        onTap: () => setState(() => _mapViewMode = true),
+                        onTap: () {
+                          if (_liveSupportPoints.isNotEmpty) {
+                            _openExternalDirections(_selectedMapPoint);
+                          } else {
+                            setState(() => _mapViewMode = true);
+                          }
+                        },
                         borderRadius: BorderRadius.circular(18),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -2834,6 +3075,14 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   ],
                 ),
               ),
+              if (_liveSupportPoints.isNotEmpty)
+                const Padding(
+                  padding: EdgeInsets.only(bottom: 8),
+                  child: Text(
+                    'Live verified providers are listed below. Tap Map to open the selected provider in Google Maps.',
+                    style: TextStyle(color: Color(0xFF116B78), fontSize: 12),
+                  ),
+                ),
               const SizedBox(height: 10),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
@@ -2873,7 +3122,9 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                         backgroundColor: Colors.white,
                         foregroundColor: _ink,
                         elevation: 3,
-                        onPressed: () => setState(() => _selectedMapPoint = _kSupportPoints[1]),
+                        onPressed: _liveSupportPoints.isNotEmpty
+                            ? _requestLocationAndRefresh
+                            : () => setState(() => _selectedMapPoint = _kSupportPoints[1]),
                         child: const Icon(Icons.my_location_rounded, size: 20),
                       ),
                     ),
@@ -3022,7 +3273,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                           const Icon(Icons.navigation_outlined, color: _muted, size: 15),
                           const SizedBox(width: 5),
                           Text(
-                            '${point.distanceKm} km away',
+                            '${point.distanceLabel}',
                             style: const TextStyle(color: _muted, fontSize: 13),
                           ),
                         ],

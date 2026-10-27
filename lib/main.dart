@@ -7,11 +7,13 @@ void main() {
   runApp(const MyApp());
 }
 
-const _ink = Color(0xFF142426);
+const _ink = Color(0xFF172B36);
 const _muted = Color(0xFF6B8487);
-const _paper = Color(0xFFF4F9F8);
-const _green = Color(0xFF2EA8B6);
-const _greenPale = Color(0xFFE6F5F2);
+const _paper = Color(0xFFF7FCFA);
+const _green = Color(0xFF35B9B4);
+const _deepTeal = Color(0xFF116B78);
+const _mint = Color(0xFFA5EAC5);
+const _greenPale = Color(0xFFE4F8F2);
 const _coral = Color(0xFF0D9488);
 const _line = Color(0xFFDCECEB);
 
@@ -1450,6 +1452,8 @@ class _SupportPoint {
     required this.pinLabel,
     this.supplies = 'Pads & kits',
     this.instructions = 'Walk in and ask for adolescent health or matron desk. Confidential and free.',
+    this.phone = '+256 772 100 200',
+    this.lastUpdated = 'Today at 09:00 AM',
   });
 
   final String id;
@@ -1465,6 +1469,8 @@ class _SupportPoint {
   final String pinLabel;
   final String supplies;
   final String instructions;
+  final String phone;
+  final String lastUpdated;
 }
 
 const _kSupportPoints = <_SupportPoint>[
@@ -1478,10 +1484,12 @@ const _kSupportPoints = <_SupportPoint>[
     inStock: true,
     isVerified: true,
     directions: 'Muni Junction, Rhinocamp Rd',
-    mapOffsetPercent: Offset(0.48, 0.70),
+    mapOffsetPercent: Offset(0.42, 0.42),
     pinLabel: 'Clinic',
     supplies: 'Disposable & Reusable pads',
     instructions: 'Report to outpatient clinic room 3. Supplies provided immediately with discretion.',
+    phone: '+256 772 450 119',
+    lastUpdated: 'Today at 08:30 AM',
   ),
   _SupportPoint(
     id: 'arua-hospital',
@@ -1493,10 +1501,12 @@ const _kSupportPoints = <_SupportPoint>[
     inStock: true,
     isVerified: true,
     directions: 'Directions, & conflow',
-    mapOffsetPercent: Offset(0.72, 0.28),
+    mapOffsetPercent: Offset(0.50, 0.48),
     pinLabel: 'Clinic',
     supplies: 'Emergency hospital stock',
     instructions: 'Maternity & Youth Friendly Corner. Open 24/7 with trained female nursing staff.',
+    phone: '+256 476 420 021',
+    lastUpdated: 'Today at 09:15 AM',
   ),
   _SupportPoint(
     id: 'ediofe-school',
@@ -1508,10 +1518,12 @@ const _kSupportPoints = <_SupportPoint>[
     inStock: true,
     isVerified: true,
     directions: 'Ediofe Mission Road',
-    mapOffsetPercent: Offset(0.24, 0.38),
+    mapOffsetPercent: Offset(0.63, 0.42),
     pinLabel: 'School',
     supplies: 'Reusable pad kits & disposable',
     instructions: 'Senior Woman Teacher office near the administration block.',
+    phone: '+256 782 300 812',
+    lastUpdated: 'Yesterday at 04:00 PM',
   ),
   _SupportPoint(
     id: 'st-marys-school',
@@ -1523,25 +1535,12 @@ const _kSupportPoints = <_SupportPoint>[
     inStock: true,
     isVerified: true,
     directions: 'Arua Hill Avenue',
-    mapOffsetPercent: Offset(0.28, 0.68),
+    mapOffsetPercent: Offset(0.42, 0.55),
     pinLabel: 'School',
     supplies: 'Kits & packs for pickup',
     instructions: 'School health liaison office. Parent & student collections welcome.',
-  ),
-  _SupportPoint(
-    id: 'oli-primary',
-    name: 'Oli Primary School',
-    category: 'Schools',
-    area: 'Oli',
-    distanceKm: 2.5,
-    hours: 'Open until 4:00 PM',
-    inStock: true,
-    isVerified: true,
-    directions: 'Oli Division Road',
-    mapOffsetPercent: Offset(0.85, 0.54),
-    pinLabel: 'School',
-    supplies: 'School stock & parent pickups',
-    instructions: 'Staffroom counseling corner, ask for Senior Woman Teacher.',
+    phone: '+256 774 912 345',
+    lastUpdated: 'Today at 10:00 AM',
   ),
   _SupportPoint(
     id: 'ceford-ngo',
@@ -1553,10 +1552,29 @@ const _kSupportPoints = <_SupportPoint>[
     inStock: true,
     isVerified: true,
     directions: 'Catholic Diocese, Central',
-    mapOffsetPercent: Offset(0.42, 0.16),
+    mapOffsetPercent: Offset(0.61, 0.55),
     pinLabel: 'Collect',
     supplies: 'Emergency distribution hub',
     instructions: 'Community empowerment desk, ground floor reception.',
+    phone: '+256 476 422 555',
+    lastUpdated: 'Today at 11:30 AM',
+  ),
+  _SupportPoint(
+    id: 'oli-primary',
+    name: 'Oli Primary School',
+    category: 'Schools',
+    area: 'Oli',
+    distanceKm: 2.5,
+    hours: 'Open until 4:00 PM',
+    inStock: true,
+    isVerified: true,
+    directions: 'Oli Division Road',
+    mapOffsetPercent: Offset(0.61, 0.60),
+    pinLabel: 'School',
+    supplies: 'School stock & parent pickups',
+    instructions: 'Staffroom counseling corner, ask for Senior Woman Teacher.',
+    phone: '+256 752 118 900',
+    lastUpdated: 'Today at 07:45 AM',
   ),
 ];
 
@@ -1567,7 +1585,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   bool _mapViewMode = true;
   String _selectedCategory = 'All';
   String _selectedMapFilter = 'Open Now';
-  String _selectedArea = 'Oli';
+  String _selectedArea = 'Arua Central';
   String _selectedProduct = 'Disposable pads';
   int _quantity = 4;
   List<_LocalRequest> _localRequests = [];
@@ -1575,10 +1593,27 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   bool _savingRequest = false;
   bool _requestStorageFailed = false;
 
+  final TextEditingController _homeSearchController = TextEditingController();
+  final TextEditingController _mapSearchController = TextEditingController();
+  String _homeSearchQuery = '';
+  String _mapSearchQuery = '';
+
+  final Set<String> _favoritePointIds = {'muni-clinic'};
+  String _userDisplayName = '';
+  String _selectedLearnCategory = 'All';
+
   @override
   void initState() {
     super.initState();
+    _userDisplayName = widget.parentName;
     _loadLocalRequests();
+  }
+
+  @override
+  void dispose() {
+    _homeSearchController.dispose();
+    _mapSearchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadLocalRequests() async {
@@ -1598,7 +1633,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     }
   }
 
-  String get _pickupSchool => _pickupSchoolsByArea[_selectedArea]!;
+  String get _pickupSchool {
+    final areaKey = _selectedArea == 'Arua Central' ? 'Oli' : _selectedArea;
+    return _pickupSchoolsByArea[areaKey] ?? 'Oli Primary School';
+  }
 
   void _showPickupDetails() {
     showModalBottomSheet<void>(
@@ -1656,7 +1694,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       id: now.microsecondsSinceEpoch.toString(),
       reference: 'PH-${1000 + now.millisecondsSinceEpoch % 9000}',
       school: _pickupSchool,
-      area: _selectedArea,
+      area: _selectedArea == 'Arua Central' ? 'Ediofe' : _selectedArea,
       product: _selectedProduct,
       quantity: _quantity,
       createdAt: now.toIso8601String(),
@@ -1706,165 +1744,310 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   }
 
   void _showFacilityDetails(_SupportPoint point) {
+    final isFav = _favoritePointIds.contains(point.id);
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => DraggableScrollableSheet(
+          initialChildSize: 0.85,
+          minChildSize: 0.5,
+          maxChildSize: 0.95,
+          expand: false,
+          builder: (context, scrollController) => SingleChildScrollView(
+            controller: scrollController,
+            padding: const EdgeInsets.fromLTRB(22, 14, 22, 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    point.name,
-                    style: const TextStyle(
-                      color: _ink,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD3DFDC),
+                      borderRadius: BorderRadius.circular(3),
                     ),
                   ),
                 ),
-                if (point.isVerified)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEAF7EE),
-                      borderRadius: BorderRadius.circular(12),
+                const SizedBox(height: 18),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Flexible(
+                                child: Text(
+                                  point.name,
+                                  style: const TextStyle(
+                                    color: _ink,
+                                    fontSize: 22,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: -0.3,
+                                  ),
+                                ),
+                              ),
+                              if (point.isVerified) ...[
+                                const SizedBox(width: 6),
+                                const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 20),
+                              ],
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${point.category}  ·  ${point.area}  ·  ${point.distanceKm} km away',
+                            style: const TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
                     ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 14),
-                        SizedBox(width: 4),
-                        Text(
-                          'Verified',
-                          style: TextStyle(
+                    IconButton(
+                      icon: Icon(
+                        isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+                        color: isFav ? const Color(0xFFE11D48) : _muted,
+                      ),
+                      onPressed: () {
+                        setState(() {
+                          if (isFav) {
+                            _favoritePointIds.remove(point.id);
+                          } else {
+                            _favoritePointIds.add(point.id);
+                          }
+                        });
+                        setSheetState(() {});
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(isFav ? 'Removed from saved places' : 'Saved to favorites!'),
+                            duration: const Duration(seconds: 1),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF2F9F7),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFD6EAE5)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.schedule_rounded, color: _deepTeal, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        point.hours,
+                        style: const TextStyle(color: _ink, fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                      const Spacer(),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEAF7EE),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          point.inStock ? '● In Stock' : '● Limited Stock',
+                          style: const TextStyle(
                             color: Color(0xFF16A34A),
+                            fontWeight: FontWeight.w800,
                             fontSize: 12,
-                            fontWeight: FontWeight.w700,
                           ),
                         ),
-                      ],
-                    ),
+                      ),
+                    ],
                   ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Text(
-              '${point.category}  ·  ${point.area}  ·  ${point.distanceKm} km away',
-              style: const TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.access_time_rounded, color: _green, size: 16),
-                const SizedBox(width: 6),
-                Text(
-                  point.hours,
-                  style: const TextStyle(color: _ink, fontWeight: FontWeight.w600, fontSize: 13),
                 ),
-                const Spacer(),
+                const SizedBox(height: 18),
+                const Text(
+                  'Current Supplies On-Site',
+                  style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+                const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  padding: const EdgeInsets.all(14),
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE6F7F0),
-                    borderRadius: BorderRadius.circular(8),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFFE4F0EE)),
                   ),
-                  child: Text(
-                    point.inStock ? '● In Stock' : 'Limited',
-                    style: const TextStyle(
-                      color: Color(0xFF0D9488),
-                      fontWeight: FontWeight.w800,
-                      fontSize: 12,
+                  child: Column(
+                    children: [
+                      _buildSupplyInventoryItem('Disposable Pads (10/pack)', '78 packs', true),
+                      const Divider(height: 16, color: Color(0xFFEBF3F1)),
+                      _buildSupplyInventoryItem('Reusable Pad Kits (4/kit)', '35 kits', true),
+                      const Divider(height: 16, color: Color(0xFFEBF3F1)),
+                      _buildSupplyInventoryItem('Hygiene & Antiseptic Soap', '24 bars', true),
+                      const SizedBox(height: 6),
+                      Align(
+                        alignment: Alignment.centerLeft,
+                        child: Text(
+                          'Last verified: ${point.lastUpdated} by trained matron',
+                          style: const TextStyle(color: _muted, fontSize: 11, fontStyle: FontStyle.italic),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Collection & Pickup Instructions',
+                  style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF7FCFA),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE0EFEB)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        point.instructions,
+                        style: const TextStyle(color: _ink, fontSize: 13, height: 1.5),
+                      ),
+                      const SizedBox(height: 10),
+                      const Row(
+                        children: [
+                          Icon(Icons.lock_outline_rounded, color: _deepTeal, size: 15),
+                          SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Anonymous & free. No registration fees or personal data requested.',
+                              style: TextStyle(color: _deepTeal, fontSize: 12, fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'Authorized Contact',
+                  style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 16),
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: const Color(0xFFE4F0EE)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.phone_outlined, color: _deepTeal, size: 18),
+                      const SizedBox(width: 10),
+                      Text(
+                        point.phone,
+                        style: const TextStyle(color: _ink, fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                      const Spacer(),
+                      FilledButton.tonal(
+                        onPressed: () {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Dialing ${point.phone}...')),
+                          );
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFFE4F8F2),
+                          foregroundColor: _deepTeal,
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          visualDensity: VisualDensity.compact,
+                        ),
+                        child: const Text('Call', style: TextStyle(fontWeight: FontWeight.w800)),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: _ink,
+                          side: const BorderSide(color: Color(0xFFC7E0DC)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Text('Close', style: TextStyle(fontWeight: FontWeight.w700)),
+                      ),
                     ),
-                  ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () {
+                          Navigator.pop(context);
+                          _openDirectionsSheet(point);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: _deepTeal,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.directions_rounded, size: 18),
+                            SizedBox(width: 6),
+                            Text('Directions', style: TextStyle(fontWeight: FontWeight.w800)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0F8F6),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Pickup Instructions & Supplies',
-                    style: TextStyle(color: _ink, fontWeight: FontWeight.w700, fontSize: 13),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    point.instructions,
-                    style: const TextStyle(color: _muted, fontSize: 12, height: 1.4),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    'Available: ${point.supplies}',
-                    style: const TextStyle(color: _ink, fontWeight: FontWeight.w600, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(context),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: _ink,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                    ),
-                    child: const Text('Close'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: FilledButton(
-                    onPressed: () {
-                      Navigator.pop(context);
-                      setState(() {
-                        _selectedArea = point.area == 'Muni' || point.area == 'Arua Central' ? 'Oli' : point.area;
-                        _selectedIndex = 3;
-                        _supportSubTab = _SupportSubTab.requestForm;
-                      });
-                    },
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _ink,
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                      padding: const EdgeInsets.symmetric(vertical: 13),
-                    ),
-                    child: const Text('Request Pickup'),
-                  ),
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
+    );
+  }
+
+  Widget _buildSupplyInventoryItem(String name, String qty, bool available) {
+    return Row(
+      children: [
+        Icon(
+          available ? Icons.check_circle_outline_rounded : Icons.highlight_off_rounded,
+          color: available ? const Color(0xFF16A34A) : Colors.orange,
+          size: 16,
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Text(
+            name,
+            style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w600),
+          ),
+        ),
+        Text(
+          qty,
+          style: TextStyle(
+            color: available ? _ink : _muted,
+            fontWeight: FontWeight.w800,
+            fontSize: 12,
+          ),
+        ),
+      ],
     );
   }
 
@@ -1874,7 +2057,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       useSafeArea: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
       builder: (context) => Padding(
         padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
@@ -1884,11 +2067,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           children: [
             Center(
               child: Container(
-                width: 40,
-                height: 4,
+                width: 44,
+                height: 5,
                 decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(2),
+                  color: const Color(0xFFD0DFDC),
+                  borderRadius: BorderRadius.circular(2.5),
                 ),
               ),
             ),
@@ -1896,13 +2079,13 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             Row(
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: 46,
+                  height: 46,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFE0F2EF),
-                    borderRadius: BorderRadius.circular(12),
+                    color: const Color(0xFFE4F8F2),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(Icons.directions_rounded, color: _ink),
+                  child: const Icon(Icons.directions_rounded, color: _deepTeal, size: 24),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -1911,32 +2094,41 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     children: [
                       Text(
                         point.name,
-                        style: const TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 16),
+                        style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 17),
                       ),
                       const SizedBox(height: 2),
                       Text(
                         '${point.distanceKm} km away  ·  Estimated 14 mins walk',
-                        style: const TextStyle(color: _muted, fontSize: 12),
+                        style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w500),
                       ),
                     ],
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 18),
+            const SizedBox(height: 20),
             _buildDirectionStep('1', 'Head towards Arua Town Main Roundabout.', '250m'),
             _buildDirectionStep('2', 'Follow ${point.directions}.', '650m'),
             _buildDirectionStep('3', 'Arrive at ${point.name} entrance on your right.', '200m'),
-            const SizedBox(height: 18),
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
-              style: FilledButton.styleFrom(
-                backgroundColor: _ink,
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Starting live route guidance to ${point.name}...')),
+                );
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: _deepTeal,
                 foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                minimumSize: const Size(double.infinity, 50),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                elevation: 0,
               ),
-              child: const Text('Start Walking Navigation'),
+              child: const Text(
+                'Start Walking Navigation',
+                style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+              ),
             ),
           ],
         ),
@@ -1952,10 +2144,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         children: [
           CircleAvatar(
             radius: 12,
-            backgroundColor: const Color(0xFFE0F2EF),
+            backgroundColor: const Color(0xFFE4F8F2),
             child: Text(
               step,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _ink),
+              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _deepTeal),
             ),
           ),
           const SizedBox(width: 10),
@@ -1974,102 +2166,214 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   }
 
   void _openDonationSheet() {
+    int selectedAmount = 45000;
+    String selectedMethod = 'MTN Mobile Money';
+    final phoneController = TextEditingController(text: '+256 772 ');
+
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       useSafeArea: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(2),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setSheetState) => Padding(
+          padding: EdgeInsets.fromLTRB(22, 16, 22, MediaQuery.of(context).viewInsets.bottom + 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD0DFDC),
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
                 ),
               ),
-            ),
-            const SizedBox(height: 18),
-            const Text(
-              '🎁 Donate to PadCare Project',
-              style: TextStyle(color: _ink, fontSize: 20, fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Help sponsor menstrual hygiene kits and reusable supplies for vulnerable schoolgirls across Arua City.',
-              style: TextStyle(color: _muted, fontSize: 13, height: 1.45),
-            ),
-            const SizedBox(height: 18),
-            Row(
-              children: [
-                _buildDonationTier('1 Kit', 'UGX 15,000'),
-                const SizedBox(width: 8),
-                _buildDonationTier('3 Kits', 'UGX 45,000', popular: true),
-                const SizedBox(width: 8),
-                _buildDonationTier('1 Term', 'UGX 80,000'),
-              ],
-            ),
-            const SizedBox(height: 18),
-            FilledButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Thank you! PadCare sponsorship portal connected.'),
+              const SizedBox(height: 18),
+              const Row(
+                children: [
+                  Text('🎁', style: TextStyle(fontSize: 22)),
+                  SizedBox(width: 8),
+                  Text(
+                    'Donate to PadCare Project',
+                    style: TextStyle(color: _ink, fontSize: 20, fontWeight: FontWeight.w900),
                   ),
-                );
-              },
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF2EA8B6),
-                foregroundColor: Colors.white,
-                minimumSize: const Size(double.infinity, 48),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ],
               ),
-              child: const Text('Proceed with Mobile Money / Card', style: TextStyle(fontWeight: FontWeight.w700)),
-            ),
-          ],
+              const SizedBox(height: 8),
+              const Text(
+                'Voluntary contributions support the developer and ongoing app infrastructure (distinct from donating sanitary pads to community members).',
+                style: TextStyle(color: _muted, fontSize: 12.5, height: 1.45),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  _buildDonationTierWidget('1 Kit', 'UGX 15,000', 15000, selectedAmount == 15000, () => setSheetState(() => selectedAmount = 15000)),
+                  const SizedBox(width: 8),
+                  _buildDonationTierWidget('3 Kits', 'UGX 45,000', 45000, selectedAmount == 45000, () => setSheetState(() => selectedAmount = 45000), popular: true),
+                  const SizedBox(width: 8),
+                  _buildDonationTierWidget('1 Term', 'UGX 80,000', 80000, selectedAmount == 80000, () => setSheetState(() => selectedAmount = 80000)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Payment Method',
+                style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: ['MTN Mobile Money', 'Airtel Money', 'Card'].map((method) {
+                  final isSel = selectedMethod == method;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(method),
+                      selected: isSel,
+                      onSelected: (_) => setSheetState(() => selectedMethod = method),
+                      selectedColor: const Color(0xFFE4F8F2),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: isSel ? _deepTeal : _ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                      side: BorderSide(color: isSel ? _deepTeal : const Color(0xFFD6ECE6)),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: selectedMethod == 'Card' ? 'Card Number or Phone' : 'Mobile Money Phone Number',
+                  prefixIcon: const Icon(Icons.payment_rounded, color: _deepTeal),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  _showDonationSuccessDialog(selectedAmount, selectedMethod);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _deepTeal,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                child: Text(
+                  'Contribute UGX ${selectedAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}',
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildDonationTier(String title, String amount, {bool popular = false}) {
+  Widget _buildDonationTierWidget(String title, String amount, int val, bool selected, VoidCallback onTap, {bool popular = false}) {
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: popular ? const Color(0xFFE6F7F0) : Colors.white,
-          border: Border.all(
-            color: popular ? const Color(0xFF16A34A) : _line,
-            width: popular ? 1.5 : 1,
-          ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                color: popular ? const Color(0xFF16A34A) : _ink,
-                fontWeight: FontWeight.w800,
-                fontSize: 13,
-              ),
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFE4F8F2) : Colors.white,
+            border: Border.all(
+              color: selected ? _deepTeal : (popular ? _green : _line),
+              width: selected ? 2 : 1,
             ),
-            const SizedBox(height: 4),
+            borderRadius: BorderRadius.circular(14),
+          ),
+          child: Column(
+            children: [
+              if (popular)
+                Container(
+                  margin: const EdgeInsets.only(bottom: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: _deepTeal,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text('Popular', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
+                ),
+              Text(
+                title,
+                style: TextStyle(
+                  color: selected ? _deepTeal : _ink,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                amount,
+                style: const TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showDonationSuccessDialog(int amount, String method) {
+    showDialog<void>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircleAvatar(
+              radius: 30,
+              backgroundColor: Color(0xFFEAF7EE),
+              child: Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 40),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Thank You for Caring!',
+              style: TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 20),
+            ),
+            const SizedBox(height: 8),
             Text(
-              amount,
-              style: const TextStyle(color: _muted, fontSize: 11),
+              'Your developer contribution of UGX ${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} via $method has been confirmed.',
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: _muted, fontSize: 13, height: 1.45),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF7FCFA),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFD6ECE6)),
+              ),
+              child: Text(
+                'Receipt ref: PC-DON-${DateTime.now().millisecondsSinceEpoch % 100000}',
+                style: const TextStyle(color: _deepTeal, fontWeight: FontWeight.w800, fontSize: 12),
+              ),
             ),
           ],
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Done', style: TextStyle(color: _deepTeal, fontWeight: FontWeight.w800)),
+          ),
+        ],
       ),
     );
   }
@@ -2079,7 +2383,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       context: context,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
       ),
       builder: (context) => Padding(
         padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
@@ -2095,11 +2399,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             ...['Arua Central', 'Ediofe', 'Oli', 'Ayivu', 'Arua Hill'].map(
               (area) => ListTile(
                 title: Text(area, style: const TextStyle(fontWeight: FontWeight.w600)),
-                trailing: _selectedArea == area || (_selectedArea == 'Oli' && area == 'Arua Central')
-                    ? const Icon(Icons.check_circle_rounded, color: _green)
+                trailing: _selectedArea == area
+                    ? const Icon(Icons.check_circle_rounded, color: _deepTeal)
                     : null,
                 onTap: () {
-                  setState(() => _selectedArea = area == 'Arua Central' ? 'Oli' : area);
+                  setState(() => _selectedArea = area);
                   Navigator.pop(context);
                 },
               ),
@@ -2153,27 +2457,27 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         destinations: const [
           NavigationDestination(
             icon: Icon(Icons.home_outlined),
-            selectedIcon: Icon(Icons.home_rounded, color: _ink),
+            selectedIcon: Icon(Icons.home_rounded, color: _deepTeal),
             label: 'Home',
           ),
           NavigationDestination(
             icon: Icon(Icons.search_rounded),
-            selectedIcon: Icon(Icons.search_rounded, color: _ink),
+            selectedIcon: Icon(Icons.search_rounded, color: _deepTeal),
             label: 'Find Pads',
           ),
           NavigationDestination(
             icon: Icon(Icons.menu_book_outlined),
-            selectedIcon: Icon(Icons.menu_book_rounded, color: _ink),
+            selectedIcon: Icon(Icons.menu_book_rounded, color: _deepTeal),
             label: 'Learn',
           ),
           NavigationDestination(
             icon: Icon(Icons.favorite_outline_rounded),
-            selectedIcon: Icon(Icons.favorite_rounded, color: _ink),
+            selectedIcon: Icon(Icons.favorite_rounded, color: _deepTeal),
             label: 'Support',
           ),
           NavigationDestination(
             icon: Icon(Icons.person_outline_rounded),
-            selectedIcon: Icon(Icons.person_rounded, color: _ink),
+            selectedIcon: Icon(Icons.person_rounded, color: _deepTeal),
             label: 'Profile',
           ),
         ],
@@ -2193,7 +2497,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             style: TextStyle(
               color: _ink,
               fontSize: 21,
-              fontWeight: FontWeight.w800,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.4,
             ),
           ),
           const SizedBox(width: 10),
@@ -2210,10 +2515,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.location_on, size: 14, color: _ink),
+                  const Icon(Icons.location_on, size: 14, color: _deepTeal),
                   const SizedBox(width: 4),
                   Text(
-                    _selectedArea == 'Oli' ? 'Arua Central' : _selectedArea,
+                    _selectedArea,
                     style: const TextStyle(
                       color: _ink,
                       fontSize: 12,
@@ -2270,7 +2575,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     radius: 18,
                     backgroundColor: const Color(0xFFD3EAE5),
                     child: Text(
-                      widget.parentName.isEmpty ? 'PA' : widget.parentName.substring(0, 1).toUpperCase(),
+                      _userDisplayName.isEmpty ? 'PA' : _userDisplayName.substring(0, 1).toUpperCase(),
                       style: const TextStyle(
                         color: _ink,
                         fontWeight: FontWeight.w800,
@@ -2289,6 +2594,14 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
 
   Widget _buildHome() {
     final filteredPoints = _kSupportPoints.where((p) {
+      if (_homeSearchQuery.isNotEmpty) {
+        final q = _homeSearchQuery;
+        final match = p.name.toLowerCase().contains(q) ||
+            p.area.toLowerCase().contains(q) ||
+            p.category.toLowerCase().contains(q) ||
+            p.supplies.toLowerCase().contains(q);
+        if (!match) return false;
+      }
       if (_selectedCategory == 'Schools' && p.category != 'Schools') return false;
       if (_selectedCategory == 'Clinics' && p.category != 'Clinics') return false;
       if (_selectedCategory == 'NGOs' && p.category != 'NGOs') return false;
@@ -2372,7 +2685,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 3),
           decoration: BoxDecoration(
             color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(18),
             border: Border.all(color: const Color(0xFFE2EFEF)),
             boxShadow: const [
               BoxShadow(
@@ -2386,9 +2699,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             children: [
               const Icon(Icons.search_rounded, color: _muted, size: 21),
               const SizedBox(width: 9),
-              const Expanded(
+              Expanded(
                 child: TextField(
-                  decoration: InputDecoration(
+                  controller: _homeSearchController,
+                  onChanged: (val) => setState(() => _homeSearchQuery = val.trim().toLowerCase()),
+                  decoration: const InputDecoration(
                     hintText: 'Find sanitary pads near you...',
                     hintStyle: TextStyle(color: Color(0xFF88A0A2), fontSize: 14),
                     border: InputBorder.none,
@@ -2398,7 +2713,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 ),
               ),
               IconButton(
-                icon: const Icon(Icons.tune_rounded, color: _ink, size: 20),
+                icon: const Icon(Icons.tune_rounded, color: _deepTeal, size: 20),
                 onPressed: () => setState(() => _selectedIndex = 1),
               ),
             ],
@@ -2429,11 +2744,16 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 right: -10,
                 bottom: -15,
                 child: Opacity(
-                  opacity: 0.18,
+                  opacity: 0.22,
                   child: Image.asset(
-                    'assets/icon/app_icon.png',
-                    width: 120,
-                    height: 120,
+                    'assets/padcare_icon.png',
+                    width: 125,
+                    height: 125,
+                    errorBuilder: (context, error, stackTrace) => Image.asset(
+                      'assets/icon/app_icon.png',
+                      width: 125,
+                      height: 125,
+                    ),
                   ),
                 ),
               ),
@@ -2444,7 +2764,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     'Pads are\nwithin reach.',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 23,
+                      fontSize: 24,
                       fontWeight: FontWeight.w900,
                       height: 1.15,
                     ),
@@ -2506,6 +2826,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               _buildCategoryChip('🤝 NGOs'),
               const SizedBox(width: 8),
               _buildCategoryChip('🏡 Community'),
+              const SizedBox(width: 8),
+              _buildCategoryChip('📦 Other Providers'),
             ],
           ),
         ),
@@ -2540,31 +2862,46 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         const SizedBox(height: 16),
         Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
           decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: const Color(0xFFE2EFEF)),
+            color: const Color(0xFFE4F8F2),
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: const Color(0xFFC8EBE1)),
           ),
-          child: Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 12,
-            runSpacing: 10,
+          child: Row(
             children: [
-              const Text(
-                'Every act of care makes a difference.',
-                style: TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w600),
+              const Expanded(
+                child: Text(
+                  'Every act of care\nmakes a difference.',
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    height: 1.25,
+                  ),
+                ),
               ),
-              FilledButton(
+              const SizedBox(width: 8),
+              ElevatedButton(
                 onPressed: _openDonationSheet,
-                style: FilledButton.styleFrom(
-                  backgroundColor: _ink,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _deepTeal,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                 ),
-                child: const Text('🎁 Donate to PadCare Project', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('🎁', style: TextStyle(fontSize: 13)),
+                    SizedBox(width: 5),
+                    Text(
+                      'Donate to PadCare Project',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                    ),
+                  ],
+                ),
               ),
             ],
           ),
@@ -2587,9 +2924,9 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: selected ? _ink : Colors.white,
+          color: selected ? _deepTeal : _mint.withValues(alpha: 0.28),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? _ink : const Color(0xFFDCECEB)),
+          border: Border.all(color: selected ? _deepTeal : const Color(0xFFDCECEB)),
         ),
         child: Text(
           label,
@@ -2605,17 +2942,17 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
 
   Widget _buildSupportPointCard(_SupportPoint point) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 14),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFE5EFEF)),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE2EFEF)),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x08000000),
-            blurRadius: 8,
-            offset: Offset(0, 2),
+            color: Color(0x0C0E383A),
+            blurRadius: 10,
+            offset: Offset(0, 3),
           ),
         ],
       ),
@@ -2625,20 +2962,6 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Container(
-                width: 44,
-                height: 44,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE4F4F1),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  point.category == 'Clinics' ? Icons.local_hospital_rounded : Icons.school_rounded,
-                  color: _ink,
-                  size: 22,
-                ),
-              ),
-              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -2656,55 +2979,102 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                           ),
                         ),
                         if (point.isVerified) ...[
-                          const SizedBox(width: 5),
-                          const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 16),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 17),
                         ],
                       ],
                     ),
-                    const SizedBox(height: 3),
+                    const SizedBox(height: 4),
                     Text(
                       '${point.distanceKm} km away  •  ${point.hours}',
-                      style: const TextStyle(color: _muted, fontSize: 12),
+                      style: const TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                    const SizedBox(height: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFEAF7EE),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            width: 7,
+                            height: 7,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF16A34A),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          Text(
+                            point.inStock ? 'In Stock' : 'Limited Stock',
+                            style: const TextStyle(
+                              color: Color(0xFF16A34A),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            alignment: WrapAlignment.spaceBetween,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            spacing: 8,
-            runSpacing: 8,
-            children: [
+              const SizedBox(width: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                width: 56,
+                height: 56,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE6F7F0),
-                  borderRadius: BorderRadius.circular(8),
+                  color: const Color(0xFFE4F8F2),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFC7EFE4)),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x102EA8B6),
+                      blurRadius: 8,
+                      offset: Offset(0, 3),
+                    ),
+                  ],
                 ),
-                child: Text(
-                  point.inStock ? '● In Stock' : '● Limited',
-                  style: const TextStyle(
-                    color: Color(0xFF0D9488),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.all(7),
+                    child: Image.asset(
+                      'assets/padcare_icon.png',
+                      fit: BoxFit.contain,
+                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                        'assets/icon/app_icon.png',
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                   ),
                 ),
               ),
-              OutlinedButton(
-                onPressed: () => _showFacilityDetails(point),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _ink,
-                  side: const BorderSide(color: _ink),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  visualDensity: VisualDensity.compact,
-                ),
-                child: const Text('View Details & Instructions', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12)),
-              ),
             ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: OutlinedButton(
+              onPressed: () => _showFacilityDetails(point),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: _deepTeal,
+                side: const BorderSide(color: Color(0xFF98D7CD), width: 1.2),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              child: const Text(
+                'View Details & Instructions',
+                style: TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontSize: 13,
+                  color: _deepTeal,
+                ),
+              ),
+            ),
           ),
         ],
       ),
@@ -2713,6 +3083,14 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
 
   Widget _buildFindPads() {
     final filtered = _kSupportPoints.where((p) {
+      if (_mapSearchQuery.isNotEmpty) {
+        final q = _mapSearchQuery;
+        final match = p.name.toLowerCase().contains(q) ||
+            p.area.toLowerCase().contains(q) ||
+            p.category.toLowerCase().contains(q) ||
+            p.directions.toLowerCase().contains(q);
+        if (!match) return false;
+      }
       if (_selectedMapFilter == 'In Stock' && !p.inStock) return false;
       if (_selectedMapFilter == 'Verified' && !p.isVerified) return false;
       if (_selectedMapFilter == 'NGO & Clinics' && p.category != 'Clinics' && p.category != 'NGOs') return false;
@@ -2729,20 +3107,19 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               Container(
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFE2EFEF),
-                  borderRadius: BorderRadius.circular(22),
+                  color: const Color(0xFFE6EEEC),
+                  borderRadius: BorderRadius.circular(24),
                 ),
                 child: Row(
                   children: [
                     Expanded(
-                      child: InkWell(
+                      child: GestureDetector(
                         onTap: () => setState(() => _mapViewMode = true),
-                        borderRadius: BorderRadius.circular(18),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
-                            color: _mapViewMode ? _ink : Colors.transparent,
-                            borderRadius: BorderRadius.circular(18),
+                            color: _mapViewMode ? _deepTeal : Colors.transparent,
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           alignment: Alignment.center,
                           child: Text(
@@ -2757,14 +3134,13 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       ),
                     ),
                     Expanded(
-                      child: InkWell(
+                      child: GestureDetector(
                         onTap: () => setState(() => _mapViewMode = false),
-                        borderRadius: BorderRadius.circular(18),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8),
                           decoration: BoxDecoration(
-                            color: !_mapViewMode ? _ink : Colors.transparent,
-                            borderRadius: BorderRadius.circular(18),
+                            color: !_mapViewMode ? _deepTeal : Colors.transparent,
+                            borderRadius: BorderRadius.circular(20),
                           ),
                           alignment: Alignment.center,
                           child: Text(
@@ -2786,16 +3162,18 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFFE0ECEB)),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: const Color(0xFFD6ECE6)),
                 ),
                 child: Row(
                   children: [
                     const Icon(Icons.search_rounded, color: _muted, size: 20),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: TextField(
-                        decoration: InputDecoration(
+                        controller: _mapSearchController,
+                        onChanged: (val) => setState(() => _mapSearchQuery = val.trim().toLowerCase()),
+                        decoration: const InputDecoration(
                           hintText: 'Search town, school, or landmark...',
                           hintStyle: TextStyle(color: Color(0xFF88A0A2), fontSize: 13),
                           border: InputBorder.none,
@@ -2804,10 +3182,18 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                         ),
                       ),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.tune_rounded, color: _ink, size: 19),
-                      onPressed: () {},
-                      visualDensity: VisualDensity.compact,
+                    Container(
+                      width: 32,
+                      height: 32,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE4F8F2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: IconButton(
+                        padding: EdgeInsets.zero,
+                        icon: const Icon(Icons.tune_rounded, color: _deepTeal, size: 18),
+                        onPressed: () {},
+                      ),
                     ),
                   ],
                 ),
@@ -2818,13 +3204,13 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 child: Row(
                   children: [
                     _buildMapFilterChip('Open Now'),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     _buildMapFilterChip('In Stock'),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     _buildMapFilterChip('Verified'),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     _buildMapFilterChip('NGO & Clinics'),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 8),
                     _buildMapFilterChip('Schools'),
                   ],
                 ),
@@ -2849,19 +3235,19 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       child: FloatingActionButton.small(
                         heroTag: 'recenter-map',
                         backgroundColor: Colors.white,
-                        foregroundColor: _ink,
+                        foregroundColor: _deepTeal,
                         elevation: 3,
                         onPressed: () => setState(() => _selectedMapPoint = _kSupportPoints[1]),
                         child: const Icon(Icons.my_location_rounded, size: 20),
                       ),
                     ),
                     Positioned(
-                      bottom: 170,
+                      bottom: 185,
                       right: 14,
                       child: FloatingActionButton.small(
                         heroTag: 'navigate-map',
                         backgroundColor: Colors.white,
-                        foregroundColor: _ink,
+                        foregroundColor: _deepTeal,
                         elevation: 3,
                         onPressed: () => _openDirectionsSheet(_selectedMapPoint),
                         child: const Icon(Icons.near_me_rounded, size: 20),
@@ -2891,18 +3277,18 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       onTap: () => setState(() => _selectedMapFilter = label),
       borderRadius: BorderRadius.circular(18),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
         decoration: BoxDecoration(
-          color: selected ? _ink : Colors.white,
+          color: selected ? _deepTeal : _mint.withValues(alpha: 0.28),
           borderRadius: BorderRadius.circular(18),
-          border: Border.all(color: selected ? _ink : const Color(0xFFD6E6E4)),
+          border: Border.all(color: selected ? _deepTeal : const Color(0xFFD0E6E2)),
         ),
         child: Text(
           label,
           style: TextStyle(
             color: selected ? Colors.white : _ink,
             fontSize: 12,
-            fontWeight: FontWeight.w700,
+            fontWeight: FontWeight.w800,
           ),
         ),
       ),
@@ -2913,164 +3299,250 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(22),
+        borderRadius: BorderRadius.circular(24),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x220E383A),
-            blurRadius: 18,
-            offset: Offset(0, 6),
+            color: Color(0x1F0E383A),
+            blurRadius: 20,
+            offset: Offset(0, 8),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(18, 12, 18, 16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 36,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 18),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 42,
+              height: 4,
+              decoration: BoxDecoration(
+                color: const Color(0xFFD0DFDC),
+                borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    point.name,
-                    style: const TextStyle(
-                      color: _ink,
-                      fontSize: 17,
-                      fontWeight: FontWeight.w800,
-                    ),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Text(
+                  point.name,
+                  style: const TextStyle(
+                    color: _ink,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
                   ),
                 ),
-                if (point.isVerified)
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEAF7EE),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 14),
-                        SizedBox(width: 4),
-                        Text(
-                          'Verified',
-                          style: TextStyle(
-                            color: Color(0xFF16A34A),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ],
-                    ),
+              ),
+              if (point.isVerified) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEAF7EE),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-              ],
-            ),
-            const SizedBox(height: 10),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
-                        children: [
-                          const Icon(Icons.turn_right_rounded, color: _muted, size: 16),
-                          const SizedBox(width: 5),
-                          Text(
-                            point.directions,
-                            style: const TextStyle(color: _muted, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          const Icon(Icons.navigation_outlined, color: _muted, size: 15),
-                          const SizedBox(width: 5),
-                          Text(
-                            '${point.distanceKm} km away',
-                            style: const TextStyle(color: _muted, fontSize: 13),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Container(
-                            width: 8,
-                            height: 8,
-                            decoration: const BoxDecoration(
-                              color: Color(0xFF16A34A),
-                              shape: BoxShape.circle,
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-                          Text(
-                            point.inStock ? 'In Stock' : 'Limited',
-                            style: const TextStyle(
-                              color: Color(0xFF16A34A),
-                              fontWeight: FontWeight.w700,
-                              fontSize: 13,
-                            ),
-                          ),
-                        ],
+                      Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 14),
+                      SizedBox(width: 4),
+                      Text(
+                        'Verified',
+                        style: TextStyle(
+                          color: Color(0xFF16A34A),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                Column(
+              ],
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    FilledButton(
-                      onPressed: () => _openDirectionsSheet(point),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: _ink,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                      ),
-                      child: const Text(
-                        'Get Directions',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                      ),
+                    Row(
+                      children: [
+                        const Icon(Icons.directions_rounded, color: _muted, size: 16),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            point.directions,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: _muted, fontSize: 13),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 8),
-                    OutlinedButton(
-                      onPressed: () => _showFacilityDetails(point),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: _ink,
-                        side: const BorderSide(color: _ink),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                      ),
-                      child: const Text(
-                        'Details & Hours',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
-                      ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        const Icon(Icons.near_me_outlined, color: _muted, size: 15),
+                        const SizedBox(width: 6),
+                        Text(
+                          '${point.distanceKm} km away',
+                          style: const TextStyle(color: _muted, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Row(
+                      children: [
+                        Container(
+                          width: 8,
+                          height: 8,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF16A34A),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          point.inStock ? 'In Stock' : 'Limited',
+                          style: const TextStyle(
+                            color: Color(0xFF16A34A),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-              ],
-            ),
-          ],
-        ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                children: [
+                  ElevatedButton(
+                    onPressed: () => _openDirectionsSheet(point),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _deepTeal,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 11),
+                    ),
+                    child: const Text(
+                      'Get Directions',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  OutlinedButton(
+                    onPressed: () => _showFacilityDetails(point),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: _deepTeal,
+                      side: const BorderSide(color: _deepTeal, width: 1.2),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 9),
+                    ),
+                    child: const Text(
+                      'Details & Hours',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildLearn() {
+    final articles = [
+      _LearnArticle(
+        tag: 'Essential Guide',
+        category: 'Cycle',
+        title: 'Understanding Your Menstrual Cycle',
+        subtitle: 'The 4 phases of your monthly cycle, tracking symptoms, and natural cramp relief.',
+        icon: Icons.calendar_month_rounded,
+        content: [
+          'The menstrual cycle is a natural, monthly process designed by nature. A healthy cycle typically lasts between 21 and 35 days.',
+          '• Phase 1: Menstruation (Days 1–5): The uterus sheds its inner lining. Drink plenty of clean water, rest, and use clean pads.',
+          '• Phase 2: Follicular Phase (Days 6–13): Estrogen levels rise, energy and focus increase naturally.',
+          '• Phase 3: Ovulation (Day 14): An egg is released from the ovary.',
+          '• Phase 4: Luteal Phase (Days 15–28): Progesterone increases. You may experience mild premenstrual symptoms (PMS) such as mood fluctuations or light cramping.',
+          'Tip: Use a small notebook or calendar to track your day 1 each month so you are always prepared.',
+        ],
+      ),
+      _LearnArticle(
+        tag: 'Product Care',
+        category: 'Products',
+        title: 'Reusable vs Disposable Pads',
+        subtitle: 'Comparing comfort, absorption, cost savings, and environmental protection.',
+        icon: Icons.eco_rounded,
+        content: [
+          'Both reusable cloth pads and disposable pads provide hygienic protection. Choosing the right product depends on your daily lifestyle.',
+          '• Reusable Cloth Kits: Made from soft cotton and waterproof PUL backing. With proper washing and sunlight drying, one kit lasts 2 to 3 years. Excellent for saving money and protecting the environment.',
+          '• Disposable Pads: Convenient for travel and long journeys. Feature an absorbent core and adhesive wings.',
+          '• Important Disposal Rule: Never flush disposable pads into toilets or pit latrines. Always wrap securely in paper and dispose in an incinerator or designated waste bin.',
+        ],
+      ),
+      _LearnArticle(
+        tag: 'Hygiene Protocol',
+        category: 'Hygiene',
+        title: 'Step-by-step Washing & Care',
+        subtitle: 'Best practices for soaking in cold water, washing, drying under sunlight, and storing reusable kits.',
+        icon: Icons.water_drop_rounded,
+        content: [
+          'Keeping your reusable pads clean prevents bacterial growth, skin chafing, and reproductive tract infections.',
+          '• Step 1 — Cold Soak: Soak used pads in cold or room-temperature water for 20 minutes. (Never use hot water first as it sets stains).',
+          '• Step 2 — Wash: Lather thoroughly with mild laundry soap and rub gently with your hands.',
+          '• Step 3 — Rinse: Rinse with clean water until the water runs completely clear.',
+          '• Step 4 — Direct Sunlight Drying: Hang pads outside in direct sunlight. Sunlight UV rays act as a powerful natural disinfectant.',
+          '• Step 5 — Storage: Store completely dry pads in a clean, ventilated cloth bag until next use.',
+        ],
+      ),
+      _LearnArticle(
+        tag: 'Myths vs Facts',
+        category: 'Myths',
+        title: 'Dispelling Period Myths & Taboos',
+        subtitle: 'Overcoming stigma and cultural misconceptions in schools and communities.',
+        icon: Icons.psychology_alt_rounded,
+        content: [
+          'Menstruation is completely normal and healthy. Stigma has no place in our schools or homes.',
+          '• Myth: You should not bathe or wash hair during your period.\n• Fact: Warm bathing eases muscle cramps, eliminates odor, and keeps you feeling refreshed.',
+          '• Myth: Period blood is dirty or harmful.\n• Fact: Menstrual blood is ordinary blood and natural uterine tissue. It is not toxic.',
+          '• Myth: Physical activity is dangerous during periods.\n• Fact: Light jogging, walking, and sports release endorphins that naturally alleviate period pain.',
+        ],
+      ),
+      _LearnArticle(
+        tag: 'Healthcare Advice',
+        category: 'Medical',
+        title: 'When to Seek Healthcare Advice',
+        subtitle: 'Knowing when to consult a nurse, clinical officer, or youth counselor.',
+        icon: Icons.health_and_safety_rounded,
+        content: [
+          'While mild cramping and mood changes are normal, certain symptoms indicate you should visit a health center:',
+          '• Extreme pelvic pain that prevents you from standing or attending class despite resting.',
+          '• Bleeding so heavy that you soak through two or more pads every hour for multiple consecutive hours.',
+          '• Menstrual bleeding lasting longer than 7 consecutive days.',
+          '• Foul-smelling discharge, unusual itching, or unexplained fever.',
+          '• Free Arua Youth Health Helpline: Dial 0800 200 600 (toll-free) to speak privately with an adolescent nurse.',
+        ],
+      ),
+    ];
+
+    final filteredArticles = articles.where((a) {
+      if (_selectedLearnCategory == 'All') return true;
+      return a.category == _selectedLearnCategory;
+    }).toList();
+
     return _PageScroll(
       children: [
         const _FacilityHeader(
@@ -3078,93 +3550,190 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           title: 'Learn & Care',
           subtitle: 'Empowering guides, cycle tracking, and safe hygiene tips.',
         ),
-        const SizedBox(height: 18),
-        _buildLearnCard(
-          icon: Icons.calendar_month_rounded,
-          title: 'Understanding Your Cycle',
-          subtitle: 'The 4 phases of your monthly cycle, tracking symptoms, and natural relief tips.',
-          tag: 'Essential Guide',
+        const SizedBox(height: 16),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: ['All', 'Cycle', 'Products', 'Hygiene', 'Myths', 'Medical'].map((cat) {
+              final isSel = _selectedLearnCategory == cat;
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ChoiceChip(
+                  label: Text(cat),
+                  selected: isSel,
+                  onSelected: (_) => setState(() => _selectedLearnCategory = cat),
+                  selectedColor: _deepTeal,
+                  backgroundColor: Colors.white,
+                  labelStyle: TextStyle(
+                    color: isSel ? Colors.white : _ink,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                  side: BorderSide(color: isSel ? _deepTeal : const Color(0xFFD6ECE6)),
+                ),
+              );
+            }).toList(),
+          ),
         ),
-        const SizedBox(height: 12),
-        _buildLearnCard(
-          icon: Icons.eco_rounded,
-          title: 'Reusable vs Disposable Pads',
-          subtitle: 'Comparing comfort, absorption, cost savings, and environmental protection.',
-          tag: 'Product Care',
-        ),
-        const SizedBox(height: 12),
-        _buildLearnCard(
-          icon: Icons.water_drop_rounded,
-          title: 'Step-by-step Washing & Care',
-          subtitle: 'Best practices for soaking, washing, drying under sunlight, and storing reusable kits.',
-          tag: 'Hygiene Protocol',
-        ),
-        const SizedBox(height: 12),
-        _buildLearnCard(
-          icon: Icons.health_and_safety_rounded,
-          title: 'Arua Youth Health Helpline',
-          subtitle: 'Confidential adolescent reproductive health counselors available 7 days a week.',
-          tag: 'Support Hotline',
-        ),
+        const SizedBox(height: 16),
+        ...filteredArticles.map((art) => _buildLearnArticleCard(art)),
       ],
     );
   }
 
-  Widget _buildLearnCard({
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required String tag,
-  }) {
+  Widget _buildLearnArticleCard(_LearnArticle article) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: const Color(0xFFE4F0EE)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE6F5F2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: _ink),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x080E383A),
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
+        ],
+      ),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(18),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(18),
+          onTap: () => _openArticleDetail(article),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                  width: 46,
+                  height: 46,
                   decoration: BoxDecoration(
-                    color: const Color(0xFFF1F8F6),
-                    borderRadius: BorderRadius.circular(6),
+                    color: const Color(0xFFE4F8F2),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: Text(
-                    tag,
-                    style: const TextStyle(color: Color(0xFF2EA8B6), fontSize: 10, fontWeight: FontWeight.w700),
+                  child: Icon(article.icon, color: _deepTeal, size: 24),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFEAF7EE),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          article.tag,
+                          style: const TextStyle(color: Color(0xFF16A34A), fontSize: 10, fontWeight: FontWeight.w800),
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        article.title,
+                        style: const TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 15),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        article.subtitle,
+                        style: const TextStyle(color: _muted, fontSize: 12, height: 1.4),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  title,
-                  style: const TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 15),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: const TextStyle(color: _muted, fontSize: 12, height: 1.4),
-                ),
+                const SizedBox(width: 6),
+                const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: _muted),
               ],
             ),
           ),
-        ],
+        ),
+      ),
+    );
+  }
+
+  void _openArticleDetail(_LearnArticle article) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (context) => DraggableScrollableSheet(
+        initialChildSize: 0.85,
+        minChildSize: 0.5,
+        maxChildSize: 0.95,
+        expand: false,
+        builder: (context, scrollController) => SingleChildScrollView(
+          controller: scrollController,
+          padding: const EdgeInsets.fromLTRB(22, 14, 22, 32),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD3DFDC),
+                    borderRadius: BorderRadius.circular(3),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE4F8F2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  article.tag,
+                  style: const TextStyle(color: _deepTeal, fontSize: 11, fontWeight: FontWeight.w800),
+                ),
+              ),
+              const SizedBox(height: 10),
+              Text(
+                article.title,
+                style: const TextStyle(color: _ink, fontSize: 22, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                article.subtitle,
+                style: const TextStyle(color: _muted, fontSize: 13, height: 1.4),
+              ),
+              const SizedBox(height: 18),
+              const Divider(color: Color(0xFFE8EFEF)),
+              const SizedBox(height: 12),
+              ...article.content.map(
+                (paragraph) => Padding(
+                  padding: const EdgeInsets.only(bottom: 14),
+                  child: Text(
+                    paragraph,
+                    style: const TextStyle(color: _ink, fontSize: 14, height: 1.6),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(Icons.check_rounded),
+                label: const Text('Finished Reading'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _deepTeal,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -3209,7 +3778,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8),
           decoration: BoxDecoration(
-            color: selected ? _ink : Colors.transparent,
+            color: selected ? _deepTeal : Colors.transparent,
             borderRadius: BorderRadius.circular(16),
           ),
           alignment: Alignment.center,
@@ -3290,8 +3859,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 radius: 28,
                 backgroundColor: const Color(0xFFE0F2EF),
                 child: Text(
-                  widget.parentName.isEmpty ? 'PA' : widget.parentName.substring(0, 1).toUpperCase(),
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _ink),
+                  _userDisplayName.isEmpty ? 'PA' : _userDisplayName.substring(0, 1).toUpperCase(),
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _deepTeal),
                 ),
               ),
               const SizedBox(width: 14),
@@ -3300,13 +3869,13 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      widget.parentName.isEmpty ? 'Parent account' : widget.parentName,
+                      _userDisplayName.isEmpty ? 'Parent account' : _userDisplayName,
                       style: const TextStyle(color: _ink, fontSize: 17, fontWeight: FontWeight.w800),
                     ),
                     const SizedBox(height: 3),
                     const Text('Parent or guardian access', style: TextStyle(color: _muted, fontSize: 13)),
                     const SizedBox(height: 3),
-                    Text('Location: ${_selectedArea == 'Oli' ? 'Arua Central' : _selectedArea}', style: const TextStyle(color: _green, fontSize: 12, fontWeight: FontWeight.w600)),
+                    Text('Location: $_selectedArea', style: const TextStyle(color: _deepTeal, fontSize: 12, fontWeight: FontWeight.w700)),
                   ],
                 ),
               ),
@@ -3317,11 +3886,21 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         ListTile(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           tileColor: Colors.white,
-          leading: const Icon(Icons.smartphone_rounded, color: Color(0xFF2EA8B6)),
+          leading: const Icon(Icons.smartphone_rounded, color: _deepTeal),
           title: const Text('Preview Splash Screen', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
           subtitle: const Text('View the 3D PadCare launch visual'),
           trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
           onTap: _openSplashScreenModal,
+        ),
+        const SizedBox(height: 10),
+        ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          tileColor: Colors.white,
+          leading: const Icon(Icons.app_registration_rounded, color: _deepTeal),
+          title: const Text('Register as a Pad Provider', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
+          subtitle: const Text('Register your school, clinic, or NGO distribution hub'),
+          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+          onTap: _openProviderRegistrationModal,
         ),
         const SizedBox(height: 10),
         ListTile(
@@ -3360,6 +3939,110 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     );
   }
 
+  void _openProviderRegistrationModal() {
+    final facilityNameCtrl = TextEditingController();
+    final addressCtrl = TextEditingController();
+    final contactCtrl = TextEditingController();
+    String facilityType = 'School';
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(22, 16, 22, MediaQuery.of(context).viewInsets.bottom + 28),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD0DFDC),
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Register as a Pad Provider',
+                style: TextStyle(color: _ink, fontSize: 20, fontWeight: FontWeight.w900),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Schools, clinics, and NGOs can list their collection point after verification by our community team.',
+                style: TextStyle(color: _muted, fontSize: 13, height: 1.45),
+              ),
+              const SizedBox(height: 18),
+              DropdownButtonFormField<String>(
+                initialValue: facilityType,
+                decoration: InputDecoration(
+                  labelText: 'Provider Type',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                items: ['School', 'Clinic', 'NGO', 'Community Center', 'Individual']
+                    .map((t) => DropdownMenuItem(value: t, child: Text(t)))
+                    .toList(),
+                onChanged: (val) {
+                  if (val != null) setModalState(() => facilityType = val);
+                },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: facilityNameCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Facility / Organization Name',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: addressCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Address / Landmark in Arua',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: contactCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Liaison Person & Phone (e.g. Senior Woman Teacher)',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Provider application submitted for verification review!'),
+                    ),
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _deepTeal,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+                child: const Text('Submit Provider Registration', style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildRequestForm() {
     return _PageScroll(
       children: [
@@ -3373,7 +4056,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         const SizedBox(height: 7),
         DropdownButtonFormField<String>(
           key: const ValueKey('pickup-area-dropdown'),
-          initialValue: _selectedArea,
+          initialValue: _selectedArea == 'Arua Central' ? 'Oli' : _selectedArea,
           decoration: const InputDecoration(
             prefixIcon: Icon(Icons.location_on_outlined),
           ),
@@ -3407,40 +4090,54 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               selected: _selectedProduct == 'Reusable pads',
               onTap: () => setState(() => _selectedProduct = 'Reusable pads'),
             ),
+            _ProductChoice(
+              label: 'Soap',
+              selected: _selectedProduct == 'Soap',
+              onTap: () => setState(() => _selectedProduct = 'Soap'),
+            ),
           ],
         ),
-        const SizedBox(height: 17),
-        const _FieldLabel('Quantity'),
+        const SizedBox(height: 19),
+        _FieldLabel(
+          _selectedProduct == 'Reusable pads'
+              ? 'Number of kits'
+              : _selectedProduct == 'Soap'
+              ? 'Number of bars'
+              : 'Number of packs',
+        ),
         const SizedBox(height: 7),
         _QuantityControl(
           value: _quantity,
-          unit: _selectedProduct == 'Reusable pads' ? 'kits' : 'packs',
+          unit: _selectedProduct == 'Reusable pads'
+              ? 'kits'
+              : _selectedProduct == 'Soap'
+              ? 'bars'
+              : 'packs',
           onChanged: (value) => setState(() => _quantity = value),
         ),
-        const SizedBox(height: 17),
-        const _PrivacyNote(
-          text: 'No names or personal details are needed for this request.',
-        ),
-        const SizedBox(height: 12),
-        const _LocalOnlyNotice(),
-        const SizedBox(height: 19),
-        FilledButton.icon(
+        const SizedBox(height: 24),
+        FilledButton(
           key: const ValueKey('submit-home-request'),
-          onPressed: _loadingRequests || _savingRequest || _requestStorageFailed
-              ? null
-              : _submitRequest,
-          icon: Icon(
-            _savingRequest ? Icons.hourglass_top_rounded : Icons.save_rounded,
-          ),
-          label: Text(
-            _savingRequest ? 'Submitting request...' : 'Submit request',
-          ),
+          onPressed: _submitRequest,
           style: _primaryButtonStyle,
+          child: _savingRequest
+              ? const SizedBox(
+                  height: 20,
+                  width: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                  ),
+                )
+              : const Text('Save request on this device'),
         ),
         const SizedBox(height: 12),
-        const Text(
-          'Pickup locations shown here use a sample area map. Staff will confirm availability and collection details.',
-          style: TextStyle(color: _muted, fontSize: 11, height: 1.45),
+        const Center(
+          child: Text(
+            'No names or personal details are needed. Saved locally on this device only.',
+            textAlign: TextAlign.center,
+            style: TextStyle(color: _muted, fontSize: 12, height: 1.4),
+          ),
         ),
       ],
     );
@@ -3495,6 +4192,24 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   }
 }
 
+class _LearnArticle {
+  const _LearnArticle({
+    required this.tag,
+    required this.category,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.content,
+  });
+
+  final String tag;
+  final String category;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final List<String> content;
+}
+
 class _InteractiveAruaMap extends StatelessWidget {
   const _InteractiveAruaMap({
     required this.points,
@@ -3525,61 +4240,18 @@ class _InteractiveAruaMap extends StatelessWidget {
               final x = pt.mapOffsetPercent.dx * w;
               final y = pt.mapOffsetPercent.dy * h;
               final isSelected = pt.id == selectedPoint.id;
+              final icon = pt.category == 'Clinics'
+                  ? Icons.local_hospital_rounded
+                  : (pt.category == 'Schools' ? Icons.school_rounded : Icons.volunteer_activism_rounded);
 
               return Positioned(
-                left: x - 40,
-                top: y - 48,
-                child: GestureDetector(
+                left: x - 35,
+                top: y - 55,
+                child: _MapTeardropPin(
+                  label: pt.pinLabel,
+                  icon: icon,
+                  isSelected: isSelected,
                   onTap: () => onSelect(pt),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(10),
-                          boxShadow: const [
-                            BoxShadow(
-                              color: Color(0x24000000),
-                              blurRadius: 6,
-                              offset: Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Text(
-                          '📍 ${pt.pinLabel}',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: isSelected ? const Color(0xFF2EA8B6) : _ink,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Container(
-                        width: isSelected ? 34 : 26,
-                        height: isSelected ? 34 : 26,
-                        decoration: BoxDecoration(
-                          color: isSelected ? const Color(0xFF2EA8B6) : _ink,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: isSelected ? 3 : 2),
-                          boxShadow: [
-                            BoxShadow(
-                              color: isSelected ? const Color(0x662EA8B6) : const Color(0x33000000),
-                              blurRadius: isSelected ? 12 : 6,
-                              spreadRadius: isSelected ? 2 : 0,
-                            ),
-                          ],
-                        ),
-                        child: Icon(
-                          pt.category == 'Clinics' ? Icons.local_hospital_rounded : Icons.school_rounded,
-                          color: Colors.white,
-                          size: isSelected ? 18 : 14,
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               );
             }),
@@ -3588,6 +4260,125 @@ class _InteractiveAruaMap extends StatelessWidget {
       },
     );
   }
+}
+
+class _MapTeardropPin extends StatelessWidget {
+  const _MapTeardropPin({
+    required this.label,
+    required this.icon,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final pinColor = isSelected ? const Color(0xFF116B78) : const Color(0xFF2EA8B6);
+    final size = isSelected ? 40.0 : 30.0;
+
+    return GestureDetector(
+      onTap: onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              boxShadow: const [
+                BoxShadow(
+                  color: Color(0x28000000),
+                  blurRadius: 6,
+                  offset: Offset(0, 2),
+                ),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('📍', style: TextStyle(fontSize: 9)),
+                const SizedBox(width: 3),
+                Text(
+                  label,
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: isSelected ? const Color(0xFF116B78) : _ink,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 2),
+          CustomPaint(
+            size: Size(size, size * 1.25),
+            painter: _TeardropPinPainter(
+              color: pinColor,
+              isSelected: isSelected,
+            ),
+            child: SizedBox(
+              width: size,
+              height: size * 1.25,
+              child: Padding(
+                padding: EdgeInsets.only(bottom: size * 0.25),
+                child: Center(
+                  child: Icon(
+                    icon,
+                    size: isSelected ? 18 : 14,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TeardropPinPainter extends CustomPainter {
+  final Color color;
+  final bool isSelected;
+  const _TeardropPinPainter({required this.color, this.isSelected = false});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final w = size.width;
+    final h = size.height;
+    final r = w / 2;
+
+    final path = Path()
+      ..moveTo(r, h)
+      ..cubicTo(w * 0.12, h * 0.65, 0, h * 0.45, 0, r)
+      ..arcToPoint(Offset(w, r), radius: Radius.circular(r))
+      ..cubicTo(w, h * 0.45, w * 0.88, h * 0.65, r, h)
+      ..close();
+
+    final shadowPaint = Paint()
+      ..color = const Color(0x38000000)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+    canvas.drawPath(path.shift(const Offset(0, 2)), shadowPaint);
+
+    final fillPaint = Paint()..color = color;
+    canvas.drawPath(path, fillPaint);
+
+    final borderPaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = isSelected ? 2.5 : 1.8;
+    canvas.drawPath(path, borderPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _TeardropPinPainter oldDelegate) =>
+      oldDelegate.color != color || oldDelegate.isSelected != isSelected;
 }
 
 class _AruaMapPainter extends CustomPainter {
@@ -3651,7 +4442,7 @@ class _AruaMapPainter extends CustomPainter {
       ..strokeWidth = 14
       ..strokeCap = StrokeCap.round;
 
-    final center = Offset(size.width * 0.48, size.height * 0.46);
+    final center = Offset(size.width * 0.50, size.height * 0.48);
 
     final roadPaths = Path()
       ..moveTo(center.dx, center.dy)
@@ -3760,7 +4551,7 @@ class _PadCareSplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF0F8F6),
+      backgroundColor: const Color(0xFFE4F8F2),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -3768,7 +4559,7 @@ class _PadCareSplashScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF4FAF8), Color(0xFFE2F2EE)],
+            colors: [Color(0xFFE4F8F2), Color(0xFFD6F2EA)],
           ),
         ),
         child: SafeArea(
@@ -3806,6 +4597,10 @@ class _PadCareSplashScreen extends StatelessWidget {
                         child: Image.asset(
                           'assets/icon/app_icon.png',
                           fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Image.asset(
+                            'assets/padcare_icon.png',
+                            fit: BoxFit.cover,
+                          ),
                         ),
                       ),
                     ),
@@ -3813,7 +4608,7 @@ class _PadCareSplashScreen extends StatelessWidget {
                     const Text(
                       'PadCare',
                       style: TextStyle(
-                        color: Color(0xFF133B42),
+                        color: _ink,
                         fontSize: 34,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.5,
@@ -3835,7 +4630,7 @@ class _PadCareSplashScreen extends StatelessWidget {
                       height: 36,
                       child: CircularProgressIndicator(
                         strokeWidth: 3.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2EA8B6)),
+                        valueColor: AlwaysStoppedAnimation<Color>(_green),
                       ),
                     ),
                   ],
@@ -3848,6 +4643,7 @@ class _PadCareSplashScreen extends StatelessWidget {
     );
   }
 }
+
 
 class _LocalOnlyNotice extends StatelessWidget {
   const _LocalOnlyNotice();

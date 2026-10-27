@@ -1024,8 +1024,10 @@ class _HomeScreenState extends State<HomeScreen> {
           subtitle: 'Arua City  ·  Teacher preview',
         ),
         const SizedBox(height: 12),
-        const _PrivacyNote(
-          text: 'Preview only: staff identity is not verified, and requests and stock are stored on this device.',
+        _PrivacyNote(
+          text: PadCareBackend.isSignedIn
+              ? 'Online account detected. Staff changes sync only when your role, Firebase rules, and connection allow them; watch for sync warnings.'
+              : 'Preview only: staff identity is not verified, and requests and stock are stored on this device.',
         ),
         const SizedBox(height: 20),
         _ImpactStrip(
@@ -1087,8 +1089,10 @@ class _HomeScreenState extends State<HomeScreen> {
           subtitle: widget.facility,
         ),
         const SizedBox(height: 18),
-        const _PrivacyNote(
-          text: 'Preview only: staff identity is not verified. This inbox is only visible on this device.',
+        _PrivacyNote(
+          text: PadCareBackend.isSignedIn
+              ? 'Online staff account detected. Remote requests are loaded from the assigned facility when available; local preview data may still appear offline.'
+              : 'Preview only: staff identity is not verified. This inbox is only visible on this device.',
         ),
         const SizedBox(height: 14),
         if (_loadingLocalData)
@@ -1129,8 +1133,10 @@ class _HomeScreenState extends State<HomeScreen> {
           subtitle: '${widget.facility}  ·  Sample starting stock',
         ),
         const SizedBox(height: 12),
-        const _PrivacyNote(
-          text: 'Preview only: staff identity is not verified. Stock changes are stored on this device.',
+        _PrivacyNote(
+          text: PadCareBackend.isSignedIn
+              ? 'Online staff account detected. Inventory sync depends on your assigned facility, Firebase permissions, and connectivity.'
+              : 'Preview only: staff identity is not verified. Stock changes are stored on this device.',
         ),
         const SizedBox(height: 18),
         if (_loadingLocalData)
@@ -3811,10 +3817,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   Widget _buildRequestForm() {
     return _PageScroll(
       children: [
-        const _FacilityHeader(
+        _FacilityHeader(
           eyebrow: 'HOME PICKUP REQUEST',
           title: 'Request supplies',
-          subtitle: 'The selected school can review this request in the local preview.',
+          subtitle: PadCareBackend.isSignedIn
+              ? 'Your request is saved locally first and then synced to your online account when possible.'
+              : 'The selected school can review this request in the local preview. It is not sent over the network.',
         ),
         const SizedBox(height: 20),
         const _FieldLabel('Your area'),
@@ -4378,7 +4386,7 @@ class _LocalRequestCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Not sent over network${date.isEmpty ? '' : '  ·  $date'}',
+                  '${PadCareBackend.isSignedIn ? 'Online account · sync status may vary' : 'Not sent over network'}${date.isEmpty ? '' : '  ·  $date'}',
                   style: const TextStyle(color: _muted, fontSize: 11),
                 ),
               ],

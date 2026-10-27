@@ -35,12 +35,12 @@ Core experience: gradient splash screen; white home dashboard with the “Pads a
 | --- | --- |
 | Flutter app and PadCare branding | Present |
 | Parent/guardian and school-staff preview flows | Present |
-| Local request and stock persistence | Present in the prototype |
+| Local request and stock persistence | Present; signed-in request and staff inventory sync are implemented, pending Firebase configuration |
 | Provider discovery UI and sample collection points | Present; data is illustrative |
 | GPS distance and Google Maps directions | Implemented for verified provider records; requires device/platform testing |
 | Firebase email/password and role-aware routing | Implemented; requires Firebase configuration and testing |
 | Verified provider stream and freshness-aware stock status | Implemented; requires verified Firestore records |
-| Menstrual-health education section | Requires implementation/verification |
+| Menstrual-health education section | Interactive guides present; qualified local review still needed |
 | Developer donation screen and payment-provider integration | Donation messaging present; payment gateway not connected |
 
 See the [implementation roadmap](docs/IMPLEMENTATION_ROADMAP.md) and [Firebase setup guide](docs/SETUP_FIREBASE.md) for next steps, configuration, and security safeguards.
@@ -60,7 +60,7 @@ flutter test
 flutter build apk
 ```
 
-Firebase packages are declared, but package presence alone does not mean Firebase is configured or that the current preview sends data to a backend. Configure platform Firebase files and secure backend rules before enabling live accounts or provider data.
+The Firebase adapter, email/password screens, Firestore request/inventory sync, and verified-provider stream are implemented. This repository does not include your Firebase project configuration or provider records, so online mode remains unavailable until you configure your own project and deploy the rules. Follow the [Firebase setup guide](docs/SETUP_FIREBASE.md).
 
 ## Privacy and safety principles
 

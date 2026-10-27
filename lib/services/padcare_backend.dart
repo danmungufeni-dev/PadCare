@@ -198,9 +198,17 @@ class PadCareBackend {
       'reserved': reserved,
       'updatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
-    // This is a summary for discovery, not a substitute for the inventory ledger.
+    // Aggregate all products so the public summary is not overwritten by
+    // a single product that happens to be out of stock.
+    final inventorySnapshot = await facility.collection('inventory').get();
+    final anyAvailable = inventorySnapshot.docs.any((doc) {
+      final data = doc.data();
+      final itemOnHand = (data['onHand'] as num?)?.toInt() ?? 0;
+      final itemReserved = (data['reserved'] as num?)?.toInt() ?? 0;
+      return itemOnHand > itemReserved;
+    });
     await facility.set({
-      'stockAvailable': onHand > reserved,
+      'stockAvailable': anyAvailable,
       'stockUpdatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }

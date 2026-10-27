@@ -157,6 +157,26 @@ class PadCareBackend {
     });
   }
 
+  static Future<Map<String, Map<String, int>>> loadInventory(String facilityId) async {
+    final profile = await loadCurrentProfile();
+    if (profile['role'] != 'schoolStaff' || profile['facilityId'] != facilityId) {
+      throw StateError('This account is not authorised for that facility.');
+    }
+    final snapshot = await _db.collection('facilities').doc(facilityId)
+        .collection('inventory').get();
+    final inventory = <String, Map<String, int>>{};
+    for (final doc in snapshot.docs) {
+      final data = doc.data();
+      final product = data['product']?.toString();
+      if (product == null || product.isEmpty) continue;
+      inventory[product] = {
+        'onHand': (data['onHand'] as num?)?.toInt() ?? 0,
+        'reserved': (data['reserved'] as num?)?.toInt() ?? 0,
+      };
+    }
+    return inventory;
+  }
+
   static Future<void> updateInventory({
     required String facilityId,
     required String product,

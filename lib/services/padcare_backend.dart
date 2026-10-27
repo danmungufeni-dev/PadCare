@@ -124,6 +124,20 @@ class PadCareBackend {
     }).toList();
   }
 
+  static Future<List<Map<String, dynamic>>> loadFacilityRequests(String facilityId) async {
+    final profile = await loadCurrentProfile();
+    if (profile['role'] != 'schoolStaff' || profile['facilityId'] != facilityId) {
+      throw StateError('This account is not authorised for that facility.');
+    }
+    final snapshot = await _db.collection('requests')
+        .where('schoolId', isEqualTo: facilityId)
+        .get();
+    return snapshot.docs.map((doc) => <String, dynamic>{
+      ...doc.data(),
+      'id': doc.id,
+    }).toList();
+  }
+
   static Future<void> deletePickupRequest(String id) async {
     final user = currentUser;
     if (user == null) throw StateError('Sign in before syncing a request.');

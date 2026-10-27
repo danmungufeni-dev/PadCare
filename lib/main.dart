@@ -918,14 +918,14 @@ class _HomeScreenState extends State<HomeScreen> {
           final profile = await PadCareBackend.loadCurrentProfile();
           if (profile['role'] == 'schoolStaff' && profile['facilityId'] is String) {
             await PadCareBackend.updatePickupRequestStatus(id: request.id, status: status);
-            if (status == 'Collected') {
-              await PadCareBackend.updateInventory(
-                facilityId: profile['facilityId'] as String,
-                product: supply.name,
-                onHand: supply.onHand - request.quantity,
-                reserved: _reservedFor(supply.name, requests: updatedRequests),
-              );
-            }
+            await PadCareBackend.updateInventory(
+              facilityId: profile['facilityId'] as String,
+              product: supply.name,
+              onHand: status == 'Collected'
+                  ? supply.onHand - request.quantity
+                  : supply.onHand,
+              reserved: _reservedFor(supply.name, requests: updatedRequests),
+            );
           }
         } catch (_) {
           syncFailed = true;

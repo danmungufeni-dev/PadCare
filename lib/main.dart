@@ -772,9 +772,31 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadSchoolData() async {
     try {
       final data = await _readLocalData();
+      var requests = data.requests;
+      if (PadCareBackend.isSignedIn) {
+        try {
+          final profile = await PadCareBackend.loadCurrentProfile();
+          if (profile['role'] == 'schoolStaff' && profile['facilityId'] is String) {
+            final remote = await PadCareBackend.loadFacilityRequests(profile['facilityId'] as String);
+            final byId = <String, _LocalRequest>{
+              for (final request in requests) request.id: request,
+            };
+            for (final record in remote) {
+              try {
+                final request = _LocalRequest.fromJson(Map<String, dynamic>.from(record));
+                byId[request.id] = request;
+              } catch (_) {}
+            }
+            requests = byId.values.toList()
+              ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          }
+        } catch (_) {
+          // Staff can still review local preview data if the network is unavailable.
+        }
+      }
       if (!mounted) return;
       setState(() {
-        _requests = data.requests;
+        _requests = requests;
         for (final supply in _supplies) {
           supply.onHand =
               data.stock[_stockKey(widget.facility, supply.name)] ??
@@ -819,8 +841,29 @@ class _HomeScreenState extends State<HomeScreen> {
       final stock = Map<String, int>.from(data.stock)
         ..[_stockKey(widget.facility, supply.name)] = quantity;
       await _saveLocalData(_LocalData(requests: data.requests, stock: stock));
+      var syncFailed = false;
+      if (PadCareBackend.isSignedIn) {
+        try {
+          final profile = await PadCareBackend.loadCurrentProfile();
+          if (profile['role'] == 'schoolStaff' && profile['facilityId'] is String) {
+            await PadCareBackend.updateInventory(
+              facilityId: profile['facilityId'] as String,
+              product: supply.name,
+              onHand: quantity,
+              reserved: supply.reserved,
+            );
+          }
+        } catch (_) {
+          syncFailed = true;
+        }
+      }
       if (!mounted) return;
       setState(() => supply.onHand = quantity);
+      if (syncFailed && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Stock saved locally, but online sync failed.')),
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -869,6 +912,25 @@ class _HomeScreenState extends State<HomeScreen> {
       await _saveLocalData(
         _LocalData(requests: updatedRequests, stock: stock),
       );
+      var syncFailed = false;
+      if (PadCareBackend.isSignedIn) {
+        try {
+          final profile = await PadCareBackend.loadCurrentProfile();
+          if (profile['role'] == 'schoolStaff' && profile['facilityId'] is String) {
+            await PadCareBackend.updatePickupRequestStatus(id: request.id, status: status);
+            if (status == 'Collected') {
+              await PadCareBackend.updateInventory(
+                facilityId: profile['facilityId'] as String,
+                product: supply.name,
+                onHand: supply.onHand - request.quantity,
+                reserved: _reservedFor(supply.name, requests: updatedRequests),
+              );
+            }
+          }
+        } catch (_) {
+          syncFailed = true;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _requests = updatedRequests;
@@ -877,6 +939,11 @@ class _HomeScreenState extends State<HomeScreen> {
           item.reserved = _reservedFor(item.name, requests: updatedRequests);
         }
       });
+      if (syncFailed && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request status saved locally, but online sync failed.')),
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

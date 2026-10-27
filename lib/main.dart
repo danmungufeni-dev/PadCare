@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'screens/online_account_screen.dart';
+import 'screens/provider_application_screen.dart';
 import 'services/padcare_backend.dart';
 
 Future<void> main() async {
@@ -3850,6 +3851,23 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   facility: _pickupSchool,
                   onSignOut: widget.onSignOut,
                 ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 10),
+        ListTile(
+          key: const ValueKey('provider-application-entry'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          tileColor: Colors.white,
+          leading: const Icon(Icons.volunteer_activism_rounded, color: _green),
+          title: const Text('List a pickup location', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
+          subtitle: const Text('Schools and community supporters can apply for administrator review.'),
+          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const ProviderApplicationScreen(),
               ),
             );
           },

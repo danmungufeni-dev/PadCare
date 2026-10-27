@@ -8,11 +8,11 @@ void main() {
 }
 
 const _ink = Color(0xFF142426);
-const _muted = Color(0xFF6B8487);
-const _paper = Color(0xFFF4F9F8);
-const _green = Color(0xFF2EA8B6);
-const _greenPale = Color(0xFFE6F5F2);
-const _coral = Color(0xFF0D9488);
+const _muted = Color(0xFF637A83);
+const _paper = Color(0xFFE4F8F2);
+const _green = Color(0xFF35B9B4);
+const _greenPale = Color(0xFFE4F8F2);
+const _coral = Color(0xFF116B78);
 const _line = Color(0xFFDCECEB);
 
 Widget _softTransition({required Key key, required Widget child}) {
@@ -1475,8 +1475,8 @@ const _kSupportPoints = <_SupportPoint>[
     area: 'Muni',
     distanceKm: 0.8,
     hours: 'Open until 5:00 PM',
-    inStock: true,
-    isVerified: true,
+    inStock: false,
+    isVerified: false,
     directions: 'Muni Junction, Rhinocamp Rd',
     mapOffsetPercent: Offset(0.48, 0.70),
     pinLabel: 'Clinic',
@@ -1490,8 +1490,8 @@ const _kSupportPoints = <_SupportPoint>[
     area: 'Arua Central',
     distanceKm: 1.1,
     hours: 'Open 24/7',
-    inStock: true,
-    isVerified: true,
+    inStock: false,
+    isVerified: false,
     directions: 'Directions, & conflow',
     mapOffsetPercent: Offset(0.72, 0.28),
     pinLabel: 'Clinic',
@@ -1505,8 +1505,8 @@ const _kSupportPoints = <_SupportPoint>[
     area: 'Ediofe',
     distanceKm: 1.4,
     hours: 'Open until 4:30 PM',
-    inStock: true,
-    isVerified: true,
+    inStock: false,
+    isVerified: false,
     directions: 'Ediofe Mission Road',
     mapOffsetPercent: Offset(0.24, 0.38),
     pinLabel: 'School',
@@ -1520,8 +1520,8 @@ const _kSupportPoints = <_SupportPoint>[
     area: 'Arua Hill',
     distanceKm: 2.0,
     hours: 'Open until 5:00 PM',
-    inStock: true,
-    isVerified: true,
+    inStock: false,
+    isVerified: false,
     directions: 'Arua Hill Avenue',
     mapOffsetPercent: Offset(0.28, 0.68),
     pinLabel: 'School',
@@ -1535,8 +1535,8 @@ const _kSupportPoints = <_SupportPoint>[
     area: 'Oli',
     distanceKm: 2.5,
     hours: 'Open until 4:00 PM',
-    inStock: true,
-    isVerified: true,
+    inStock: false,
+    isVerified: false,
     directions: 'Oli Division Road',
     mapOffsetPercent: Offset(0.85, 0.54),
     pinLabel: 'School',
@@ -1550,8 +1550,8 @@ const _kSupportPoints = <_SupportPoint>[
     area: 'Arua Central',
     distanceKm: 1.8,
     hours: 'Open until 5:00 PM',
-    inStock: true,
-    isVerified: true,
+    inStock: false,
+    isVerified: false,
     directions: 'Catholic Diocese, Central',
     mapOffsetPercent: Offset(0.42, 0.16),
     pinLabel: 'Collect',
@@ -1789,9 +1789,9 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    point.inStock ? '● In Stock' : 'Limited',
+                    point.inStock ? '● In Stock' : 'Availability unknown',
                     style: const TextStyle(
-                      color: Color(0xFF0D9488),
+                      color: point.inStock ? const Color(0xFF116B78) : _muted,
                       fontWeight: FontWeight.w800,
                       fontSize: 12,
                     ),
@@ -2004,17 +2004,17 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Help sponsor menstrual hygiene kits and reusable supplies for vulnerable schoolgirls across Arua City.',
+              'Your voluntary contribution supports PadCare app development, maintenance, and future improvements. This is separate from donating sanitary products.',
               style: TextStyle(color: _muted, fontSize: 13, height: 1.45),
             ),
             const SizedBox(height: 18),
             Row(
               children: [
-                _buildDonationTier('1 Kit', 'UGX 15,000'),
+                _buildDonationTier('Supporter', 'UGX 5,000'),
                 const SizedBox(width: 8),
-                _buildDonationTier('3 Kits', 'UGX 45,000', popular: true),
+                _buildDonationTier('Builder', 'UGX 10,000', popular: true),
                 const SizedBox(width: 8),
-                _buildDonationTier('1 Term', 'UGX 80,000'),
+                _buildDonationTier('Champion', 'UGX 20,000'),
               ],
             ),
             const SizedBox(height: 18),
@@ -2023,7 +2023,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 Navigator.pop(context);
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Thank you! PadCare sponsorship portal connected.'),
+                    content: Text('Payment setup is not connected yet. No payment has been taken.'),
                   ),
                 );
               },
@@ -2319,6 +2319,28 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   color: _muted,
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE4F8F2),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFB9E9DE)),
+                ),
+                child: const Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.info_outline_rounded, color: Color(0xFF116B78), size: 20),
+                    SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        'Preview data: sample locations, distances, and stock are illustrative. Confirm details with providers before travelling.',
+                        style: TextStyle(color: Color(0xFF116B78), fontSize: 12, height: 1.4),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 8),
@@ -3768,7 +3790,7 @@ class _PadCareSplashScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF4FAF8), Color(0xFFE2F2EE)],
+            colors: [Color(0xFF35B9B4), Color(0xFFA5EAC5)],
           ),
         ),
         child: SafeArea(
@@ -3813,7 +3835,7 @@ class _PadCareSplashScreen extends StatelessWidget {
                     const Text(
                       'PadCare',
                       style: TextStyle(
-                        color: Color(0xFF133B42),
+                        color: Color(0xFF172B36),
                         fontSize: 34,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.5,
@@ -3823,7 +3845,7 @@ class _PadCareSplashScreen extends StatelessWidget {
                     const Text(
                       'Care within reach.',
                       style: TextStyle(
-                        color: Color(0xFF5A7E82),
+                        color: Color(0xFF116B78),
                         fontSize: 17,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.1,

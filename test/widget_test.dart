@@ -325,6 +325,7 @@ void main() {
     expect(find.text('List a pickup location'), findsOneWidget);
     expect(find.text('Submit for review'), findsOneWidget);
     expect(find.textContaining('local preview mode'), findsOneWidget);
+    await tester.ensureVisible(find.text('Submit for review'));
     await tester.tap(find.text('Submit for review'));
     await tester.pumpAndSettle();
     expect(find.textContaining('Sign in with an online PadCare account first'), findsOneWidget);

@@ -230,6 +230,61 @@ class PadCareBackend {
             }).toList());
   }
 
+  /// Submits a provider listing for review. This creates an application only;
+  /// it never creates a public facility or grants verification/staff privileges.
+  static Future<String> submitProviderApplication({
+    required String organisationName,
+    required String facilityName,
+    required String area,
+    required String address,
+    required String description,
+    String pickupInstructions = '',
+  }) async {
+    final user = currentUser;
+    if (user == null) throw StateError('Sign in before submitting a provider application.');
+    final email = user.email;
+    if (email == null || email.trim().isEmpty) {
+      throw StateError('Add and verify an email address before applying.');
+    }
+    final values = <String, String>{
+      'organisationName': organisationName.trim(),
+      'facilityName': facilityName.trim(),
+      'area': area.trim(),
+      'address': address.trim(),
+      'description': description.trim(),
+      'pickupInstructions': pickupInstructions.trim(),
+    };
+    if (values['organisationName']!.isEmpty ||
+        values['facilityName']!.isEmpty ||
+        values['area']!.isEmpty ||
+        values['address']!.isEmpty ||
+        values['description']!.isEmpty) {
+      throw ArgumentError('Complete all required provider application fields.');
+    }
+    final ref = await _db.collection('providerApplications').add({
+      ...values,
+      'contactEmail': email.trim(),
+      'userId': user.uid,
+      'status': 'submitted',
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    return ref.id;
+  }
+
+  /// Lists only the signed-in user's provider applications. Application status
+  /// can be changed only by a trusted administrator outside this client API.
+  static Future<List<Map<String, dynamic>>> loadMyProviderApplications() async {
+    final user = currentUser;
+    if (user == null) throw StateError('Sign in to view provider applications.');
+    final snapshot = await _db.collection('providerApplications')
+        .where('userId', isEqualTo: user.uid)
+        .get();
+    return snapshot.docs.map((doc) => <String, dynamic>{
+      ...doc.data(),
+      'id': doc.id,
+    }).toList();
+  }
+
   static Future<void> recordDonationPledge({
     required int amountUgx,
     required String purpose,

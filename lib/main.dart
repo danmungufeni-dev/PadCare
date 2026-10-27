@@ -2052,8 +2052,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => StatefulBuilder(
-        builder: (context, setModalState) => Padding(
+      builder: (context) => Padding(
         padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -2310,7 +2309,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => Padding(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
         padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,

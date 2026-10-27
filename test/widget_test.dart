@@ -281,4 +281,30 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Nile View School'), findsOneWidget);
   });
+
+  testWidgets('profile explains local preview and staff portal permissions', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Parent or guardian'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('submit-access')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Profile').last);
+    await tester.pumpAndSettle();
+    expect(find.text('Profile & Access'), findsOneWidget);
+    expect(find.text('Local preview mode'), findsOneWidget);
+    expect(find.text('Open staff portal preview'), findsOneWidget);
+    expect(
+      find.textContaining('Online stock and requests require an authorised school-staff account.'),
+      findsOneWidget,
+    );
+    expect(
+      find.textContaining('Sample locations are not live-confirmed.'),
+      findsOneWidget,
+    );
+  });
 }

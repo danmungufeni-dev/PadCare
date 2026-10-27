@@ -69,7 +69,7 @@ The `facilityId` must match the provider document ID and the slug used by the re
 - **Verified provider directory:** streams verified Firestore facility documents.
 - **Nearby distance:** asks for location only after the user taps “Find Pads Near Me”; area browsing remains available if permission is declined.
 - **Directions:** opens Google Maps using the provider's real coordinates or address.
-- **Donations:** no payment gateway is connected. The current screen must not be treated as a completed payment flow.
+- **Developer support:** signed-in users can record a non-payment pledge in Firestore. No money is collected because a payment gateway is not connected.
 
 ## 6. Before launch
 

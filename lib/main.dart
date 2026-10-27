@@ -2563,15 +2563,17 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(color: const Color(0xFFB9E9DE)),
                 ),
-                child: const Row(
+                child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Icon(Icons.info_outline_rounded, color: Color(0xFF116B78), size: 20),
-                    SizedBox(width: 9),
+                    const Icon(Icons.info_outline_rounded, color: Color(0xFF116B78), size: 20),
+                    const SizedBox(width: 9),
                     Expanded(
                       child: Text(
-                        'Preview data: sample locations, distances, and stock are illustrative. Confirm details with providers before travelling.',
-                        style: TextStyle(color: Color(0xFF116B78), fontSize: 12, height: 1.4),
+                        _liveSupportPoints.isEmpty
+                            ? 'Preview data: sample locations and distances are illustrative. Confirm availability with providers before travelling.'
+                            : 'Live verified provider listings are connected. Stock is displayed only when updated within the last 24 hours.',
+                        style: const TextStyle(color: Color(0xFF116B78), fontSize: 12, height: 1.4),
                       ),
                     ),
                   ],
@@ -2716,7 +2718,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => setState(() => _selectedIndex = 1),
+                    onPressed: () {
+                      setState(() => _selectedIndex = 1);
+                      _requestLocationAndRefresh();
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: _ink,

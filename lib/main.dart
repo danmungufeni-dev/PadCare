@@ -221,7 +221,13 @@ class _AccessGateState extends State<AccessGate> {
     );
     if (!mounted || connected != true) return;
     final navigator = Navigator.of(context);
-    final profile = await PadCareBackend.loadCurrentProfile();
+    Map<String, dynamic> profile;
+    try {
+      profile = await PadCareBackend.loadCurrentProfile();
+    } catch (_) {
+      // If profile lookup is temporarily unavailable, route to the least-privileged parent view.
+      profile = <String, dynamic>{'role': 'parent'};
+    }
     if (!mounted) return;
     final role = profile['role']?.toString() ?? 'parent';
     void signOut() {

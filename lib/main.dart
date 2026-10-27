@@ -2288,6 +2288,320 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   }
 
 
+  void _openDonationSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.black12,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+            const Text(
+              '🎁 Donate to PadCare Project',
+              style: TextStyle(color: _ink, fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Your voluntary contribution supports PadCare app development, maintenance, and future improvements. This is separate from donating sanitary products.',
+              style: TextStyle(color: _muted, fontSize: 13, height: 1.45),
+            ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                _buildDonationTier('Supporter', 'UGX 5,000'),
+                const SizedBox(width: 8),
+                _buildDonationTier('Builder', 'UGX 10,000', popular: true),
+                const SizedBox(width: 8),
+                _buildDonationTier('Champion', 'UGX 20,000'),
+              ],
+            ),
+            const SizedBox(height: 18),
+            FilledButton(
+              onPressed: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Payment setup is not connected yet. No payment has been taken.'),
+                  ),
+                );
+              },
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF2EA8B6),
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: const Text('Payments not available yet', style: TextStyle(fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDonationTier(String title, String amount, {bool popular = false}) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+        decoration: BoxDecoration(
+          color: popular ? const Color(0xFFE6F7F0) : Colors.white,
+          border: Border.all(
+            color: popular ? const Color(0xFF16A34A) : _line,
+            width: popular ? 1.5 : 1,
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Column(
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                color: popular ? const Color(0xFF16A34A) : _ink,
+                fontWeight: FontWeight.w800,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              amount,
+              style: const TextStyle(color: _muted, fontSize: 11),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openAreaSelector() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Select Your Area in Arua',
+              style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 18),
+            ),
+            const SizedBox(height: 12),
+            ...['Arua Central', 'Ediofe', 'Oli', 'Ayivu', 'Arua Hill'].map(
+              (area) => ListTile(
+                title: Text(area, style: const TextStyle(fontWeight: FontWeight.w600)),
+                trailing: _selectedArea == area || (_selectedArea == 'Oli' && area == 'Arua Central')
+                    ? const Icon(Icons.check_circle_rounded, color: _green)
+                    : null,
+                onTap: () {
+                  setState(() => _selectedArea = area == 'Arua Central' ? 'Oli' : area);
+                  Navigator.pop(context);
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openSplashScreenModal() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => _PadCareSplashScreen(
+          onClose: () => Navigator.of(context).pop(),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: _paper,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildMainTopBar(),
+            Expanded(
+              child: IndexedStack(
+                index: _selectedIndex,
+                children: [
+                  _buildHome(),
+                  _buildFindPads(),
+                  _buildLearn(),
+                  _buildSupport(),
+                  _buildProfile(),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: NavigationBar(
+        selectedIndex: _selectedIndex,
+        backgroundColor: Colors.white,
+        indicatorColor: const Color(0xFFD6F0EA),
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+        onDestinationSelected: (index) => setState(() => _selectedIndex = index),
+        destinations: const [
+          NavigationDestination(
+            icon: Icon(Icons.home_outlined),
+            selectedIcon: Icon(Icons.home_rounded, color: _ink),
+            label: 'Home',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.search_rounded),
+            selectedIcon: Icon(Icons.search_rounded, color: _ink),
+            label: 'Find Pads',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.menu_book_outlined),
+            selectedIcon: Icon(Icons.menu_book_rounded, color: _ink),
+            label: 'Learn',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.favorite_outline_rounded),
+            selectedIcon: Icon(Icons.favorite_rounded, color: _ink),
+            label: 'Support',
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.person_outline_rounded),
+            selectedIcon: Icon(Icons.person_rounded, color: _ink),
+            label: 'Profile',
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainTopBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 10, 16, 6),
+      child: Row(
+        children: [
+          const _BrandMark(),
+          const SizedBox(width: 8),
+          const Text(
+            'PadCare',
+            style: TextStyle(
+              color: _ink,
+              fontSize: 21,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const SizedBox(width: 10),
+          InkWell(
+            onTap: _openAreaSelector,
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE4F4F1),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFC7E7E2)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.location_on, size: 14, color: _ink),
+                  const SizedBox(width: 4),
+                  Text(
+                    _selectedArea == 'Oli' ? 'Arua Central' : _selectedArea,
+                    style: const TextStyle(
+                      color: _ink,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(Icons.arrow_drop_down, size: 16, color: _ink),
+                ],
+              ),
+            ),
+          ),
+          const Spacer(),
+          IconButton(
+            tooltip: 'Request activity',
+            onPressed: () => setState(() {
+              _selectedIndex = 3;
+              _supportSubTab = _SupportSubTab.activity;
+            }),
+            icon: Stack(
+              children: [
+                const Icon(Icons.notifications_none_rounded, color: _ink),
+                Positioned(
+                  right: 0,
+                  top: 0,
+                  child: Container(
+                    width: 8,
+                    height: 8,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF2EA8B6),
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            style: IconButton.styleFrom(
+              backgroundColor: Colors.white,
+              fixedSize: const Size(40, 40),
+            ),
+          ),
+          const SizedBox(width: 6),
+          SizedBox(
+            width: 48,
+            height: 48,
+            child: Tooltip(
+              message: 'Sign out',
+              child: InkWell(
+                key: const ValueKey('sign-out-control'),
+                onTap: widget.onSignOut,
+                customBorder: const CircleBorder(),
+                child: Center(
+                  child: CircleAvatar(
+                    radius: 18,
+                    backgroundColor: const Color(0xFFD3EAE5),
+                    child: Text(
+                      widget.parentName.isEmpty ? 'PA' : widget.parentName.substring(0, 1).toUpperCase(),
+                      style: const TextStyle(
+                        color: _ink,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildHome() {
     final sourcePoints = _liveSupportPoints.isNotEmpty ? _liveSupportPoints : _kSupportPoints;
     final filteredPoints = sourcePoints.where((p) {

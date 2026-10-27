@@ -37,13 +37,13 @@ Core experience: gradient splash screen; white home dashboard with the “Pads a
 | Parent/guardian and school-staff preview flows | Present |
 | Local request and stock persistence | Present in the prototype |
 | Provider discovery UI and sample collection points | Present; data is illustrative |
-| Real map, GPS-based distance, and external directions | Requires implementation/verification |
-| Live authentication and role-based backend security | Not established |
-| Live provider verification and current stock feeds | Not established |
+| GPS distance and Google Maps directions | Implemented for verified provider records; requires device/platform testing |
+| Firebase email/password and role-aware routing | Implemented; requires Firebase configuration and testing |
+| Verified provider stream and freshness-aware stock status | Implemented; requires verified Firestore records |
 | Menstrual-health education section | Requires implementation/verification |
-| Developer donations and payment-provider integration | Requires implementation/verification |
+| Developer donation screen and payment-provider integration | Donation messaging present; payment gateway not connected |
 
-See [the implementation roadmap](docs/IMPLEMENTATION_ROADMAP.md) for the next steps and safeguards.
+See the [implementation roadmap](docs/IMPLEMENTATION_ROADMAP.md) and [Firebase setup guide](docs/SETUP_FIREBASE.md) for next steps, configuration, and security safeguards.
 
 ## Run locally
 

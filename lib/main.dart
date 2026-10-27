@@ -1,18 +1,27 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-void main() {
+import 'screens/online_account_screen.dart';
+import 'screens/provider_application_screen.dart';
+import 'services/padcare_backend.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await PadCareBackend.initialize();
   runApp(const MyApp());
 }
 
 const _ink = Color(0xFF142426);
-const _muted = Color(0xFF6B8487);
-const _paper = Color(0xFFF4F9F8);
-const _green = Color(0xFF2EA8B6);
-const _greenPale = Color(0xFFE6F5F2);
-const _coral = Color(0xFF0D9488);
+const _muted = Color(0xFF637A83);
+const _paper = Color(0xFFE4F8F2);
+const _green = Color(0xFF35B9B4);
+const _greenPale = Color(0xFFE4F8F2);
+const _coral = Color(0xFF116B78);
 const _line = Color(0xFFDCECEB);
 
 Widget _softTransition({required Key key, required Widget child}) {
@@ -109,7 +118,7 @@ class _AppLandingFlowState extends State<_AppLandingFlow> {
       );
     }
     return ParentHomeScreen(
-      parentName: 'Amina N.',
+      parentName: 'Guest',
       onSignOut: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => const AccessGate()),
@@ -207,6 +216,40 @@ class _AccessGateState extends State<AccessGate> {
     );
   }
 
+  Future<void> _openOnlineAccount() async {
+    final connected = await Navigator.of(context).push<bool>(
+      MaterialPageRoute<bool>(builder: (_) => const OnlineAccountScreen()),
+    );
+    if (!mounted || connected != true) return;
+    final navigator = Navigator.of(context);
+    Map<String, dynamic> profile;
+    try {
+      profile = await PadCareBackend.loadCurrentProfile();
+    } catch (_) {
+      // If profile lookup is temporarily unavailable, route to the least-privileged parent view.
+      profile = <String, dynamic>{'role': 'parent'};
+    }
+    if (!mounted) return;
+    final role = profile['role']?.toString() ?? 'parent';
+    void signOut() {
+      PadCareBackend.signOut();
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
+        (route) => false,
+      );
+    }
+    final Widget destination = role == 'schoolStaff'
+        ? HomeScreen(
+            facility: (profile['facilityName'] ?? profile['facilityId'] ?? 'School').toString(),
+            onSignOut: signOut,
+          )
+        : ParentHomeScreen(
+            parentName: PadCareBackend.currentDisplayName,
+            onSignOut: signOut,
+          );
+    navigator.pushReplacement(MaterialPageRoute<void>(builder: (_) => destination));
+  }
+
   Widget _buildRolePicker() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -231,7 +274,7 @@ class _AccessGateState extends State<AccessGate> {
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute<void>(
                     builder: (_) => ParentHomeScreen(
-                      parentName: 'Amina N.',
+                      parentName: 'Guest',
                       onSignOut: () => Navigator.of(context).pushReplacement(
                         MaterialPageRoute<void>(builder: (_) => const AccessGate()),
                       ),
@@ -268,14 +311,27 @@ class _AccessGateState extends State<AccessGate> {
         const _PrivacyNote(
           text: 'Requests do not ask for a girl\'s name, age, or class.',
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 12),
+        Center(
+          child: FilledButton.tonalIcon(
+            onPressed: _openOnlineAccount,
+            icon: const Icon(Icons.cloud_outlined),
+            label: const Text('Sign in or create online account'),
+            style: FilledButton.styleFrom(
+              foregroundColor: const Color(0xFF116B78),
+              minimumSize: const Size.fromHeight(48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
         Center(
           child: OutlinedButton.icon(
             onPressed: () {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute<void>(
                   builder: (_) => ParentHomeScreen(
-                    parentName: 'Amina N.',
+                    parentName: 'Guest',
                     onSignOut: () => Navigator.of(context).pushReplacement(
                       MaterialPageRoute<void>(builder: (_) => const AccessGate()),
                     ),
@@ -723,14 +779,39 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadSchoolData() async {
     try {
       final data = await _readLocalData();
+      var requests = data.requests;
+      var remoteInventory = <String, Map<String, int>>{};
+      if (PadCareBackend.isSignedIn) {
+        try {
+          final profile = await PadCareBackend.loadCurrentProfile();
+          if (profile['role'] == 'schoolStaff' && profile['facilityId'] is String) {
+            remoteInventory = await PadCareBackend.loadInventory(profile['facilityId'] as String);
+            final remote = await PadCareBackend.loadFacilityRequests(profile['facilityId'] as String);
+            final byId = <String, _LocalRequest>{
+              for (final request in requests) request.id: request,
+            };
+            for (final record in remote) {
+              try {
+                final request = _LocalRequest.fromJson(Map<String, dynamic>.from(record));
+                byId[request.id] = request;
+              } catch (_) {}
+            }
+            requests = byId.values.toList()
+              ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          }
+        } catch (_) {
+          // Staff can still review local preview data if the network is unavailable.
+        }
+      }
       if (!mounted) return;
       setState(() {
-        _requests = data.requests;
+        _requests = requests;
         for (final supply in _supplies) {
-          supply.onHand =
+          final liveStock = remoteInventory[supply.name];
+          supply.onHand = liveStock?['onHand'] ??
               data.stock[_stockKey(widget.facility, supply.name)] ??
               supply.onHand;
-          supply.reserved = _reservedFor(supply.name);
+          supply.reserved = liveStock?['reserved'] ?? _reservedFor(supply.name);
         }
         _loadingLocalData = false;
       });
@@ -770,8 +851,29 @@ class _HomeScreenState extends State<HomeScreen> {
       final stock = Map<String, int>.from(data.stock)
         ..[_stockKey(widget.facility, supply.name)] = quantity;
       await _saveLocalData(_LocalData(requests: data.requests, stock: stock));
+      var syncFailed = false;
+      if (PadCareBackend.isSignedIn) {
+        try {
+          final profile = await PadCareBackend.loadCurrentProfile();
+          if (profile['role'] == 'schoolStaff' && profile['facilityId'] is String) {
+            await PadCareBackend.updateInventory(
+              facilityId: profile['facilityId'] as String,
+              product: supply.name,
+              onHand: quantity,
+              reserved: supply.reserved,
+            );
+          }
+        } catch (_) {
+          syncFailed = true;
+        }
+      }
       if (!mounted) return;
       setState(() => supply.onHand = quantity);
+      if (syncFailed && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Stock saved locally, but online sync failed.')),
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -820,6 +922,25 @@ class _HomeScreenState extends State<HomeScreen> {
       await _saveLocalData(
         _LocalData(requests: updatedRequests, stock: stock),
       );
+      var syncFailed = false;
+      if (PadCareBackend.isSignedIn) {
+        try {
+          final profile = await PadCareBackend.loadCurrentProfile();
+          if (profile['role'] == 'schoolStaff' && profile['facilityId'] is String) {
+            await PadCareBackend.updatePickupRequestStatus(id: request.id, status: status);
+            await PadCareBackend.updateInventory(
+              facilityId: profile['facilityId'] as String,
+              product: supply.name,
+              onHand: status == 'Collected'
+                  ? supply.onHand - request.quantity
+                  : supply.onHand,
+              reserved: _reservedFor(supply.name, requests: updatedRequests),
+            );
+          }
+        } catch (_) {
+          syncFailed = true;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _requests = updatedRequests;
@@ -828,6 +949,11 @@ class _HomeScreenState extends State<HomeScreen> {
           item.reserved = _reservedFor(item.name, requests: updatedRequests);
         }
       });
+      if (syncFailed && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request status saved locally, but online sync failed.')),
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -905,8 +1031,10 @@ class _HomeScreenState extends State<HomeScreen> {
           subtitle: 'Arua City  ·  Teacher preview',
         ),
         const SizedBox(height: 12),
-        const _PrivacyNote(
-          text: 'Preview only: staff identity is not verified, and requests and stock are stored on this device.',
+        _PrivacyNote(
+          text: PadCareBackend.isSignedIn
+              ? 'Online account detected. Staff changes sync only when your role, Firebase rules, and connection allow them; watch for sync warnings.'
+              : 'Preview only: staff identity is not verified, and requests and stock are stored on this device.',
         ),
         const SizedBox(height: 20),
         _ImpactStrip(
@@ -968,8 +1096,10 @@ class _HomeScreenState extends State<HomeScreen> {
           subtitle: widget.facility,
         ),
         const SizedBox(height: 18),
-        const _PrivacyNote(
-          text: 'Preview only: staff identity is not verified. This inbox is only visible on this device.',
+        _PrivacyNote(
+          text: PadCareBackend.isSignedIn
+              ? 'Online staff account detected. Remote requests are loaded from the assigned facility when available; local preview data may still appear offline.'
+              : 'Preview only: staff identity is not verified. This inbox is only visible on this device.',
         ),
         const SizedBox(height: 14),
         if (_loadingLocalData)
@@ -1010,8 +1140,10 @@ class _HomeScreenState extends State<HomeScreen> {
           subtitle: '${widget.facility}  ·  Sample starting stock',
         ),
         const SizedBox(height: 12),
-        const _PrivacyNote(
-          text: 'Preview only: staff identity is not verified. Stock changes are stored on this device.',
+        _PrivacyNote(
+          text: PadCareBackend.isSignedIn
+              ? 'Online staff account detected. Inventory sync depends on your assigned facility, Firebase permissions, and connectivity.'
+              : 'Preview only: staff identity is not verified. Stock changes are stored on this device.',
         ),
         const SizedBox(height: 18),
         if (_loadingLocalData)
@@ -1450,13 +1582,16 @@ class _SupportPoint {
     required this.pinLabel,
     this.supplies = 'Pads & kits',
     this.instructions = 'Walk in and ask for adolescent health or matron desk. Confidential and free.',
+    this.latitude,
+    this.longitude,
+    this.isLive = false,
   });
 
   final String id;
   final String name;
   final String category;
   final String area;
-  final double distanceKm;
+  final double? distanceKm;
   final String hours;
   final bool inStock;
   final bool isVerified;
@@ -1465,6 +1600,13 @@ class _SupportPoint {
   final String pinLabel;
   final String supplies;
   final String instructions;
+  final double? latitude;
+  final double? longitude;
+  final bool isLive;
+
+  String get distanceLabel => distanceKm == null
+      ? 'Distance unavailable'
+      : '${distanceKm!.toStringAsFixed(1)} km away';
 }
 
 const _kSupportPoints = <_SupportPoint>[
@@ -1473,90 +1615,90 @@ const _kSupportPoints = <_SupportPoint>[
     name: 'Muni Health Centre IV',
     category: 'Clinics',
     area: 'Muni',
-    distanceKm: 0.8,
-    hours: 'Open until 5:00 PM',
-    inStock: true,
-    isVerified: true,
-    directions: 'Muni Junction, Rhinocamp Rd',
+    distanceKm: null,
+    hours: 'Hours not verified',
+    inStock: false,
+    isVerified: false,
+    directions: 'Sample location — not verified',
     mapOffsetPercent: Offset(0.48, 0.70),
     pinLabel: 'Clinic',
-    supplies: 'Disposable & Reusable pads',
-    instructions: 'Report to outpatient clinic room 3. Supplies provided immediately with discretion.',
+    supplies: 'Supplies not verified',
+    instructions: 'Sample listing only. Contact the provider to confirm whether this service is available.',
   ),
   _SupportPoint(
     id: 'arua-hospital',
     name: 'Arua Regional Referral Hospital',
     category: 'Clinics',
     area: 'Arua Central',
-    distanceKm: 1.1,
-    hours: 'Open 24/7',
-    inStock: true,
-    isVerified: true,
-    directions: 'Directions, & conflow',
+    distanceKm: null,
+    hours: 'Hours not verified',
+    inStock: false,
+    isVerified: false,
+    directions: 'Sample location — not verified',
     mapOffsetPercent: Offset(0.72, 0.28),
     pinLabel: 'Clinic',
-    supplies: 'Emergency hospital stock',
-    instructions: 'Maternity & Youth Friendly Corner. Open 24/7 with trained female nursing staff.',
+    supplies: 'Supplies not verified',
+    instructions: 'Sample listing only. Contact the provider to confirm whether this service is available.',
   ),
   _SupportPoint(
     id: 'ediofe-school',
     name: 'Ediofe Girls School',
     category: 'Schools',
     area: 'Ediofe',
-    distanceKm: 1.4,
-    hours: 'Open until 4:30 PM',
-    inStock: true,
-    isVerified: true,
-    directions: 'Ediofe Mission Road',
+    distanceKm: null,
+    hours: 'Hours not verified',
+    inStock: false,
+    isVerified: false,
+    directions: 'Sample location — not verified',
     mapOffsetPercent: Offset(0.24, 0.38),
     pinLabel: 'School',
-    supplies: 'Reusable pad kits & disposable',
-    instructions: 'Senior Woman Teacher office near the administration block.',
+    supplies: 'Supplies not verified',
+    instructions: 'Sample listing only. Contact the provider to confirm whether this service is available.',
   ),
   _SupportPoint(
     id: 'st-marys-school',
     name: 'St. Mary\'s Secondary',
     category: 'Schools',
     area: 'Arua Hill',
-    distanceKm: 2.0,
-    hours: 'Open until 5:00 PM',
-    inStock: true,
-    isVerified: true,
-    directions: 'Arua Hill Avenue',
+    distanceKm: null,
+    hours: 'Hours not verified',
+    inStock: false,
+    isVerified: false,
+    directions: 'Sample location — not verified',
     mapOffsetPercent: Offset(0.28, 0.68),
     pinLabel: 'School',
-    supplies: 'Kits & packs for pickup',
-    instructions: 'School health liaison office. Parent & student collections welcome.',
+    supplies: 'Supplies not verified',
+    instructions: 'Sample listing only. Contact the provider to confirm whether this service is available.',
   ),
   _SupportPoint(
     id: 'oli-primary',
     name: 'Oli Primary School',
     category: 'Schools',
     area: 'Oli',
-    distanceKm: 2.5,
-    hours: 'Open until 4:00 PM',
-    inStock: true,
-    isVerified: true,
-    directions: 'Oli Division Road',
+    distanceKm: null,
+    hours: 'Hours not verified',
+    inStock: false,
+    isVerified: false,
+    directions: 'Sample location — not verified',
     mapOffsetPercent: Offset(0.85, 0.54),
     pinLabel: 'School',
-    supplies: 'School stock & parent pickups',
-    instructions: 'Staffroom counseling corner, ask for Senior Woman Teacher.',
+    supplies: 'Supplies not verified',
+    instructions: 'Sample listing only. Contact the provider to confirm whether this service is available.',
   ),
   _SupportPoint(
     id: 'ceford-ngo',
     name: 'CEFORD Community Centre',
     category: 'NGOs',
     area: 'Arua Central',
-    distanceKm: 1.8,
-    hours: 'Open until 5:00 PM',
-    inStock: true,
-    isVerified: true,
-    directions: 'Catholic Diocese, Central',
+    distanceKm: null,
+    hours: 'Hours not verified',
+    inStock: false,
+    isVerified: false,
+    directions: 'Sample location — not verified',
     mapOffsetPercent: Offset(0.42, 0.16),
     pinLabel: 'Collect',
-    supplies: 'Emergency distribution hub',
-    instructions: 'Community empowerment desk, ground floor reception.',
+    supplies: 'Supplies not verified',
+    instructions: 'Sample listing only. Contact the provider to confirm whether this service is available.',
   ),
 ];
 
@@ -1565,11 +1707,17 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   _SupportSubTab _supportSubTab = _SupportSubTab.requestForm;
   _SupportPoint _selectedMapPoint = _kSupportPoints[1];
   bool _mapViewMode = true;
+  StreamSubscription<List<Map<String, dynamic>>>? _providerSubscription;
+  List<Map<String, dynamic>> _remoteProviderRecords = <Map<String, dynamic>>[];
+  List<_SupportPoint> _liveSupportPoints = <_SupportPoint>[];
+  Position? _currentPosition;
   String _selectedCategory = 'All';
-  String _selectedMapFilter = 'Open Now';
+  String _providerSearch = '';
+  String _selectedMapFilter = 'All providers';
   String _selectedArea = 'Oli';
   String _selectedProduct = 'Disposable pads';
   int _quantity = 4;
+  int _selectedDonationAmount = 10000;
   List<_LocalRequest> _localRequests = [];
   bool _loadingRequests = true;
   bool _savingRequest = false;
@@ -1579,14 +1727,180 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   void initState() {
     super.initState();
     _loadLocalRequests();
+    _loadVerifiedProviders();
+  }
+
+  @override
+  void dispose() {
+    _providerSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _loadVerifiedProviders() {
+    if (!PadCareBackend.isConfigured) return;
+    try {
+      _providerSubscription = PadCareBackend.watchVerifiedProviders().listen(
+        (records) {
+          _remoteProviderRecords = records;
+          _applyVerifiedProviders();
+        },
+        onError: (Object _) {},
+      );
+    } catch (_) {
+      // Keep the local preview available if the service is unavailable.
+    }
+  }
+
+  void _applyVerifiedProviders() {
+    final now = DateTime.now();
+    final points = _remoteProviderRecords.map((record) {
+      final latitude = (record['latitude'] as num?)?.toDouble();
+      final longitude = (record['longitude'] as num?)?.toDouble();
+      final distance = _currentPosition != null && latitude != null && longitude != null
+          ? Geolocator.distanceBetween(
+                _currentPosition!.latitude,
+                _currentPosition!.longitude,
+                latitude,
+                longitude,
+              ) / 1000
+          : null;
+      final updatedAt = DateTime.tryParse(record['stockUpdatedAtIso']?.toString() ?? '');
+      final stockIsFresh = updatedAt != null &&
+          !updatedAt.isAfter(now) &&
+          now.difference(updatedAt) <= const Duration(hours: 24);
+      return _SupportPoint(
+        id: record['id']?.toString() ?? '',
+        name: record['name']?.toString() ?? 'Support point',
+        category: record['category']?.toString() ?? 'Community',
+        area: record['area']?.toString() ?? 'Area not provided',
+        distanceKm: distance,
+        hours: record['hours']?.toString() ?? 'Contact provider to confirm hours',
+        inStock: stockIsFresh && record['stockAvailable'] == true,
+        isVerified: record['isVerified'] == true,
+        directions: record['address']?.toString() ?? record['directions']?.toString() ?? '',
+        mapOffsetPercent: const Offset(0.5, 0.5),
+        pinLabel: record['category']?.toString() ?? 'Support',
+        supplies: record['supplies']?.toString() ?? 'Contact provider for current supplies',
+        instructions: record['instructions']?.toString() ?? 'Contact the provider to confirm collection instructions.',
+        latitude: latitude,
+        longitude: longitude,
+        isLive: true,
+      );
+    }).where((point) => point.id.isNotEmpty && point.name.isNotEmpty).toList();
+    if (!mounted) return;
+    setState(() {
+      _liveSupportPoints = points;
+      if (points.isNotEmpty) {
+        _selectedMapPoint = points.first;
+        _mapViewMode = false;
+      }
+    });
+  }
+
+  Future<void> _requestLocationAndRefresh() async {
+    if (!PadCareBackend.isConfigured || _liveSupportPoints.isEmpty) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Live provider discovery is not configured yet. You can still search the sample directory by area.')),
+        );
+      }
+      return;
+    }
+    try {
+      if (!await Geolocator.isLocationServiceEnabled()) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location is turned off. You can still browse by area.')),
+          );
+        }
+        return;
+      }
+      var permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+      }
+      if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location permission was not granted. Distances remain unavailable; you can still browse by area.')),
+          );
+        }
+        return;
+      }
+      _currentPosition = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(accuracy: LocationAccuracy.medium),
+      );
+      _applyVerifiedProviders();
+      if (mounted && _liveSupportPoints.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('No verified online providers are available yet. Sample points are shown separately.')),
+        );
+      }
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not get your location. You can still search by area.')),
+        );
+      }
+    }
+  }
+
+  Future<void> _openExternalDirections(_SupportPoint point) async {
+    if (!point.isLive) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Directions are unavailable for sample listings. Verified provider directions will appear when the online directory is configured.')),
+      );
+      return;
+    }
+    final destination = point.latitude != null && point.longitude != null
+        ? '${point.latitude},${point.longitude}'
+        : point.directions;
+    if (destination.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('This provider has no directions listed yet.')),
+      );
+      return;
+    }
+    final uri = Uri.https('www.google.com', '/maps/dir/', {
+      'api': '1',
+      'destination': destination,
+    });
+    final opened = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!opened && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not open directions on this device.')),
+      );
+    }
   }
 
   Future<void> _loadLocalRequests() async {
     try {
       final localData = await _readLocalData();
+      var requests = localData.requests;
+      if (PadCareBackend.isSignedIn) {
+        try {
+          final remote = await PadCareBackend.loadMyRequests();
+          final byId = <String, _LocalRequest>{
+            for (final request in requests) request.id: request,
+          };
+          for (final record in remote) {
+            try {
+              final request = _LocalRequest.fromJson(Map<String, dynamic>.from(record));
+              byId[request.id] = request;
+            } catch (_) {
+              // Ignore malformed remote documents; keep valid local data.
+            }
+          }
+          requests = byId.values.toList()
+            ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+          await _saveLocalData(_LocalData(requests: requests, stock: localData.stock));
+        } catch (_) {
+          // Preserve offline functionality if the remote service is unavailable.
+        }
+      }
       if (!mounted) return;
       setState(() {
-        _localRequests = localData.requests;
+        _localRequests = requests;
         _loadingRequests = false;
       });
     } catch (_) {
@@ -1669,6 +1983,14 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       await _saveLocalData(
         _LocalData(requests: updatedRequests, stock: data.stock),
       );
+      var syncFailed = false;
+      if (PadCareBackend.isSignedIn) {
+        try {
+          await PadCareBackend.createPickupRequest(request.toJson());
+        } catch (_) {
+          syncFailed = true;
+        }
+      }
       if (!mounted) return;
       setState(() {
         _localRequests = updatedRequests;
@@ -1676,6 +1998,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         _selectedIndex = 3;
         _supportSubTab = _SupportSubTab.activity;
       });
+      if (syncFailed && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request saved on this device, but online sync failed.')),
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       setState(() => _savingRequest = false);
@@ -1695,8 +2022,21 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       await _saveLocalData(
         _LocalData(requests: updatedRequests, stock: data.stock),
       );
+      var remoteDeleteFailed = false;
+      if (PadCareBackend.isSignedIn) {
+        try {
+          await PadCareBackend.deletePickupRequest(request.id);
+        } catch (_) {
+          remoteDeleteFailed = true;
+        }
+      }
       if (!mounted) return;
       setState(() => _localRequests = updatedRequests);
+      if (remoteDeleteFailed && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Request removed locally, but the online copy could not be deleted.')),
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -1769,7 +2109,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             ),
             const SizedBox(height: 12),
             Text(
-              '${point.category}  ·  ${point.area}  ·  ${point.distanceKm} km away',
+              '${point.category}  ·  ${point.area}  ·  ${point.distanceLabel}',
               style: const TextStyle(color: _muted, fontSize: 13, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
@@ -1789,9 +2129,9 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
-                    point.inStock ? '● In Stock' : 'Limited',
-                    style: const TextStyle(
-                      color: Color(0xFF0D9488),
+                    point.inStock ? '● In Stock' : 'Availability unknown',
+                    style: TextStyle(
+                      color: point.inStock ? const Color(0xFF116B78) : _muted,
                       fontWeight: FontWeight.w800,
                       fontSize: 12,
                     ),
@@ -1824,6 +2164,18 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     style: const TextStyle(color: _ink, fontWeight: FontWeight.w600, fontSize: 12),
                   ),
                 ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => _openExternalDirections(point),
+              icon: const Icon(Icons.directions_outlined),
+              label: const Text('Open directions in Google Maps'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF116B78),
+                minimumSize: const Size(double.infinity, 46),
+                side: const BorderSide(color: Color(0xFFB9E9DE)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
             ),
             const SizedBox(height: 18),
@@ -1915,7 +2267,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${point.distanceKm} km away  ·  Estimated 14 mins walk',
+                        '${point.distanceLabel}${point.distanceKm == null ? '' : ' · Estimated ${(point.distanceKm! * 12).ceil()} mins walk'}',
                         style: const TextStyle(color: _muted, fontSize: 12),
                       ),
                     ],
@@ -1924,19 +2276,24 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               ],
             ),
             const SizedBox(height: 18),
-            _buildDirectionStep('1', 'Head towards Arua Town Main Roundabout.', '250m'),
-            _buildDirectionStep('2', 'Follow ${point.directions}.', '650m'),
-            _buildDirectionStep('3', 'Arrive at ${point.name} entrance on your right.', '200m'),
+            const Text(
+              'Route steps are illustrative only. Use Google Maps for real directions to verified providers.',
+              style: TextStyle(color: _muted, height: 1.45),
+            ),
             const SizedBox(height: 18),
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                _openExternalDirections(point);
+              },
+              icon: const Icon(Icons.open_in_new_rounded),
               style: FilledButton.styleFrom(
                 backgroundColor: _ink,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 48),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('Start Walking Navigation'),
+              label: const Text('Open Google Maps directions'),
             ),
           ],
         ),
@@ -1944,34 +2301,6 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     );
   }
 
-  Widget _buildDirectionStep(String step, String desc, String dist) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 12,
-            backgroundColor: const Color(0xFFE0F2EF),
-            child: Text(
-              step,
-              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w800, color: _ink),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(desc, style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w600)),
-                Text(dist, style: const TextStyle(color: _muted, fontSize: 11)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
   void _openDonationSheet() {
     showModalBottomSheet<void>(
@@ -1981,7 +2310,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => Padding(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
         padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1991,84 +2321,97 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               child: Container(
                 width: 40,
                 height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.black12,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+                decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(2)),
               ),
             ),
             const SizedBox(height: 18),
-            const Text(
-              '🎁 Donate to PadCare Project',
-              style: TextStyle(color: _ink, fontSize: 20, fontWeight: FontWeight.w800),
-            ),
+            const Text('Support PadCare development', style: TextStyle(color: _ink, fontSize: 20, fontWeight: FontWeight.w800)),
             const SizedBox(height: 8),
             const Text(
-              'Help sponsor menstrual hygiene kits and reusable supplies for vulnerable schoolgirls across Arua City.',
+              'Choose an optional pledge to support app development, maintenance, and accessibility. This is separate from donating sanitary products. Recording a pledge does not take a payment.',
               style: TextStyle(color: _muted, fontSize: 13, height: 1.45),
             ),
             const SizedBox(height: 18),
             Row(
               children: [
-                _buildDonationTier('1 Kit', 'UGX 15,000'),
+                _buildDonationTier('Supporter', 'UGX 5,000', value: 5000, onSelect: () => setModalState(() => _selectedDonationAmount = 5000)),
                 const SizedBox(width: 8),
-                _buildDonationTier('3 Kits', 'UGX 45,000', popular: true),
+                _buildDonationTier('Builder', 'UGX 10,000', value: 10000, onSelect: () => setModalState(() => _selectedDonationAmount = 10000)),
                 const SizedBox(width: 8),
-                _buildDonationTier('1 Term', 'UGX 80,000'),
+                _buildDonationTier('Champion', 'UGX 20,000', value: 20000, onSelect: () => setModalState(() => _selectedDonationAmount = 20000)),
               ],
             ),
             const SizedBox(height: 18),
             FilledButton(
-              onPressed: () {
-                Navigator.pop(context);
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Thank you! PadCare sponsorship portal connected.'),
-                  ),
-                );
+              onPressed: () async {
+                final navigator = Navigator.of(context);
+                final messenger = ScaffoldMessenger.of(this.context);
+                if (!PadCareBackend.isSignedIn) {
+                  navigator.pop();
+                  messenger.showSnackBar(const SnackBar(
+                    content: Text('Sign in with an online account to record a pledge. No payment is taken here.'),
+                  ));
+                  return;
+                }
+                try {
+                  await PadCareBackend.recordDonationPledge(
+                    amountUgx: _selectedDonationAmount,
+                    purpose: 'PadCare app development',
+                  );
+                  if (!mounted) return;
+                  navigator.pop();
+                  messenger.showSnackBar(SnackBar(
+                    content: Text('Your UGX $_selectedDonationAmount pledge was recorded. No payment was taken.'),
+                  ));
+                } catch (_) {
+                  if (!mounted) return;
+                  messenger.showSnackBar(const SnackBar(
+                    content: Text('Could not record your pledge. No payment was taken.'),
+                  ));
+                }
               },
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF2EA8B6),
+                backgroundColor: const Color(0xFF116B78),
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 48),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('Proceed with Mobile Money / Card', style: TextStyle(fontWeight: FontWeight.w700)),
+              child: const Text('Record pledge (no payment)', style: TextStyle(fontWeight: FontWeight.w700)),
             ),
           ],
+        ),
         ),
       ),
     );
   }
 
-  Widget _buildDonationTier(String title, String amount, {bool popular = false}) {
+  Widget _buildDonationTier(String title, String amount, {required int value, required VoidCallback onSelect}) {
+    final selected = _selectedDonationAmount == value;
     return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
-        decoration: BoxDecoration(
-          color: popular ? const Color(0xFFE6F7F0) : Colors.white,
-          border: Border.all(
-            color: popular ? const Color(0xFF16A34A) : _line,
-            width: popular ? 1.5 : 1,
+      child: InkWell(
+        onTap: onSelect,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          decoration: BoxDecoration(
+            color: selected ? const Color(0xFFE6F7F0) : Colors.white,
+            border: Border.all(
+              color: selected ? const Color(0xFF116B78) : _line,
+              width: selected ? 1.5 : 1,
+            ),
+            borderRadius: BorderRadius.circular(12),
           ),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Column(
-          children: [
-            Text(
-              title,
-              style: TextStyle(
-                color: popular ? const Color(0xFF16A34A) : _ink,
+          child: Column(
+            children: [
+              Text(title, style: TextStyle(
+                color: selected ? const Color(0xFF116B78) : _ink,
                 fontWeight: FontWeight.w800,
                 fontSize: 13,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              amount,
-              style: const TextStyle(color: _muted, fontSize: 11),
-            ),
-          ],
+              )),
+              const SizedBox(height: 4),
+              Text(amount, style: const TextStyle(color: _muted, fontSize: 11)),
+            ],
+          ),
         ),
       ),
     );
@@ -2288,11 +2631,18 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   }
 
   Widget _buildHome() {
-    final filteredPoints = _kSupportPoints.where((p) {
-      if (_selectedCategory == 'Schools' && p.category != 'Schools') return false;
-      if (_selectedCategory == 'Clinics' && p.category != 'Clinics') return false;
-      if (_selectedCategory == 'NGOs' && p.category != 'NGOs') return false;
-      if (_selectedCategory == 'Community' && p.category != 'Schools' && p.category != 'NGOs') return false;
+    final sourcePoints = _liveSupportPoints.isNotEmpty ? _liveSupportPoints : _kSupportPoints;
+    final filteredPoints = sourcePoints.where((p) {
+      final query = _providerSearch.trim().toLowerCase();
+      if (query.isNotEmpty &&
+          ![p.name, p.area, p.directions, p.category]
+              .any((value) => value.toLowerCase().contains(query))) {
+        return false;
+      }
+      if (_selectedCategory == 'Schools' && p.category != 'Schools') { return false; }
+      if (_selectedCategory == 'Clinics' && p.category != 'Clinics') { return false; }
+      if (_selectedCategory == 'NGOs' && p.category != 'NGOs') { return false; }
+      if (_selectedCategory == 'Community' && p.category != 'Schools' && p.category != 'NGOs') { return false; }
       return true;
     }).toList();
 
@@ -2319,6 +2669,30 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   color: _muted,
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE4F8F2),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFB9E9DE)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(Icons.info_outline_rounded, color: Color(0xFF116B78), size: 20),
+                    const SizedBox(width: 9),
+                    Expanded(
+                      child: Text(
+                        _liveSupportPoints.isEmpty
+                            ? 'Preview data: sample locations and distances are illustrative. Confirm availability with providers before travelling.'
+                            : 'Live verified provider listings are connected. Stock is displayed only when updated within the last 24 hours.',
+                        style: const TextStyle(color: Color(0xFF116B78), fontSize: 12, height: 1.4),
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(height: 8),
@@ -2386,9 +2760,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             children: [
               const Icon(Icons.search_rounded, color: _muted, size: 21),
               const SizedBox(width: 9),
-              const Expanded(
+              Expanded(
                 child: TextField(
-                  decoration: InputDecoration(
+                  onChanged: (value) => setState(() => _providerSearch = value),
+                  decoration: const InputDecoration(
                     hintText: 'Find sanitary pads near you...',
                     hintStyle: TextStyle(color: Color(0xFF88A0A2), fontSize: 14),
                     border: InputBorder.none,
@@ -2460,7 +2835,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   ),
                   const SizedBox(height: 16),
                   ElevatedButton(
-                    onPressed: () => setState(() => _selectedIndex = 1),
+                    onPressed: () {
+                      setState(() => _selectedIndex = 1);
+                      _requestLocationAndRefresh();
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
                       foregroundColor: _ink,
@@ -2663,7 +3041,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${point.distanceKm} km away  •  ${point.hours}',
+                      '${point.distanceLabel}  •  ${point.hours}',
                       style: const TextStyle(color: _muted, fontSize: 12),
                     ),
                   ],
@@ -2685,7 +3063,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  point.inStock ? '● In Stock' : '● Limited',
+                  point.inStock ? '● In Stock' : 'Availability unknown',
                   style: const TextStyle(
                     color: Color(0xFF0D9488),
                     fontSize: 12,
@@ -2694,7 +3072,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 ),
               ),
               OutlinedButton(
-                onPressed: () => _showFacilityDetails(point),
+                onPressed: () {
+                  setState(() => _selectedMapPoint = point);
+                  _showFacilityDetails(point);
+                },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: _ink,
                   side: const BorderSide(color: _ink),
@@ -2712,11 +3093,18 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   }
 
   Widget _buildFindPads() {
-    final filtered = _kSupportPoints.where((p) {
-      if (_selectedMapFilter == 'In Stock' && !p.inStock) return false;
-      if (_selectedMapFilter == 'Verified' && !p.isVerified) return false;
-      if (_selectedMapFilter == 'NGO & Clinics' && p.category != 'Clinics' && p.category != 'NGOs') return false;
-      if (_selectedMapFilter == 'Schools' && p.category != 'Schools') return false;
+    final sourcePoints = _liveSupportPoints.isNotEmpty ? _liveSupportPoints : _kSupportPoints;
+    final filtered = sourcePoints.where((p) {
+      final query = _providerSearch.trim().toLowerCase();
+      if (query.isNotEmpty &&
+          ![p.name, p.area, p.directions, p.category]
+              .any((value) => value.toLowerCase().contains(query))) {
+        return false;
+      }
+      if (_selectedMapFilter == 'In Stock' && !p.inStock) { return false; }
+      if (_selectedMapFilter == 'Verified' && !p.isVerified) { return false; }
+      if (_selectedMapFilter == 'NGO & Clinics' && p.category != 'Clinics' && p.category != 'NGOs') { return false; }
+      if (_selectedMapFilter == 'Schools' && p.category != 'Schools') { return false; }
       return true;
     }).toList();
 
@@ -2736,7 +3124,13 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   children: [
                     Expanded(
                       child: InkWell(
-                        onTap: () => setState(() => _mapViewMode = true),
+                        onTap: () {
+                          if (_liveSupportPoints.isNotEmpty) {
+                            _openExternalDirections(_selectedMapPoint);
+                          } else {
+                            setState(() => _mapViewMode = true);
+                          }
+                        },
                         borderRadius: BorderRadius.circular(18),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 8),
@@ -2746,7 +3140,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                           ),
                           alignment: Alignment.center,
                           child: Text(
-                            'Map',
+                            _liveSupportPoints.isNotEmpty ? 'Directions' : 'Map',
                             style: TextStyle(
                               color: _mapViewMode ? Colors.white : _muted,
                               fontWeight: FontWeight.w800,
@@ -2793,9 +3187,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   children: [
                     const Icon(Icons.search_rounded, color: _muted, size: 20),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: TextField(
-                        decoration: InputDecoration(
+                        onChanged: (value) => setState(() => _providerSearch = value),
+                        decoration: const InputDecoration(
                           hintText: 'Search town, school, or landmark...',
                           hintStyle: TextStyle(color: Color(0xFF88A0A2), fontSize: 13),
                           border: InputBorder.none,
@@ -2812,12 +3207,21 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   ],
                 ),
               ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  _liveSupportPoints.isNotEmpty
+                      ? 'Live verified providers are listed below. Tap Map to open the selected provider in Google Maps.'
+                      : 'Preview only: sample pins and locations are illustrative, not verified real-world pickup points.',
+                  style: const TextStyle(color: Color(0xFF116B78), fontSize: 12, height: 1.4),
+                ),
+              ),
               const SizedBox(height: 10),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildMapFilterChip('Open Now'),
+                    _buildMapFilterChip('All providers'),
                     const SizedBox(width: 6),
                     _buildMapFilterChip('In Stock'),
                     const SizedBox(width: 6),
@@ -2851,7 +3255,9 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                         backgroundColor: Colors.white,
                         foregroundColor: _ink,
                         elevation: 3,
-                        onPressed: () => setState(() => _selectedMapPoint = _kSupportPoints[1]),
+                        onPressed: _liveSupportPoints.isNotEmpty
+                            ? _requestLocationAndRefresh
+                            : () => setState(() => _selectedMapPoint = _kSupportPoints[1]),
                         child: const Icon(Icons.my_location_rounded, size: 20),
                       ),
                     ),
@@ -3000,7 +3406,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                           const Icon(Icons.navigation_outlined, color: _muted, size: 15),
                           const SizedBox(width: 5),
                           Text(
-                            '${point.distanceKm} km away',
+                            point.distanceLabel,
                             style: const TextStyle(color: _muted, fontSize: 13),
                           ),
                         ],
@@ -3018,7 +3424,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            point.inStock ? 'In Stock' : 'Limited',
+                            point.inStock ? 'In Stock' : 'Availability unknown',
                             style: const TextStyle(
                               color: Color(0xFF16A34A),
                               fontWeight: FontWeight.w700,
@@ -3076,7 +3482,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         const _FacilityHeader(
           eyebrow: 'PERIOD HEALTH & EDUCATION',
           title: 'Learn & Care',
-          subtitle: 'Empowering guides, cycle tracking, and safe hygiene tips.',
+          subtitle: 'Practical, age-appropriate information about periods and product care.',
         ),
         const SizedBox(height: 18),
         _buildLearnCard(
@@ -3102,11 +3508,80 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         const SizedBox(height: 12),
         _buildLearnCard(
           icon: Icons.health_and_safety_rounded,
-          title: 'Arua Youth Health Helpline',
-          subtitle: 'Confidential adolescent reproductive health counselors available 7 days a week.',
-          tag: 'Support Hotline',
+          title: 'Where to find trusted support',
+          subtitle: 'How to approach a school nurse, health worker, clinic, or trusted adult.',
+          tag: 'Trusted Support',
         ),
       ],
+    );
+  }
+
+  void _showLearnArticle(String title) {
+    final sections = switch (title) {
+      'Understanding Your Cycle' => <String>[
+        'Menstrual cycles differ from person to person. The length and symptoms can change during adolescence and across life.',
+        'You can note the first day of bleeding, how long it lasts, pain, mood changes, and other symptoms. Tracking is optional; PadCare does not need this information to help find supplies.',
+        'Talk to a qualified health worker or trusted adult if bleeding or pain disrupts everyday activities, symptoms worry you, or you have questions about your cycle.',
+      ],
+      'Reusable vs Disposable Pads' => <String>[
+        'Disposable pads are designed for one use. Wrap and place used pads in a bin; do not flush them down a toilet.',
+        'Reusable pads can be washed and used again when the product instructions are followed. Make sure they are fully clean and dry before storage.',
+        'Choose the option that is comfortable, accessible, and practical for you. Never share used menstrual products.',
+      ],
+      'Step-by-step Washing & Care' => <String>[
+        'Wash your hands before and after changing or cleaning menstrual products.',
+        'For reusable pads, follow the care instructions supplied with the product. Wash thoroughly with clean water and soap, rinse well, and dry completely before storing.',
+        'Keep clean products in a dry, clean bag or container. If a product changes smell, texture, or condition, stop using it and ask a health worker or supplier for advice.',
+      ],
+      _ => <String>[
+        'For menstrual-health questions, consider speaking with a qualified health worker, school nurse, clinic, or trusted adult.',
+        'Ask the provider about privacy, opening hours, costs, and available support before travelling.',
+        'PadCare does not currently operate a verified helpline. If you need urgent medical help, contact a local health facility or emergency service.',
+      ],
+    };
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(22, 20, 22, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(title, style: const TextStyle(color: _ink, fontSize: 22, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            const Text(
+              'General information only — not a diagnosis or a replacement for professional medical advice.',
+              style: TextStyle(color: _muted, fontSize: 12, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            ...sections.map((section) => Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF116B78), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(section, style: const TextStyle(color: _ink, height: 1.5))),
+                ],
+              ),
+            )),
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF116B78),
+                minimumSize: const Size(double.infinity, 48),
+              ),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -3116,7 +3591,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     required String subtitle,
     required String tag,
   }) {
-    return Container(
+    return InkWell(
+      onTap: () => _showLearnArticle(title),
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -3165,6 +3643,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -3232,7 +3711,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         const _FacilityHeader(
           eyebrow: 'COMMUNITY IMPACT',
           title: 'Sponsor PadCare',
-          subtitle: 'Support young girls staying in school with dignity.',
+          subtitle: 'Support the app that helps people find menstrual-product assistance.',
         ),
         const SizedBox(height: 18),
         Container(
@@ -3246,12 +3725,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Help keep schoolgirls in class',
+                'Help keep PadCare improving',
                 style: TextStyle(color: _ink, fontSize: 18, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),
               const Text(
-                '1 out of 10 schoolgirls in rural Uganda misses class every month during their period. Your direct donation supplies verified reusable hygiene kits.',
+                'Your voluntary contribution supports PadCare app development, maintenance, accessibility, and future improvements. It does not directly purchase or distribute sanitary products.',
                 style: TextStyle(color: _muted, fontSize: 13, height: 1.5),
               ),
               const SizedBox(height: 20),
@@ -3324,12 +3803,46 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           onTap: _openSplashScreenModal,
         ),
         const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAF7F3),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFD2EDE5)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.verified_user_outlined, color: _green),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      PadCareBackend.isSignedIn ? 'Online account' : 'Local preview mode',
+                      style: const TextStyle(color: _ink, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      PadCareBackend.isSignedIn
+                          ? '${PadCareBackend.currentUser?.email ?? 'Signed in'}\nProvider and request data sync only when Firebase is configured and access rules permit it.'
+                          : 'This device is using sample provider data. Requests stay on this device until you configure Firebase and sign in.',
+                      style: const TextStyle(color: _muted, fontSize: 12, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
         ListTile(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           tileColor: Colors.white,
           leading: const Icon(Icons.school_rounded, color: _ink),
-          title: const Text('Switch to Senior Woman Teacher Portal', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
-          subtitle: const Text('Manage school stock & student requests'),
+          title: const Text('Open staff portal preview', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
+          subtitle: const Text('Demo interface only. Online stock and requests require an authorised school-staff account.'),
           trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
           onTap: () {
             Navigator.of(context).push(
@@ -3338,6 +3851,23 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   facility: _pickupSchool,
                   onSignOut: widget.onSignOut,
                 ),
+              ),
+            );
+          },
+        ),
+        const SizedBox(height: 10),
+        ListTile(
+          key: const ValueKey('provider-application-entry'),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          tileColor: Colors.white,
+          leading: const Icon(Icons.volunteer_activism_rounded, color: _green),
+          title: const Text('List a pickup location', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
+          subtitle: const Text('Schools and community supporters can apply for administrator review.'),
+          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const ProviderApplicationScreen(),
               ),
             );
           },
@@ -3353,8 +3883,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           onTap: widget.onSignOut,
         ),
         const SizedBox(height: 18),
-        const _PrivacyNote(
-          text: 'PadCare works offline-first. Your requests are saved only on this device without sharing your identity or tracking data.',
+        _PrivacyNote(
+          text: PadCareBackend.isSignedIn
+              ? 'You are signed in with an online account. Pickup requests and staff actions may sync to Firebase. Location is requested only when you choose nearby search; you can still browse by area.'
+              : 'Local preview mode: requests and settings are stored on this device. Sample locations are not live-confirmed. Location is requested only when you choose nearby search.',
         ),
       ],
     );
@@ -3363,10 +3895,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   Widget _buildRequestForm() {
     return _PageScroll(
       children: [
-        const _FacilityHeader(
+        _FacilityHeader(
           eyebrow: 'HOME PICKUP REQUEST',
           title: 'Request supplies',
-          subtitle: 'The selected school can review this request in the local preview.',
+          subtitle: PadCareBackend.isSignedIn
+              ? 'Your request is saved locally first and then synced to your online account when possible.'
+              : 'The selected school can review this request in the local preview. It is not sent over the network.',
         ),
         const SizedBox(height: 20),
         const _FieldLabel('Your area'),
@@ -3768,7 +4302,7 @@ class _PadCareSplashScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFF4FAF8), Color(0xFFE2F2EE)],
+            colors: [Color(0xFF35B9B4), Color(0xFFA5EAC5)],
           ),
         ),
         child: SafeArea(
@@ -3813,7 +4347,7 @@ class _PadCareSplashScreen extends StatelessWidget {
                     const Text(
                       'PadCare',
                       style: TextStyle(
-                        color: Color(0xFF133B42),
+                        color: Color(0xFF172B36),
                         fontSize: 34,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.5,
@@ -3823,7 +4357,7 @@ class _PadCareSplashScreen extends StatelessWidget {
                     const Text(
                       'Care within reach.',
                       style: TextStyle(
-                        color: Color(0xFF5A7E82),
+                        color: Color(0xFF116B78),
                         fontSize: 17,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.1,
@@ -3930,7 +4464,7 @@ class _LocalRequestCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Not sent over network${date.isEmpty ? '' : '  ·  $date'}',
+                  '${PadCareBackend.isSignedIn ? 'Online account · sync status may vary' : 'Not sent over network'}${date.isEmpty ? '' : '  ·  $date'}',
                   style: const TextStyle(color: _muted, fontSize: 11),
                 ),
               ],

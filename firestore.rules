@@ -1,0 +1,127 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isSchoolStaffFor(facilityId) {
+      return signedIn()
+        && userDoc().role == 'schoolStaff'
+        && userDoc().facilityId == facilityId;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      // Self-service registration can create parent accounts only.
+      // School staff roles must be provisioned by a trusted administrator.
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == 'parent'
+        && request.resource.data.uid == userId;
+      allow update: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.uid == resource.data.uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName']);
+      allow delete: if false;
+    }
+
+    match /facilities/{facilityId} {
+      allow read: if resource.data.isVerified == true || isSchoolStaffFor(facilityId);
+      // Staff may create only unverified listings. Verification must be performed
+      // through a trusted administrator workflow, never by the provider itself.
+      allow create: if isSchoolStaffFor(facilityId)
+        && request.resource.data.isVerified == false;
+      allow update: if isSchoolStaffFor(facilityId)
+        && request.resource.data.isVerified == resource.data.isVerified;
+      allow delete: if false;
+
+      match /inventory/{itemId} {
+        allow read: if get(/databases/$(database)/documents/facilities/$(facilityId)).data.isVerified == true
+          || isSchoolStaffFor(facilityId);
+        allow create, update, delete: if isSchoolStaffFor(facilityId);
+      }
+    }
+
+    match /requests/{requestId} {
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'Pending review'
+        && request.resource.data.quantity is int
+        && request.resource.data.quantity > 0
+        && request.resource.data.schoolId is string
+        && request.resource.data.product is string
+        && request.resource.data.keys().hasOnly([
+          'id', 'reference', 'school', 'schoolId', 'area', 'product',
+          'quantity', 'createdAt', 'status', 'userId', 'updatedAt'
+        ]);
+      allow read: if signedIn()
+        && (resource.data.userId == request.auth.uid
+          || isSchoolStaffFor(resource.data.schoolId));
+      allow update: if isSchoolStaffFor(resource.data.schoolId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && (
+          (resource.data.status == 'Pending review'
+            && request.resource.data.status in ['Approved', 'Declined'])
+          || (resource.data.status == 'Approved'
+            && request.resource.data.status in ['Ready for pickup', 'Declined'])
+          || (resource.data.status == 'Ready for pickup'
+            && request.resource.data.status == 'Collected')
+        );
+      allow delete: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && resource.data.status == 'Pending review';
+    }
+
+
+    match /providerApplications/{applicationId} {
+      // Authenticated providers may submit an application for review, but they
+      // cannot create facilities, approve themselves, or grant staff privileges.
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.contactEmail == request.auth.token.email
+        && request.resource.data.status == 'submitted'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.organisationName is string
+        && request.resource.data.organisationName.size() > 0
+        && request.resource.data.organisationName.size() <= 120
+        && request.resource.data.facilityName is string
+        && request.resource.data.facilityName.size() > 0
+        && request.resource.data.facilityName.size() <= 120
+        && request.resource.data.area is string
+        && request.resource.data.area.size() > 0
+        && request.resource.data.area.size() <= 100
+        && request.resource.data.address is string
+        && request.resource.data.address.size() > 0
+        && request.resource.data.address.size() <= 240
+        && request.resource.data.description is string
+        && request.resource.data.description.size() > 0
+        && request.resource.data.description.size() <= 1000
+        && request.resource.data.pickupInstructions is string
+        && request.resource.data.pickupInstructions.size() <= 500
+        && request.resource.data.keys().hasOnly([
+          'organisationName', 'facilityName', 'area', 'address', 'description',
+          'pickupInstructions', 'contactEmail', 'userId', 'status', 'createdAt'
+        ]);
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      // Admin review must use a trusted server/admin process, never the client.
+      allow update, delete: if false;
+    }
+
+    match /donationPledges/{pledgeId} {
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.amountUgx is int
+        && request.resource.data.amountUgx > 0
+        && request.resource.data.purpose == 'PadCare app development'
+        && request.resource.data.status == 'pledged';
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

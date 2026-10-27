@@ -25,7 +25,9 @@ This roadmap adapts the supplied Muse AI master prompt to the current Flutter re
 
 - Select Firebase or Supabase and document the choice.
 - Implement Firebase email/password sign-in, parent account creation, sign-out, and role-aware routing. Password reset remains a follow-up.
-- Implemented: Firestore provider stream, request sync, and authorised staff inventory/request access. Trusted administrator provisioning of providers/staff and transactional stock reservations remain outstanding. Provider documents currently need to be provisioned through a trusted admin process.
+- Implemented: Firestore provider stream, request sync, and authorised staff inventory/request access.
+- Implemented: signed-in users can submit a provider application with organisation, location, area, address, service description, and collection instructions. Applications are private to their submitter and cannot be edited, approved, or made public from the client. A trusted administrator must review the application and provision the facility and staff role.
+- Remaining: trusted administrator review/provisioning tooling, transactional stock reservations, and end-to-end security testing against a configured Firebase project.
 - Enforce authorization on the backend, not only in UI logic.
 - Add a review workflow for provider verification; account creation alone must never grant a verified badge.
 - Use atomic inventory/request updates to avoid double reservations and overselling.
@@ -54,4 +56,6 @@ A screen that looks complete is not necessarily connected. Report each capabilit
 ## Recent implementation update
 
 - The profile now distinguishes online accounts from local preview mode and labels the staff interface as a demo unless the user has an authorised school-staff account.
-- Added a widget test for the profile's preview and staff-access messaging.
+- Added a provider application screen linked from Profile. It explains review-only status and does not claim to publish or verify a location.
+- Added Firestore rules that allow authenticated users to create a constrained provider application and read only their own submission. Client updates/deletes are denied; verification and role assignment must happen through a trusted admin process.
+- Added a widget test for the provider application entry and local-preview guard.

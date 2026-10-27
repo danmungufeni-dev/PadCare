@@ -109,7 +109,7 @@ class _AppLandingFlowState extends State<_AppLandingFlow> {
       );
     }
     return ParentHomeScreen(
-      parentName: 'Amina N.',
+      parentName: 'Guest',
       onSignOut: () {
         Navigator.of(context).push(
           MaterialPageRoute<void>(builder: (_) => const AccessGate()),
@@ -231,7 +231,7 @@ class _AccessGateState extends State<AccessGate> {
                 Navigator.of(context).pushReplacement(
                   MaterialPageRoute<void>(
                     builder: (_) => ParentHomeScreen(
-                      parentName: 'Amina N.',
+                      parentName: 'Guest',
                       onSignOut: () => Navigator.of(context).pushReplacement(
                         MaterialPageRoute<void>(builder: (_) => const AccessGate()),
                       ),
@@ -275,7 +275,7 @@ class _AccessGateState extends State<AccessGate> {
               Navigator.of(context).pushReplacement(
                 MaterialPageRoute<void>(
                   builder: (_) => ParentHomeScreen(
-                    parentName: 'Amina N.',
+                    parentName: 'Guest',
                     onSignOut: () => Navigator.of(context).pushReplacement(
                       MaterialPageRoute<void>(builder: (_) => const AccessGate()),
                     ),

@@ -86,6 +86,10 @@ class PadCareBackend {
     );
   }
 
+  static Future<void> sendPasswordResetEmail(String email) async {
+    await _auth.sendPasswordResetEmail(email: email.trim());
+  }
+
   static Future<void> signOut() async {
     if (_initialized) await FirebaseAuth.instance.signOut();
   }

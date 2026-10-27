@@ -49,3 +49,9 @@ This roadmap adapts the supplied Muse AI master prompt to the current Flutter re
 ## Honest delivery rule
 
 A screen that looks complete is not necessarily connected. Report each capability as one of: implemented and tested, implemented but unverified, demo-only, or awaiting configuration. Never imply that live providers, real stock, authentication, maps, or payments are operational until they have been tested end-to-end.
+
+
+## Recent implementation update
+
+- The profile now distinguishes online accounts from local preview mode and labels the staff interface as a demo unless the user has an authorised school-staff account.
+- Added a widget test for the profile's preview and staff-access messaging.

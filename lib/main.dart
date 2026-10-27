@@ -3050,7 +3050,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 ),
               ),
               OutlinedButton(
-                onPressed: () => _showFacilityDetails(point),
+                onPressed: () {
+                  setState(() => _selectedMapPoint = point);
+                  _showFacilityDetails(point);
+                },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: _ink,
                   side: const BorderSide(color: _ink),
@@ -3115,7 +3118,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                           ),
                           alignment: Alignment.center,
                           child: Text(
-                            'Map',
+                            _liveSupportPoints.isNotEmpty ? 'Directions' : 'Map',
                             style: TextStyle(
                               color: _mapViewMode ? Colors.white : _muted,
                               fontWeight: FontWeight.w800,

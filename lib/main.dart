@@ -2345,7 +2345,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 minimumSize: const Size(double.infinity, 48),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('Proceed with Mobile Money / Card', style: TextStyle(fontWeight: FontWeight.w700)),
+              child: const Text('Payments not available yet', style: TextStyle(fontWeight: FontWeight.w700)),
             ),
           ],
         ),
@@ -3433,7 +3433,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         const _FacilityHeader(
           eyebrow: 'PERIOD HEALTH & EDUCATION',
           title: 'Learn & Care',
-          subtitle: 'Empowering guides, cycle tracking, and safe hygiene tips.',
+          subtitle: 'Practical, age-appropriate information about periods and product care.',
         ),
         const SizedBox(height: 18),
         _buildLearnCard(
@@ -3459,11 +3459,80 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         const SizedBox(height: 12),
         _buildLearnCard(
           icon: Icons.health_and_safety_rounded,
-          title: 'Arua Youth Health Helpline',
-          subtitle: 'Confidential adolescent reproductive health counselors available 7 days a week.',
-          tag: 'Support Hotline',
+          title: 'Where to find trusted support',
+          subtitle: 'How to approach a school nurse, health worker, clinic, or trusted adult.',
+          tag: 'Trusted Support',
         ),
       ],
+    );
+  }
+
+  void _showLearnArticle(String title) {
+    final sections = switch (title) {
+      'Understanding Your Cycle' => <String>[
+        'Menstrual cycles differ from person to person. The length and symptoms can change during adolescence and across life.',
+        'You can note the first day of bleeding, how long it lasts, pain, mood changes, and other symptoms. Tracking is optional; PadCare does not need this information to help find supplies.',
+        'Talk to a qualified health worker or trusted adult if bleeding or pain disrupts everyday activities, symptoms worry you, or you have questions about your cycle.',
+      ],
+      'Reusable vs Disposable Pads' => <String>[
+        'Disposable pads are designed for one use. Wrap and place used pads in a bin; do not flush them down a toilet.',
+        'Reusable pads can be washed and used again when the product instructions are followed. Make sure they are fully clean and dry before storage.',
+        'Choose the option that is comfortable, accessible, and practical for you. Never share used menstrual products.',
+      ],
+      'Step-by-step Washing & Care' => <String>[
+        'Wash your hands before and after changing or cleaning menstrual products.',
+        'For reusable pads, follow the care instructions supplied with the product. Wash thoroughly with clean water and soap, rinse well, and dry completely before storing.',
+        'Keep clean products in a dry, clean bag or container. If a product changes smell, texture, or condition, stop using it and ask a health worker or supplier for advice.',
+      ],
+      _ => <String>[
+        'For menstrual-health questions, consider speaking with a qualified health worker, school nurse, clinic, or trusted adult.',
+        'Ask the provider about privacy, opening hours, costs, and available support before travelling.',
+        'PadCare does not currently operate a verified helpline. If you need urgent medical help, contact a local health facility or emergency service.',
+      ],
+    };
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(22, 20, 22, 28),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(title, style: const TextStyle(color: _ink, fontSize: 22, fontWeight: FontWeight.w900)),
+            const SizedBox(height: 8),
+            const Text(
+              'General information only — not a diagnosis or a replacement for professional medical advice.',
+              style: TextStyle(color: _muted, fontSize: 12, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            ...sections.map((section) => Padding(
+              padding: const EdgeInsets.only(bottom: 14),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.check_circle_outline_rounded, color: Color(0xFF116B78), size: 20),
+                  const SizedBox(width: 10),
+                  Expanded(child: Text(section, style: const TextStyle(color: _ink, height: 1.5))),
+                ],
+              ),
+            )),
+            FilledButton(
+              onPressed: () => Navigator.pop(context),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF116B78),
+                minimumSize: const Size(double.infinity, 48),
+              ),
+              child: const Text('Done'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -3473,7 +3542,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     required String subtitle,
     required String tag,
   }) {
-    return Container(
+    return InkWell(
+      onTap: () => _showLearnArticle(title),
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -3522,6 +3594,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             ),
           ),
         ],
+      ),
       ),
     );
   }
@@ -3589,7 +3662,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         const _FacilityHeader(
           eyebrow: 'COMMUNITY IMPACT',
           title: 'Sponsor PadCare',
-          subtitle: 'Support young girls staying in school with dignity.',
+          subtitle: 'Support the app that helps people find menstrual-product assistance.',
         ),
         const SizedBox(height: 18),
         Container(
@@ -3603,12 +3676,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Help keep schoolgirls in class',
+                'Help keep PadCare improving',
                 style: TextStyle(color: _ink, fontSize: 18, fontWeight: FontWeight.w800),
               ),
               const SizedBox(height: 8),
               const Text(
-                '1 out of 10 schoolgirls in rural Uganda misses class every month during their period. Your direct donation supplies verified reusable hygiene kits.',
+                'Your voluntary contribution supports PadCare app development, maintenance, accessibility, and future improvements. It does not directly purchase or distribute sanitary products.',
                 style: TextStyle(color: _muted, fontSize: 13, height: 1.5),
               ),
               const SizedBox(height: 20),

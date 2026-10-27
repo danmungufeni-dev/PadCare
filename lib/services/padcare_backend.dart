@@ -112,6 +112,18 @@ class PadCareBackend {
     });
   }
 
+  static Future<List<Map<String, dynamic>>> loadMyRequests() async {
+    final user = currentUser;
+    if (user == null) return <Map<String, dynamic>>[];
+    final snapshot = await _db.collection('requests')
+        .where('userId', isEqualTo: user.uid)
+        .get();
+    return snapshot.docs.map((doc) => <String, dynamic>{
+      ...doc.data(),
+      'id': doc.id,
+    }).toList();
+  }
+
   static Future<void> deletePickupRequest(String id) async {
     final user = currentUser;
     if (user == null) throw StateError('Sign in before syncing a request.');

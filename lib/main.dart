@@ -2249,19 +2249,24 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               ],
             ),
             const SizedBox(height: 18),
-            _buildDirectionStep('1', 'Head towards Arua Town Main Roundabout.', '250m'),
-            _buildDirectionStep('2', 'Follow ${point.directions}.', '650m'),
-            _buildDirectionStep('3', 'Arrive at ${point.name} entrance on your right.', '200m'),
+            const Text(
+              'Route steps are illustrative only. Use Google Maps for real directions to verified providers.',
+              style: TextStyle(color: _muted, height: 1.45),
+            ),
             const SizedBox(height: 18),
-            FilledButton(
-              onPressed: () => Navigator.pop(context),
+            FilledButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                _openExternalDirections(point);
+              },
+              icon: const Icon(Icons.open_in_new_rounded),
               style: FilledButton.styleFrom(
                 backgroundColor: _ink,
                 foregroundColor: Colors.white,
                 minimumSize: const Size(double.infinity, 48),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
-              child: const Text('Start Walking Navigation'),
+              label: const Text('Open Google Maps directions'),
             ),
           ],
         ),
@@ -3182,14 +3187,15 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   ],
                 ),
               ),
-              if (_liveSupportPoints.isNotEmpty)
-                const Padding(
-                  padding: EdgeInsets.only(bottom: 8),
-                  child: Text(
-                    'Live verified providers are listed below. Tap Map to open the selected provider in Google Maps.',
-                    style: TextStyle(color: Color(0xFF116B78), fontSize: 12),
-                  ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  _liveSupportPoints.isNotEmpty
+                      ? 'Live verified providers are listed below. Tap Map to open the selected provider in Google Maps.'
+                      : 'Preview only: sample pins and locations are illustrative, not verified real-world pickup points.',
+                  style: const TextStyle(color: Color(0xFF116B78), fontSize: 12, height: 1.4),
                 ),
+              ),
               const SizedBox(height: 10),
               SingleChildScrollView(
                 scrollDirection: Axis.horizontal,

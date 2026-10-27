@@ -2059,6 +2059,18 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: () => _openExternalDirections(point),
+              icon: const Icon(Icons.directions_outlined),
+              label: const Text('Open directions in Google Maps'),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: const Color(0xFF116B78),
+                minimumSize: const Size(double.infinity, 46),
+                side: const BorderSide(color: Color(0xFFB9E9DE)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
             const SizedBox(height: 18),
             Row(
               children: [

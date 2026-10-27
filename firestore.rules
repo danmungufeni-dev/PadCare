@@ -78,6 +78,41 @@ service cloud.firestore {
         && resource.data.status == 'Pending review';
     }
 
+
+    match /providerApplications/{applicationId} {
+      // Authenticated providers may submit an application for review, but they
+      // cannot create facilities, approve themselves, or grant staff privileges.
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.contactEmail == request.auth.token.email
+        && request.resource.data.status == 'submitted'
+        && request.resource.data.createdAt == request.time
+        && request.resource.data.organisationName is string
+        && request.resource.data.organisationName.size() > 0
+        && request.resource.data.organisationName.size() <= 120
+        && request.resource.data.facilityName is string
+        && request.resource.data.facilityName.size() > 0
+        && request.resource.data.facilityName.size() <= 120
+        && request.resource.data.area is string
+        && request.resource.data.area.size() > 0
+        && request.resource.data.area.size() <= 100
+        && request.resource.data.address is string
+        && request.resource.data.address.size() > 0
+        && request.resource.data.address.size() <= 240
+        && request.resource.data.description is string
+        && request.resource.data.description.size() > 0
+        && request.resource.data.description.size() <= 1000
+        && request.resource.data.pickupInstructions is string
+        && request.resource.data.pickupInstructions.size() <= 500
+        && request.resource.data.keys().hasOnly([
+          'organisationName', 'facilityName', 'area', 'address', 'description',
+          'pickupInstructions', 'contactEmail', 'userId', 'status', 'createdAt'
+        ]);
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      // Admin review must use a trusted server/admin process, never the client.
+      allow update, delete: if false;
+    }
+
     match /donationPledges/{pledgeId} {
       allow create: if signedIn()
         && request.resource.data.userId == request.auth.uid

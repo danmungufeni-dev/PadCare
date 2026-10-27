@@ -14,6 +14,13 @@ class PadCareBackend {
   static bool get isSignedIn => _initialized && FirebaseAuth.instance.currentUser != null;
   static User? get currentUser => _initialized ? FirebaseAuth.instance.currentUser : null;
   static String? get currentUserId => currentUser?.uid;
+  static Future<Map<String, dynamic>> loadCurrentProfile() async {
+    final user = currentUser;
+    if (user == null) return <String, dynamic>{'role': 'parent'};
+    final snapshot = await _db.collection('users').doc(user.uid).get();
+    return snapshot.data() ?? <String, dynamic>{'role': 'parent'};
+  }
+
   static String get currentDisplayName {
     final user = currentUser;
     return user?.displayName?.trim().isNotEmpty == true
@@ -145,10 +152,19 @@ class PadCareBackend {
 
   /// Only verified providers should be queried by the client. Firestore rules
   /// also enforce this; a client-side filter alone is not a security boundary.
-  static Stream<QuerySnapshot<Map<String, dynamic>>> watchVerifiedProviders() {
+  static Stream<List<Map<String, dynamic>>> watchVerifiedProviders() {
     return _db.collection('facilities')
         .where('isVerified', isEqualTo: true)
-        .snapshots();
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) {
+              final data = Map<String, dynamic>.from(doc.data());
+              data['id'] = doc.id;
+              final updated = data['stockUpdatedAt'];
+              if (updated is Timestamp) {
+                data['stockUpdatedAtIso'] = updated.toDate().toIso8601String();
+              }
+              return data;
+            }).toList());
   }
 
   static Future<void> recordDonationPledge({

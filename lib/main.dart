@@ -2707,7 +2707,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
-                  point.inStock ? '● In Stock' : '● Limited',
+                  point.inStock ? '● In Stock' : 'Availability unknown',
                   style: const TextStyle(
                     color: Color(0xFF0D9488),
                     fontSize: 12,
@@ -3040,7 +3040,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                           ),
                           const SizedBox(width: 6),
                           Text(
-                            point.inStock ? 'In Stock' : 'Limited',
+                            point.inStock ? 'In Stock' : 'Availability unknown',
                             style: const TextStyle(
                               color: Color(0xFF16A34A),
                               fontWeight: FontWeight.w700,

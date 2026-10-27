@@ -2052,7 +2052,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      builder: (context) => Padding(
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
         padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -2332,11 +2333,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             const SizedBox(height: 18),
             Row(
               children: [
-                _buildDonationTier('Supporter', 'UGX 5,000', value: 5000),
+                _buildDonationTier('Supporter', 'UGX 5,000', value: 5000, onSelect: () => setModalState(() => _selectedDonationAmount = 5000)),
                 const SizedBox(width: 8),
-                _buildDonationTier('Builder', 'UGX 10,000', value: 10000),
+                _buildDonationTier('Builder', 'UGX 10,000', value: 10000, onSelect: () => setModalState(() => _selectedDonationAmount = 10000)),
                 const SizedBox(width: 8),
-                _buildDonationTier('Champion', 'UGX 20,000', value: 20000),
+                _buildDonationTier('Champion', 'UGX 20,000', value: 20000, onSelect: () => setModalState(() => _selectedDonationAmount = 20000)),
               ],
             ),
             const SizedBox(height: 18),
@@ -2378,15 +2379,16 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             ),
           ],
         ),
+        ),
       ),
     );
   }
 
-  Widget _buildDonationTier(String title, String amount, {required int value}) {
+  Widget _buildDonationTier(String title, String amount, {required int value, required VoidCallback onSelect}) {
     final selected = _selectedDonationAmount == value;
     return Expanded(
       child: InkWell(
-        onTap: () => setState(() => _selectedDonationAmount = value),
+        onTap: onSelect,
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),

@@ -773,10 +773,12 @@ class _HomeScreenState extends State<HomeScreen> {
     try {
       final data = await _readLocalData();
       var requests = data.requests;
+      var remoteInventory = <String, Map<String, int>>{};
       if (PadCareBackend.isSignedIn) {
         try {
           final profile = await PadCareBackend.loadCurrentProfile();
           if (profile['role'] == 'schoolStaff' && profile['facilityId'] is String) {
+            remoteInventory = await PadCareBackend.loadInventory(profile['facilityId'] as String);
             final remote = await PadCareBackend.loadFacilityRequests(profile['facilityId'] as String);
             final byId = <String, _LocalRequest>{
               for (final request in requests) request.id: request,
@@ -798,10 +800,11 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         _requests = requests;
         for (final supply in _supplies) {
-          supply.onHand =
+          final liveStock = remoteInventory[supply.name];
+          supply.onHand = liveStock?['onHand'] ??
               data.stock[_stockKey(widget.facility, supply.name)] ??
               supply.onHand;
-          supply.reserved = _reservedFor(supply.name);
+          supply.reserved = liveStock?['reserved'] ?? _reservedFor(supply.name);
         }
         _loadingLocalData = false;
       });

@@ -3825,8 +3825,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     const SizedBox(height: 4),
                     Text(
                       PadCareBackend.isSignedIn
-                          ? (PadCareBackend.currentUser?.email ?? 'Signed in') +
-                              '\nProvider and request data sync only when Firebase is configured and access rules permit it.'
+                          ? '${PadCareBackend.currentUser?.email ?? 'Signed in'}\nProvider and request data sync only when Firebase is configured and access rules permit it.'
                           : 'This device is using sample provider data. Requests stay on this device until you configure Firebase and sign in.',
                       style: const TextStyle(color: _muted, fontSize: 12, height: 1.4),
                     ),

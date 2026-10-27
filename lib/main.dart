@@ -1696,7 +1696,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   List<_SupportPoint> _liveSupportPoints = <_SupportPoint>[];
   Position? _currentPosition;
   String _selectedCategory = 'All';
-  String _selectedMapFilter = 'Open Now';
+  String _providerSearch = '';
+  String _selectedMapFilter = 'All providers';
   String _selectedArea = 'Oli';
   String _selectedProduct = 'Disposable pads';
   int _quantity = 4;
@@ -1780,6 +1781,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   }
 
   Future<void> _requestLocationAndRefresh() async {
+    if (!PadCareBackend.isConfigured || _liveSupportPoints.isEmpty) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Live provider discovery is not configured yet. You can still search the sample directory by area.')),
+      );
+      return;
+    }
     try {
       if (!await Geolocator.isLocationServiceEnabled()) {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(
@@ -2602,6 +2609,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   Widget _buildHome() {
     final sourcePoints = _liveSupportPoints.isNotEmpty ? _liveSupportPoints : _kSupportPoints;
     final filteredPoints = sourcePoints.where((p) {
+      final query = _providerSearch.trim().toLowerCase();
+      if (query.isNotEmpty &&
+          ![p.name, p.area, p.directions, p.category]
+              .any((value) => value.toLowerCase().contains(query))) return false;
       if (_selectedCategory == 'Schools' && p.category != 'Schools') return false;
       if (_selectedCategory == 'Clinics' && p.category != 'Clinics') return false;
       if (_selectedCategory == 'NGOs' && p.category != 'NGOs') return false;
@@ -2723,9 +2734,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             children: [
               const Icon(Icons.search_rounded, color: _muted, size: 21),
               const SizedBox(width: 9),
-              const Expanded(
+              Expanded(
                 child: TextField(
-                  decoration: InputDecoration(
+                  onChanged: (value) => setState(() => _providerSearch = value),
+                  decoration: const InputDecoration(
                     hintText: 'Find sanitary pads near you...',
                     hintStyle: TextStyle(color: Color(0xFF88A0A2), fontSize: 14),
                     border: InputBorder.none,
@@ -3054,6 +3066,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   Widget _buildFindPads() {
     final sourcePoints = _liveSupportPoints.isNotEmpty ? _liveSupportPoints : _kSupportPoints;
     final filtered = sourcePoints.where((p) {
+      final query = _providerSearch.trim().toLowerCase();
+      if (query.isNotEmpty &&
+          ![p.name, p.area, p.directions, p.category]
+              .any((value) => value.toLowerCase().contains(query))) return false;
       if (_selectedMapFilter == 'In Stock' && !p.inStock) return false;
       if (_selectedMapFilter == 'Verified' && !p.isVerified) return false;
       if (_selectedMapFilter == 'NGO & Clinics' && p.category != 'Clinics' && p.category != 'NGOs') return false;
@@ -3140,9 +3156,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   children: [
                     const Icon(Icons.search_rounded, color: _muted, size: 20),
                     const SizedBox(width: 8),
-                    const Expanded(
+                    Expanded(
                       child: TextField(
-                        decoration: InputDecoration(
+                        onChanged: (value) => setState(() => _providerSearch = value),
+                        decoration: const InputDecoration(
                           hintText: 'Search town, school, or landmark...',
                           hintStyle: TextStyle(color: Color(0xFF88A0A2), fontSize: 13),
                           border: InputBorder.none,
@@ -3172,7 +3189,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: [
-                    _buildMapFilterChip('Open Now'),
+                    _buildMapFilterChip('All providers'),
                     const SizedBox(width: 6),
                     _buildMapFilterChip('In Stock'),
                     const SizedBox(width: 6),

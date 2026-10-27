@@ -307,4 +307,27 @@ void main() {
       findsOneWidget,
     );
   });
+  testWidgets('provider application is clearly review-only in local preview', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Parent or guardian'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('submit-access')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Profile').last);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('provider-application-entry')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('List a pickup location'), findsOneWidget);
+    expect(find.text('Submit for review'), findsOneWidget);
+    expect(find.textContaining('local preview mode'), findsOneWidget);
+    await tester.tap(find.text('Submit for review'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Sign in with an online PadCare account first'), findsOneWidget);
+  });
+
 }

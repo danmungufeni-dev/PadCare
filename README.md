@@ -41,7 +41,7 @@ Core experience: gradient splash screen; white home dashboard with the “Pads a
 | Firebase email/password and role-aware routing | Implemented; requires Firebase configuration and testing |
 | Verified provider stream and freshness-aware stock status | Implemented; requires verified Firestore records |
 | Menstrual-health education section | Interactive guides present; qualified local review still needed |
-| Developer donation screen and payment-provider integration | Donation messaging present; payment gateway not connected |
+| Developer support pledges and payment-provider integration | Online pledge recording implemented for signed-in users; payment gateway not connected |
 
 See the [implementation roadmap](docs/IMPLEMENTATION_ROADMAP.md) and [Firebase setup guide](docs/SETUP_FIREBASE.md) for next steps, configuration, and security safeguards.
 

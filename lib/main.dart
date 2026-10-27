@@ -2608,7 +2608,9 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       final query = _providerSearch.trim().toLowerCase();
       if (query.isNotEmpty &&
           ![p.name, p.area, p.directions, p.category]
-              .any((value) => value.toLowerCase().contains(query))) return false;
+              .any((value) => value.toLowerCase().contains(query))) {
+        return false;
+      }
       if (_selectedCategory == 'Schools' && p.category != 'Schools') { return false; }
       if (_selectedCategory == 'Clinics' && p.category != 'Clinics') { return false; }
       if (_selectedCategory == 'NGOs' && p.category != 'NGOs') { return false; }
@@ -3065,7 +3067,9 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       final query = _providerSearch.trim().toLowerCase();
       if (query.isNotEmpty &&
           ![p.name, p.area, p.directions, p.category]
-              .any((value) => value.toLowerCase().contains(query))) return false;
+              .any((value) => value.toLowerCase().contains(query))) {
+        return false;
+      }
       if (_selectedMapFilter == 'In Stock' && !p.inStock) { return false; }
       if (_selectedMapFilter == 'Verified' && !p.isVerified) { return false; }
       if (_selectedMapFilter == 'NGO & Clinics' && p.category != 'Clinics' && p.category != 'NGOs') { return false; }
@@ -3371,7 +3375,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                           const Icon(Icons.navigation_outlined, color: _muted, size: 15),
                           const SizedBox(width: 5),
                           Text(
-                            '${point.distanceLabel}',
+                            point.distanceLabel,
                             style: const TextStyle(color: _muted, fontSize: 13),
                           ),
                         ],

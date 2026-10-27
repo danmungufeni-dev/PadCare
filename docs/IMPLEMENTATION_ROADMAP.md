@@ -15,7 +15,8 @@ This roadmap adapts the supplied Muse AI master prompt to the current Flutter re
 
 - Implement search and category filtering for schools, clinics, NGOs, community centres, and other providers.
 - Add provider details with address, operating hours, collection instructions, and last stock update.
-- Integrate a supported map provider only after keys/configuration are available.
+- Stream verified provider records from Firestore and open real provider directions in Google Maps.
+- Compute distance from the user's location only after they tap the nearby-search action and grant permission.
 - Request location permission contextually; keep manual area/town search available when permission is denied.
 - Open directions using the selected provider's real coordinates/address.
 - Display “Availability unknown” for missing or stale stock data.
@@ -23,8 +24,8 @@ This roadmap adapts the supplied Muse AI master prompt to the current Flutter re
 ## Phase 3 — Secure backend and provider management
 
 - Select Firebase or Supabase and document the choice.
-- Implement authentication, password recovery, logout, and role-aware access.
-- Store provider listings, inventory, update timestamps, verification status, and collection instructions remotely.
+- Implement Firebase email/password sign-in, parent account creation, sign-out, and role-aware routing. Password reset remains a follow-up.
+- Store provider listings, inventory, update timestamps, verification status, and collection instructions remotely. Provider documents currently need to be provisioned through a trusted admin process.
 - Enforce authorization on the backend, not only in UI logic.
 - Add a review workflow for provider verification; account creation alone must never grant a verified badge.
 - Use atomic inventory/request updates to avoid double reservations and overselling.
@@ -34,7 +35,7 @@ This roadmap adapts the supplied Muse AI master prompt to the current Flutter re
 - Add a menstrual-health education area with age-appropriate, reviewed content.
 - Add a distinct “Donate to PadCare Project” page explaining that contributions support app development.
 - Keep developer donations separate from donations of pads or other supplies.
-- Integrate a supported payment provider only after merchant setup and credentials are available.
+- Integrate a supported payment provider only after merchant setup and credentials are available. The current app deliberately does not take payments.
 - Never store raw payment-card details or display success before provider confirmation.
 
 ## Phase 5 — Quality gates

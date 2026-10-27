@@ -1,0 +1,79 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    function isSchoolStaffFor(facilityId) {
+      return signedIn()
+        && userDoc().role == 'schoolStaff'
+        && userDoc().facilityId == facilityId;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      // Self-service registration can create parent accounts only.
+      // School staff roles must be provisioned by a trusted administrator.
+      allow create: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == 'parent'
+        && request.resource.data.uid == userId;
+      allow update: if signedIn()
+        && request.auth.uid == userId
+        && request.resource.data.role == resource.data.role
+        && request.resource.data.uid == resource.data.uid;
+      allow delete: if false;
+    }
+
+    match /facilities/{facilityId} {
+      allow read: if resource.data.isVerified == true;
+      allow create, update, delete: if isSchoolStaffFor(facilityId);
+
+      match /inventory/{itemId} {
+        allow read: if get(/databases/$(database)/documents/facilities/$(facilityId)).data.isVerified == true;
+        allow create, update, delete: if isSchoolStaffFor(facilityId);
+      }
+    }
+
+    match /requests/{requestId} {
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.status == 'Pending review'
+        && request.resource.data.quantity is int
+        && request.resource.data.quantity > 0
+        && request.resource.data.schoolId is string
+        && request.resource.data.product is string
+        && request.resource.data.keys().hasOnly([
+          'id', 'reference', 'school', 'schoolId', 'area', 'product',
+          'quantity', 'createdAt', 'status', 'userId', 'updatedAt'
+        ]);
+      allow read: if signedIn()
+        && (resource.data.userId == request.auth.uid
+          || isSchoolStaffFor(resource.data.schoolId));
+      allow update: if isSchoolStaffFor(resource.data.schoolId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status', 'updatedAt'])
+        && request.resource.data.status in [
+          'Pending review', 'Approved', 'Declined', 'Ready for pickup', 'Collected'
+        ];
+      allow delete: if signedIn()
+        && resource.data.userId == request.auth.uid
+        && resource.data.status == 'Pending review';
+    }
+
+    match /donationPledges/{pledgeId} {
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.amountUgx is int
+        && request.resource.data.amountUgx > 0
+        && request.resource.data.purpose == 'PadCare app development'
+        && request.resource.data.status == 'pledged';
+      allow read: if signedIn() && resource.data.userId == request.auth.uid;
+      allow update, delete: if false;
+    }
+  }
+}

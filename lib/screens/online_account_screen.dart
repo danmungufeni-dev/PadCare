@@ -50,6 +50,33 @@ class _OnlineAccountScreenState extends State<OnlineAccountScreen> {
     return 'We could not complete that action. Check your connection and Firebase setup, then try again.';
   }
 
+  Future<void> _resetPassword() async {
+    final email = _email.text.trim();
+    if (!email.contains('@') || !email.contains('.')) {
+      setState(() => _error = 'Enter your email address above first.');
+      return;
+    }
+    if (!PadCareBackend.isConfigured) {
+      setState(() => _error = 'Firebase is not configured yet. Password reset is unavailable in preview mode.');
+      return;
+    }
+    setState(() {
+      _busy = true;
+      _error = null;
+    });
+    try {
+      await PadCareBackend.sendPasswordResetEmail(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('If an account exists for that email, a reset link has been sent.')),
+      );
+    } catch (_) {
+      if (mounted) setState(() => _error = 'Could not send a reset email. Check your connection and Firebase settings.');
+    } finally {
+      if (mounted) setState(() => _busy = false);
+    }
+  }
+
   Future<void> _submit() async {
     if (_busy || !_formKey.currentState!.validate()) return;
     if (!PadCareBackend.isConfigured) {
@@ -212,6 +239,14 @@ class _OnlineAccountScreenState extends State<OnlineAccountScreen> {
                 ),
               ),
             ],
+            if (!_creatingAccount)
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: _busy ? null : _resetPassword,
+                  child: const Text('Forgot password?'),
+                ),
+              ),
             const SizedBox(height: 22),
             FilledButton(
               onPressed: _busy ? null : _submit,

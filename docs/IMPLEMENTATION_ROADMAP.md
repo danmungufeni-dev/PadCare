@@ -13,26 +13,26 @@ This roadmap adapts the supplied Muse AI master prompt to the current Flutter re
 
 ## Phase 2 — Discovery and provider details
 
-- Implement search and category filtering for schools, clinics, NGOs, community centres, and other providers.
-- Add provider details with address, operating hours, collection instructions, and last stock update.
+- Implemented: search and category filtering for provider listings, including live verified records when Firebase is configured.
+- Implemented: provider detail cards with address/directions, hours, collection instructions, and freshness-aware availability fields.
 - Stream verified provider records from Firestore and open real provider directions in Google Maps.
 - Compute distance from the user's location only after they tap the nearby-search action and grant permission.
 - Request location permission contextually; keep manual area/town search available when permission is denied.
-- Open directions using the selected provider's real coordinates/address.
+- Implemented: open Google Maps directions using a live provider's coordinates or address.
 - Display “Availability unknown” for missing or stale stock data.
 
 ## Phase 3 — Secure backend and provider management
 
 - Select Firebase or Supabase and document the choice.
 - Implement Firebase email/password sign-in, parent account creation, sign-out, and role-aware routing. Password reset remains a follow-up.
-- Store provider listings, inventory, update timestamps, verification status, and collection instructions remotely. Provider documents currently need to be provisioned through a trusted admin process.
+- Implemented: Firestore provider stream, request sync, and authorised staff inventory/request access. Trusted administrator provisioning of providers/staff and transactional stock reservations remain outstanding. Provider documents currently need to be provisioned through a trusted admin process.
 - Enforce authorization on the backend, not only in UI logic.
 - Add a review workflow for provider verification; account creation alone must never grant a verified badge.
 - Use atomic inventory/request updates to avoid double reservations and overselling.
 
 ## Phase 4 — Education and donations
 
-- Add a menstrual-health education area with age-appropriate, reviewed content.
+- Implemented: interactive menstrual-health learning guides. Have qualified local health professionals review the content before public launch.
 - Add a distinct “Donate to PadCare Project” page explaining that contributions support app development.
 - Keep developer donations separate from donations of pads or other supplies.
 - Integrate a supported payment provider only after merchant setup and credentials are available. The current app deliberately does not take payments.

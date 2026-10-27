@@ -2106,7 +2106,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   ),
                   child: Text(
                     point.inStock ? '● In Stock' : 'Availability unknown',
-                    style: const TextStyle(
+                    style: TextStyle(
                       color: point.inStock ? const Color(0xFF116B78) : _muted,
                       fontWeight: FontWeight.w800,
                       fontSize: 12,

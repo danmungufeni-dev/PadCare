@@ -3802,12 +3802,47 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           onTap: _openSplashScreenModal,
         ),
         const SizedBox(height: 10),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: const Color(0xFFEAF7F3),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFD2EDE5)),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(Icons.verified_user_outlined, color: _green),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      PadCareBackend.isSignedIn ? 'Online account' : 'Local preview mode',
+                      style: const TextStyle(color: _ink, fontWeight: FontWeight.w800),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      PadCareBackend.isSignedIn
+                          ? (PadCareBackend.currentUser?.email ?? 'Signed in') +
+                              '\nProvider and request data sync only when Firebase is configured and access rules permit it.'
+                          : 'This device is using sample provider data. Requests stay on this device until you configure Firebase and sign in.',
+                      style: const TextStyle(color: _muted, fontSize: 12, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 10),
         ListTile(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           tileColor: Colors.white,
           leading: const Icon(Icons.school_rounded, color: _ink),
-          title: const Text('Switch to Senior Woman Teacher Portal', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
-          subtitle: const Text('Manage school stock & student requests'),
+          title: const Text('Open staff portal preview', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
+          subtitle: const Text('Demo interface only. Online stock and requests require an authorised school-staff account.'),
           trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
           onTap: () {
             Navigator.of(context).push(
@@ -3831,8 +3866,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           onTap: widget.onSignOut,
         ),
         const SizedBox(height: 18),
-        const _PrivacyNote(
-          text: 'PadCare works offline-first. Your requests are saved only on this device without sharing your identity or tracking data.',
+        _PrivacyNote(
+          text: PadCareBackend.isSignedIn
+              ? 'You are signed in with an online account. Pickup requests and staff actions may sync to Firebase. Location is requested only when you choose nearby search; you can still browse by area.'
+              : 'Local preview mode: requests and settings are stored on this device. Sample locations are not live-confirmed. Location is requested only when you choose nearby search.',
         ),
       ],
     );

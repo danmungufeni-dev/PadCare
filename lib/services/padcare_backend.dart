@@ -167,12 +167,17 @@ class PadCareBackend {
     if (onHand < 0 || reserved < 0 || reserved > onHand) {
       throw ArgumentError('Inventory counts are invalid.');
     }
-    await _db.collection('facilities').doc(facilityId)
-        .collection('inventory').doc(_slug(product)).set({
+    final facility = _db.collection('facilities').doc(facilityId);
+    await facility.collection('inventory').doc(_slug(product)).set({
       'product': product,
       'onHand': onHand,
       'reserved': reserved,
       'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
+    // This is a summary for discovery, not a substitute for the inventory ledger.
+    await facility.set({
+      'stockAvailable': onHand > reserved,
+      'stockUpdatedAt': FieldValue.serverTimestamp(),
     }, SetOptions(merge: true));
   }
 

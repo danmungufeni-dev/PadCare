@@ -32,11 +32,18 @@ service cloud.firestore {
     }
 
     match /facilities/{facilityId} {
-      allow read: if resource.data.isVerified == true;
-      allow create, update, delete: if isSchoolStaffFor(facilityId);
+      allow read: if resource.data.isVerified == true || isSchoolStaffFor(facilityId);
+      // Staff may create only unverified listings. Verification must be performed
+      // through a trusted administrator workflow, never by the provider itself.
+      allow create: if isSchoolStaffFor(facilityId)
+        && request.resource.data.isVerified == false;
+      allow update: if isSchoolStaffFor(facilityId)
+        && request.resource.data.isVerified == resource.data.isVerified;
+      allow delete: if false;
 
       match /inventory/{itemId} {
-        allow read: if get(/databases/$(database)/documents/facilities/$(facilityId)).data.isVerified == true;
+        allow read: if get(/databases/$(database)/documents/facilities/$(facilityId)).data.isVerified == true
+          || isSchoolStaffFor(facilityId);
         allow create, update, delete: if isSchoolStaffFor(facilityId);
       }
     }

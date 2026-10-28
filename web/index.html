@@ -31,6 +31,40 @@
 
   <title>PadCare</title>
   <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Suppress the default Flutter debug loading ribbon */
+    .flutter-loader,
+    .flutter-loader * {
+      display: none !important;
+      visibility: hidden !important;
+      height: 0 !important;
+      max-height: 0 !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
+    body {
+      margin: 0;
+      background-color: #E4F8F2;
+    }
+  </style>
+  <script>
+    // Remove the loader element immediately if inserted by Flutter dev tools
+    const _loaderObserver = new MutationObserver(function (mutations) {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType === 1 && (node.classList?.contains('flutter-loader') || node.className === 'flutter-loader')) {
+            node.remove();
+          }
+        }
+      }
+    });
+    _loaderObserver.observe(document.documentElement, { childList: true, subtree: true });
+    window.addEventListener('dart-app-ready', function () {
+      _loaderObserver.disconnect();
+    });
+  </script>
 </head>
 <body>
   <!--

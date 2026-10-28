@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -4624,13 +4625,21 @@ class _PadCareSplashScreen extends StatelessWidget {
                         letterSpacing: 0.1,
                       ),
                     ),
-                    const SizedBox(height: 52),
-                    const SizedBox(
-                      width: 36,
-                      height: 36,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 3.5,
-                        valueColor: AlwaysStoppedAnimation<Color>(_green),
+                    const SizedBox(height: 36),
+                    SizedBox(
+                      width: 90,
+                      height: 90,
+                      child: Lottie.asset(
+                        'assets/loading-transparent.json',
+                        repeat: true,
+                        errorBuilder: (context, error, stackTrace) => const SizedBox(
+                          width: 36,
+                          height: 36,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 3.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(_green),
+                          ),
+                        ),
                       ),
                     ),
                   ],

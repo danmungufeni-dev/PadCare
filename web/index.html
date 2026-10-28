@@ -75,6 +75,39 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <div id="loading-container" style="position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #E4F8F2; z-index: 999999; transition: opacity 0.3s ease-out;">
+    <div id="lottie-animation" style="width: 180px; height: 180px;"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+  <script>
+    try {
+      lottie.loadAnimation({
+        container: document.getElementById('lottie-animation'),
+        renderer: 'svg',
+        loop: true,
+        autoplay: true,
+        path: 'loading-transparent.json'
+      });
+    } catch (e) {
+      console.warn('Lottie preloader initialization:', e);
+    }
+
+    function _removeLoadingScreen() {
+      const el = document.getElementById('loading-container');
+      if (el) {
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+        setTimeout(function () { el.remove(); }, 350);
+      }
+    }
+
+    window.addEventListener('flutter-first-frame', _removeLoadingScreen);
+    window.addEventListener('dart-app-ready', function () {
+      setTimeout(_removeLoadingScreen, 200);
+    });
+  </script>
+
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

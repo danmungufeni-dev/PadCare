@@ -38,6 +38,7 @@ dependencies:
   firebase_auth: ^6.7.0
   cloud_firestore: ^6.10.0
   shared_preferences: ^2.5.3
+  lottie: ^3.1.2
 
 dev_dependencies:
   flutter_test:
@@ -80,6 +81,7 @@ flutter:
   assets:
     - assets/icon/app_icon.png
     - assets/padcare_icon.png
+    - assets/loading-transparent.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:

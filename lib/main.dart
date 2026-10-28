@@ -18,6 +18,10 @@ const _greenPale = Color(0xFFE4F8F2);
 const _coral = Color(0xFF0D9488);
 const _line = Color(0xFFDCECEB);
 
+const _fontHeading = 'Brunson';
+const _fontSubheading = 'Strong';
+const _fontBody = 'MisticalSpring';
+
 Widget _softTransition({required Key key, required Widget child}) {
   return AnimatedSwitcher(
     duration: const Duration(milliseconds: 240),
@@ -52,6 +56,21 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         scaffoldBackgroundColor: _paper,
+        fontFamily: _fontBody,
+        textTheme: const TextTheme(
+          displayLarge: TextStyle(fontFamily: _fontHeading),
+          displayMedium: TextStyle(fontFamily: _fontHeading),
+          displaySmall: TextStyle(fontFamily: _fontHeading),
+          headlineLarge: TextStyle(fontFamily: _fontHeading),
+          headlineMedium: TextStyle(fontFamily: _fontHeading),
+          headlineSmall: TextStyle(fontFamily: _fontHeading),
+          titleLarge: TextStyle(fontFamily: _fontSubheading),
+          titleMedium: TextStyle(fontFamily: _fontSubheading),
+          titleSmall: TextStyle(fontFamily: _fontSubheading),
+          bodyLarge: TextStyle(fontFamily: _fontBody),
+          bodyMedium: TextStyle(fontFamily: _fontBody),
+          bodySmall: TextStyle(fontFamily: _fontBody),
+        ),
         colorScheme: ColorScheme.fromSeed(
           seedColor: _green,
           brightness: Brightness.light,
@@ -468,6 +487,7 @@ class _BrandLockup extends StatelessWidget {
             color: _ink,
             fontSize: 23,
             fontWeight: FontWeight.w800,
+            fontFamily: _fontHeading,
           ),
         ),
         Spacer(),
@@ -477,6 +497,7 @@ class _BrandLockup extends StatelessWidget {
             color: _muted,
             fontSize: 11,
             fontWeight: FontWeight.w800,
+            fontFamily: _fontSubheading,
           ),
         ),
       ],
@@ -2500,6 +2521,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               fontSize: 21,
               fontWeight: FontWeight.w900,
               letterSpacing: -0.4,
+              fontFamily: _fontHeading,
             ),
           ),
           const SizedBox(width: 10),
@@ -2524,6 +2546,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       color: _ink,
                       fontSize: 12,
                       fontWeight: FontWeight.w700,
+                      fontFamily: _fontSubheading,
                     ),
                   ),
                   const SizedBox(width: 2),
@@ -2624,6 +2647,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   fontSize: 27,
                   fontWeight: FontWeight.w900,
                   letterSpacing: -0.5,
+                  fontFamily: _fontHeading,
                 ),
               ),
               const SizedBox(height: 3),
@@ -2633,6 +2657,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   color: _muted,
                   fontSize: 15,
                   fontWeight: FontWeight.w500,
+                  fontFamily: _fontBody,
                 ),
               ),
               const SizedBox(height: 8),
@@ -2768,6 +2793,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       fontSize: 24,
                       fontWeight: FontWeight.w900,
                       height: 1.15,
+                      fontFamily: _fontHeading,
                     ),
                   ),
                   const SizedBox(height: 7),
@@ -2777,6 +2803,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       color: Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
+                      fontFamily: _fontBody,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -2794,7 +2821,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       children: [
                         Text(
                           'Find Pads Near Me',
-                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, fontFamily: _fontSubheading),
                         ),
                         SizedBox(width: 6),
                         Icon(Icons.arrow_forward_rounded, size: 16),
@@ -2813,6 +2840,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             color: _ink,
             fontSize: 18,
             fontWeight: FontWeight.w800,
+            fontFamily: _fontHeading,
           ),
         ),
         const SizedBox(height: 11),
@@ -2842,6 +2870,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   color: _ink,
                   fontSize: 18,
                   fontWeight: FontWeight.w800,
+                  fontFamily: _fontHeading,
                 ),
               ),
             ),
@@ -2899,7 +2928,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     SizedBox(width: 5),
                     Text(
                       'Donate to PadCare Project',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, fontFamily: _fontSubheading),
                     ),
                   ],
                 ),
@@ -2935,6 +2964,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             color: selected ? Colors.white : _ink,
             fontSize: 13,
             fontWeight: FontWeight.w700,
+            fontFamily: _fontSubheading,
           ),
         ),
       ),
@@ -2976,6 +3006,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                               color: _ink,
                               fontSize: 16,
                               fontWeight: FontWeight.w800,
+                              fontFamily: _fontSubheading,
                             ),
                           ),
                         ),
@@ -3073,6 +3104,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   fontWeight: FontWeight.w700,
                   fontSize: 13,
                   color: _deepTeal,
+                  fontFamily: _fontSubheading,
                 ),
               ),
             ),
@@ -4613,6 +4645,7 @@ class _PadCareSplashScreen extends StatelessWidget {
                         fontSize: 34,
                         fontWeight: FontWeight.w900,
                         letterSpacing: -0.5,
+                        fontFamily: _fontHeading,
                       ),
                     ),
                     const SizedBox(height: 8),
@@ -4623,6 +4656,7 @@ class _PadCareSplashScreen extends StatelessWidget {
                         fontSize: 17,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.1,
+                        fontFamily: _fontSubheading,
                       ),
                     ),
                     const SizedBox(height: 36),

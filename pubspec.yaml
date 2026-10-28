@@ -83,6 +83,17 @@ flutter:
     - assets/padcare_icon.png
     - assets/loading-transparent.json
 
+  fonts:
+    - family: Brunson
+      fonts:
+        - asset: assets/fonts/Brunson.ttf
+    - family: Strong
+      fonts:
+        - asset: assets/fonts/Strong.ttf
+    - family: MisticalSpring
+      fonts:
+        - asset: assets/fonts/MisticalSpring.ttf
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

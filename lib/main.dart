@@ -143,6 +143,8 @@ class _AppLandingFlowState extends State<_AppLandingFlow> {
 
 enum _PortalRole { teacher, parent }
 
+enum _AuthTab { signUp, login, guest }
+
 class AccessGate extends StatefulWidget {
   const AccessGate({super.key});
 
@@ -152,19 +154,29 @@ class AccessGate extends StatefulWidget {
 
 class _AccessGateState extends State<AccessGate> {
   final _formKey = GlobalKey<FormState>();
+  final _loginFormKey = GlobalKey<FormState>();
+
   final _nameController = TextEditingController();
   final _newSchoolController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
+
   final List<String> _schoolOptions = [..._staffFacilities];
 
+  _AuthTab _currentTab = _AuthTab.signUp;
   _PortalRole? _role;
   bool _registering = false;
   bool _addingSchool = false;
+  bool _obscurePassword = true;
+  bool _rememberMe = true;
   String _school = 'St. Mary\'s Secondary';
 
   @override
   void dispose() {
     _nameController.dispose();
     _newSchoolController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -210,44 +222,128 @@ class _AccessGateState extends State<AccessGate> {
     }
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      body: SafeArea(
-        child: _PageScroll(
-          children: [
-            const SizedBox(height: 26),
-            const _BrandLockup(),
-            const SizedBox(height: 34),
-            _softTransition(
-              key: ValueKey('access-${_role?.name ?? 'roles'}'),
-              child: _role == null ? _buildRolePicker() : _buildAccessForm(),
-            ),
-          ],
+  void _handleLogin() {
+    final email = _emailController.text.trim();
+    final navigator = Navigator.of(context);
+    void onSignOut() {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
+        (route) => false,
+      );
+    }
+
+    if (email.toLowerCase().contains('teacher') || _role == _PortalRole.teacher) {
+      navigator.pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => HomeScreen(facility: _school, onSignOut: onSignOut),
+        ),
+      );
+    } else {
+      navigator.pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => ParentHomeScreen(
+            parentName: email.isNotEmpty ? email.split('@').first : 'Amina N.',
+            onSignOut: onSignOut,
+          ),
+        ),
+      );
+    }
+  }
+
+  void _enterAsGuest() {
+    final navigator = Navigator.of(context);
+    void onSignOut() {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
+        (route) => false,
+      );
+    }
+
+    navigator.pushReplacement(
+      MaterialPageRoute<void>(
+        builder: (_) => ParentHomeScreen(
+          parentName: 'Guest Community Member',
+          onSignOut: onSignOut,
         ),
       ),
     );
   }
 
-  Widget _buildRolePicker() {
+  @override
+  Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.sizeOf(context).width;
+    final isWide = screenWidth >= 960;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF163CB9),
+      body: SafeArea(
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: isWide ? 20 : 12,
+              vertical: isWide ? 16 : 10,
+            ),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                maxWidth: 1040,
+                minHeight: isWide ? 620 : 0,
+              ),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(isWide ? 36 : 24),
+                  boxShadow: const [
+                    BoxShadow(
+                      color: Color(0x38000000),
+                      blurRadius: 36,
+                      offset: Offset(0, 16),
+                    ),
+                  ],
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: isWide
+                    ? IntrinsicHeight(
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Expanded(
+                              flex: 6,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                                child: _buildLeftContent(),
+                              ),
+                            ),
+                            const Expanded(
+                              flex: 5,
+                              child: Padding(
+                                padding: EdgeInsets.all(14),
+                                child: _AuthArtCard(),
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: _buildLeftContent(),
+                      ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLeftContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(
-              child: Text(
-                'Choose your PadCare access',
-                style: TextStyle(
-                  color: _ink,
-                  fontSize: 25,
-                  height: 1.2,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
+            const _BrandLockup(),
             TextButton.icon(
               onPressed: () {
                 Navigator.of(context).pushReplacement(
@@ -263,16 +359,119 @@ class _AccessGateState extends State<AccessGate> {
               },
               icon: const Icon(Icons.arrow_forward_rounded, size: 16),
               label: const Text('Skip to App'),
-              style: TextButton.styleFrom(foregroundColor: _green),
+              style: TextButton.styleFrom(
+                foregroundColor: const Color(0xFF163CB9),
+                textStyle: const TextStyle(
+                  fontWeight: FontWeight.w700,
+                  fontFamily: _fontSubheading,
+                ),
+              ),
             ),
           ],
+        ),
+        const SizedBox(height: 14),
+        _buildTabBar(),
+        const SizedBox(height: 8),
+        _softTransition(
+          key: ValueKey('tab-${_currentTab.name}-${_role?.name ?? 'norole'}'),
+          child: _buildTabBody(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        children: [
+          _buildTabItem(label: 'Sign Up', tab: _AuthTab.signUp),
+          _buildTabItem(label: 'Login', tab: _AuthTab.login),
+          _buildTabItem(label: 'Enter as Guest', tab: _AuthTab.guest),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTabItem({required String label, required _AuthTab tab}) {
+    final isSelected = _currentTab == tab;
+    return Expanded(
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _currentTab = tab;
+            if (tab != _AuthTab.signUp) {
+              _role = null;
+            }
+          });
+        },
+        borderRadius: BorderRadius.circular(12),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: isSelected ? const Color(0xFF163CB9) : Colors.transparent,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: const Color(0x4D163CB9),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              color: isSelected ? Colors.white : const Color(0xFF475569),
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+              fontFamily: _fontSubheading,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTabBody() {
+    switch (_currentTab) {
+      case _AuthTab.signUp:
+        return _role == null ? _buildRolePicker() : _buildAccessForm();
+      case _AuthTab.login:
+        return _buildLoginView();
+      case _AuthTab.guest:
+        return _buildGuestView();
+    }
+  }
+
+  Widget _buildRolePicker() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Choose your PadCare access',
+          style: TextStyle(
+            color: _ink,
+            fontSize: 25,
+            height: 1.2,
+            fontWeight: FontWeight.w800,
+            fontFamily: _fontHeading,
+          ),
         ),
         const SizedBox(height: 8),
         const Text(
           'Explore PadCare as a school staff member or as a parent or guardian.',
-          style: TextStyle(color: _muted, height: 1.5),
+          style: TextStyle(color: _muted, height: 1.5, fontFamily: _fontBody),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 20),
         _RoleCard(
           icon: Icons.school_outlined,
           title: 'Senior woman teacher',
@@ -286,11 +485,11 @@ class _AccessGateState extends State<AccessGate> {
           subtitle: 'Submit a local request and choose a school pickup point',
           onTap: () => setState(() => _role = _PortalRole.parent),
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 18),
         const _PrivacyNote(
           text: 'Requests do not ask for a girl\'s name, age, or class.',
         ),
-        const SizedBox(height: 22),
+        const SizedBox(height: 18),
         Center(
           child: OutlinedButton.icon(
             onPressed: () {
@@ -308,11 +507,37 @@ class _AccessGateState extends State<AccessGate> {
             icon: const Icon(Icons.home_outlined),
             label: const Text('Enter PadCare Directly'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: _green,
-              side: const BorderSide(color: _green),
+              foregroundColor: const Color(0xFF163CB9),
+              side: const BorderSide(color: Color(0xFF163CB9)),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Center(
+          child: Wrap(
+            alignment: WrapAlignment.center,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              const Text(
+                'Already have an account? ',
+                style: TextStyle(color: _muted, fontSize: 13, fontFamily: _fontBody),
+              ),
+              TextButton(
+                onPressed: () => setState(() => _currentTab = _AuthTab.login),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  foregroundColor: const Color(0xFF163CB9),
+                ),
+                child: const Text(
+                  'Login',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontFamily: _fontSubheading),
+                ),
+              ),
+            ],
           ),
         ),
       ],
@@ -334,7 +559,7 @@ class _AccessGateState extends State<AccessGate> {
             }),
             icon: const Icon(Icons.arrow_back_rounded, size: 18),
             label: const Text('Choose another access'),
-            style: TextButton.styleFrom(foregroundColor: _green),
+            style: TextButton.styleFrom(foregroundColor: const Color(0xFF163CB9)),
           ),
           const SizedBox(height: 12),
           Text(
@@ -343,14 +568,15 @@ class _AccessGateState extends State<AccessGate> {
               color: _ink,
               fontSize: 25,
               fontWeight: FontWeight.w800,
+              fontFamily: _fontHeading,
             ),
           ),
           const SizedBox(height: 8),
           Text(
             isTeacher
-              ? 'Preview only. Choose a sample school or distribution point.'
-              : 'Preview only. Requests stay on this device and are not sent to a school.',
-            style: const TextStyle(color: _muted, height: 1.45),
+                ? 'Preview only. Choose a sample school or distribution point.'
+                : 'Preview only. Requests stay on this device and are not sent to a school.',
+            style: const TextStyle(color: _muted, height: 1.45, fontFamily: _fontBody),
           ),
           const SizedBox(height: 22),
           if (_registering) ...[
@@ -370,6 +596,7 @@ class _AccessGateState extends State<AccessGate> {
             if (!_addingSchool)
               DropdownButtonFormField<String>(
                 key: const ValueKey('teacher-school-dropdown'),
+                isExpanded: true,
                 initialValue: _school,
                 decoration: const InputDecoration(
                   labelText: 'School or distribution point',
@@ -432,9 +659,18 @@ class _AccessGateState extends State<AccessGate> {
           FilledButton(
             key: const ValueKey('submit-access'),
             onPressed: _openPortal,
-            style: _primaryButtonStyle,
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF163CB9),
+              minimumSize: const Size(double.infinity, 48),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
             child: Text(
-                'Open $roleLabel preview',
+              'Open $roleLabel preview',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontFamily: _fontSubheading,
+              ),
             ),
           ),
           const SizedBox(height: 10),
@@ -443,6 +679,7 @@ class _AccessGateState extends State<AccessGate> {
               onPressed: () => setState(() => _registering = !_registering),
               child: Text(
                 _registering ? 'Back to preview' : 'Set a display name',
+                style: const TextStyle(fontFamily: _fontSubheading),
               ),
             ),
           ),
@@ -451,13 +688,613 @@ class _AccessGateState extends State<AccessGate> {
             child: Text(
               'No account is created. Preview data is not shared with a school.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: _muted, fontSize: 11, height: 1.4),
+              style: TextStyle(color: _muted, fontSize: 11, height: 1.4, fontFamily: _fontBody),
             ),
           ),
         ],
       ),
     );
   }
+
+  Widget _buildLoginView() {
+    return Form(
+      key: _loginFormKey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 52,
+              height: 52,
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(
+                Icons.home_rounded,
+                color: Color(0xFF163CB9),
+                size: 28,
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          const Center(
+            child: Text(
+              'Welcome home',
+              style: TextStyle(
+                color: _ink,
+                fontSize: 26,
+                fontWeight: FontWeight.w800,
+                fontFamily: _fontHeading,
+              ),
+            ),
+          ),
+          const SizedBox(height: 6),
+          const Center(
+            child: Text(
+              'Please enter your details.',
+              style: TextStyle(
+                color: _muted,
+                fontSize: 14,
+                fontFamily: _fontBody,
+              ),
+            ),
+          ),
+          const SizedBox(height: 22),
+          TextFormField(
+            key: const ValueKey('login-email'),
+            controller: _emailController,
+            keyboardType: TextInputType.emailAddress,
+            decoration: InputDecoration(
+              hintText: 'Email',
+              hintStyle: const TextStyle(color: _muted, fontSize: 14, fontFamily: _fontBody),
+              suffixIcon: const Icon(Icons.mail_outline_rounded, color: _muted, size: 20),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFF163CB9), width: 1.5),
+              ),
+            ),
+          ),
+          const SizedBox(height: 14),
+          TextFormField(
+            key: const ValueKey('login-password'),
+            controller: _passwordController,
+            obscureText: _obscurePassword,
+            decoration: InputDecoration(
+              hintText: 'Password',
+              hintStyle: const TextStyle(color: _muted, fontSize: 14, fontFamily: _fontBody),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  color: _muted,
+                  size: 20,
+                ),
+                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+              ),
+              filled: true,
+              fillColor: Colors.white,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(16),
+                borderSide: const BorderSide(color: Color(0xFF163CB9), width: 1.5),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: 22,
+                    height: 22,
+                    child: Checkbox(
+                      value: _rememberMe,
+                      onChanged: (val) => setState(() => _rememberMe = val ?? true),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
+                      activeColor: const Color(0xFF163CB9),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  const Text(
+                    'Remember for 30 days',
+                    style: TextStyle(color: _muted, fontSize: 12, fontFamily: _fontBody),
+                  ),
+                ],
+              ),
+              TextButton(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Password reset instructions sent if email exists.')),
+                  );
+                },
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                ),
+                child: const Text(
+                  'Forgot password?',
+                  style: TextStyle(color: _muted, fontSize: 12, fontFamily: _fontBody),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          SizedBox(
+            width: double.infinity,
+            height: 48,
+            child: FilledButton(
+              key: const ValueKey('submit-login'),
+              onPressed: _handleLogin,
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF163CB9),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Text(
+                'Login',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                  fontFamily: _fontSubheading,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 18),
+          Row(
+            children: [
+              const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'or',
+                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontFamily: _fontBody),
+                ),
+              ),
+              const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildSocialButton(
+                icon: Icons.apple,
+                onTap: _handleLogin,
+                tooltip: 'Sign in with Apple',
+              ),
+              const SizedBox(width: 14),
+              _buildSocialButton(
+                icon: Icons.g_mobiledata_rounded,
+                isGoogle: true,
+                onTap: _handleLogin,
+                tooltip: 'Sign in with Google',
+              ),
+              const SizedBox(width: 14),
+              _buildSocialButton(
+                icon: Icons.public_rounded,
+                onTap: () => setState(() => _currentTab = _AuthTab.guest),
+                tooltip: 'Enter as Guest',
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          Center(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text(
+                  'Don\'t have an account? ',
+                  style: TextStyle(color: _muted, fontSize: 13, fontFamily: _fontBody),
+                ),
+                TextButton(
+                  onPressed: () => setState(() => _currentTab = _AuthTab.signUp),
+                  style: TextButton.styleFrom(
+                    padding: EdgeInsets.zero,
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    foregroundColor: const Color(0xFF163CB9),
+                  ),
+                  child: const Text(
+                    'Sign Up',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontFamily: _fontSubheading),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGuestView() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Center(
+          child: Container(
+            width: 52,
+            height: 52,
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const Icon(
+              Icons.explore_rounded,
+              color: Color(0xFF163CB9),
+              size: 28,
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        const Center(
+          child: Text(
+            'Guest Access',
+            style: TextStyle(
+              color: _ink,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              fontFamily: _fontHeading,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        const Center(
+          child: Text(
+            'No signup or password required to browse and request supplies.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: _muted,
+              fontSize: 14,
+              height: 1.4,
+              fontFamily: _fontBody,
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
+        const _PrivacyNote(
+          text: 'Requests do not ask for a girl\'s name, age, or class.',
+        ),
+        const SizedBox(height: 14),
+        SizedBox(
+          width: double.infinity,
+          height: 48,
+          child: FilledButton.icon(
+            onPressed: _enterAsGuest,
+            icon: const Icon(Icons.home_outlined),
+            label: const Text(
+              'Enter PadCare Directly',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                fontFamily: _fontSubheading,
+              ),
+            ),
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF163CB9),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Center(
+          child: OutlinedButton.icon(
+            onPressed: () {
+              setState(() {
+                _currentTab = _AuthTab.signUp;
+                _role = _PortalRole.teacher;
+              });
+            },
+            icon: const Icon(Icons.school_outlined, size: 18),
+            label: const Text('Try Teacher Demo Access'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: const Color(0xFF163CB9),
+              side: const BorderSide(color: Color(0xFFE2E8F0)),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 20),
+        Center(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                'Want to register your school or account? ',
+                style: TextStyle(color: _muted, fontSize: 13, fontFamily: _fontBody),
+              ),
+              TextButton(
+                onPressed: () => setState(() => _currentTab = _AuthTab.signUp),
+                style: TextButton.styleFrom(
+                  padding: EdgeInsets.zero,
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  foregroundColor: const Color(0xFF163CB9),
+                ),
+                child: const Text(
+                  'Sign Up',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontFamily: _fontSubheading),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSocialButton({
+    required IconData icon,
+    required VoidCallback onTap,
+    required String tooltip,
+    bool isGoogle = false,
+  }) {
+    return Tooltip(
+      message: tooltip,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          width: 48,
+          height: 48,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x0A000000),
+                blurRadius: 4,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          alignment: Alignment.center,
+          child: isGoogle
+              ? const Text(
+                  'G',
+                  style: TextStyle(
+                    color: Color(0xFFEA4335),
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
+                    fontFamily: _fontHeading,
+                  ),
+                )
+              : Icon(icon, color: const Color(0xFF1E293B), size: 22),
+        ),
+      ),
+    );
+  }
+}
+
+class _AuthArtCard extends StatelessWidget {
+  const _AuthArtCard();
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(28),
+      child: Container(
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          color: Color(0xFF0F172A),
+        ),
+        child: CustomPaint(
+          painter: const _WaveArtPainter(),
+          child: Stack(
+            children: [
+              Positioned(
+                top: 24,
+                left: 24,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: const Color(0x1FFFFFFF),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: const Color(0x33FFFFFF),
+                    ),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.shield_outlined, color: Colors.white, size: 16),
+                      SizedBox(width: 8),
+                      Text(
+                        'Safe • Free • Anonymous',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          fontFamily: _fontSubheading,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 32,
+                left: 28,
+                right: 28,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Pads within reach,\nfor every student.',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 26,
+                        height: 1.25,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: _fontHeading,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'Connecting community pickup points with care and privacy across Arua City.',
+                      style: TextStyle(
+                        color: const Color(0xBFFFFFFF),
+                        fontSize: 14,
+                        height: 1.45,
+                        fontFamily: _fontBody,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _WaveArtPainter extends CustomPainter {
+  const _WaveArtPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+
+    // 1. Base deep midnight-blue to indigo background
+    final bgPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF090D24),
+          Color(0xFF0F1B4C),
+          Color(0xFF1E3A8A),
+          Color(0xFF080D21),
+        ],
+      ).createShader(rect);
+    canvas.drawRect(rect, bgPaint);
+
+    // 2. Glowing back wave (violet / royal blue)
+    final backWave = Path();
+    backWave.moveTo(0, size.height * 0.28);
+    backWave.cubicTo(
+      size.width * 0.35, size.height * 0.15,
+      size.width * 0.65, size.height * 0.52,
+      size.width, size.height * 0.38,
+    );
+    backWave.lineTo(size.width, size.height);
+    backWave.lineTo(0, size.height);
+    backWave.close();
+
+    final backPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFF2563EB),
+          Color(0xFF1D4ED8),
+          Color(0xFF0A1033),
+        ],
+      ).createShader(rect);
+    canvas.drawPath(backWave, backPaint);
+
+    // 3. Smooth curving deep blue 3D valley wave
+    final midWave = Path();
+    midWave.moveTo(0, size.height * 0.55);
+    midWave.cubicTo(
+      size.width * 0.28, size.height * 0.32,
+      size.width * 0.72, size.height * 0.72,
+      size.width, size.height * 0.48,
+    );
+    midWave.lineTo(size.width, size.height);
+    midWave.lineTo(0, size.height);
+    midWave.close();
+
+    final midPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          Color(0xFF1E40AF),
+          Color(0xFF172554),
+          Color(0xFF030712),
+        ],
+      ).createShader(rect);
+    canvas.drawPath(midWave, midPaint);
+
+    // 4. Foreground smooth wave contour
+    final foreWave = Path();
+    foreWave.moveTo(0, size.height * 0.72);
+    foreWave.cubicTo(
+      size.width * 0.4, size.height * 0.52,
+      size.width * 0.68, size.height * 0.85,
+      size.width, size.height * 0.65,
+    );
+    foreWave.lineTo(size.width, size.height);
+    foreWave.lineTo(0, size.height);
+    foreWave.close();
+
+    final forePaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Color(0xFF1E3A8A),
+          Color(0xFF0A0F29),
+        ],
+      ).createShader(rect);
+    canvas.drawPath(foreWave, forePaint);
+
+    // 5. Glowing lavender/lilac rim edge
+    final rimPaint = Paint()
+      ..shader = const LinearGradient(
+        begin: Alignment.centerLeft,
+        end: Alignment.centerRight,
+        colors: [
+          Color(0xFFC7D2FE),
+          Color(0xFFA5B4FC),
+          Color(0xFF6366F1),
+          Colors.transparent,
+        ],
+      ).createShader(rect)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3.5;
+
+    final rimPath = Path();
+    rimPath.moveTo(0, size.height * 0.55);
+    rimPath.cubicTo(
+      size.width * 0.28, size.height * 0.32,
+      size.width * 0.72, size.height * 0.72,
+      size.width, size.height * 0.48,
+    );
+    canvas.drawPath(rimPath, rimPaint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 const _staffFacilities = [
@@ -478,24 +1315,25 @@ class _BrandLockup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         _BrandMark(),
-        SizedBox(width: 10),
+        SizedBox(width: 8),
         Text(
           'PadCare',
           style: TextStyle(
             color: _ink,
-            fontSize: 23,
+            fontSize: 22,
             fontWeight: FontWeight.w800,
             fontFamily: _fontHeading,
           ),
         ),
-        Spacer(),
+        SizedBox(width: 8),
         Text(
           'ARUA CITY',
           style: TextStyle(
             color: _muted,
-            fontSize: 11,
+            fontSize: 10,
             fontWeight: FontWeight.w800,
             fontFamily: _fontSubheading,
           ),
@@ -937,7 +1775,7 @@ class _HomeScreenState extends State<HomeScreen> {
           requests: _facilityRequests.length,
           lowStock: _lowStockCount,
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 14),
         Row(
           children: [
             const Expanded(child: _SectionTitle('Stock at this point')),
@@ -1113,7 +1951,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 14),
         const _SectionTitle('Demand by supply type'),
         const SizedBox(height: 12),
         const _DemandBar(
@@ -1997,7 +2835,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 14),
                 Row(
                   children: [
                     Expanded(
@@ -4148,7 +4986,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               : 'packs',
           onChanged: (value) => setState(() => _quantity = value),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 14),
         FilledButton(
           key: const ValueKey('submit-home-request'),
           onPressed: _submitRequest,

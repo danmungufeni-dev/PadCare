@@ -18,9 +18,9 @@ const _greenPale = Color(0xFFE4F8F2);
 const _coral = Color(0xFF0D9488);
 const _line = Color(0xFFDCECEB);
 
-const _fontHeading = 'Brunson';
-const _fontSubheading = 'Strong';
-const _fontBody = 'MisticalSpring';
+const _fontHeading = 'SF Pro Display';
+const _fontSubheading = 'SF Pro Display';
+const _fontBody = 'SF Pro Display';
 
 Widget _softTransition({required Key key, required Widget child}) {
   return AnimatedSwitcher(

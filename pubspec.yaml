@@ -84,6 +84,32 @@ flutter:
     - assets/loading-transparent.json
 
   fonts:
+    - family: SF Pro Display
+      fonts:
+        - asset: assets/fonts/SFPRODISPLAYREGULAR.OTF
+          weight: 400
+        - asset: assets/fonts/SFPRODISPLAYMEDIUM.OTF
+          weight: 500
+        - asset: assets/fonts/SFPRODISPLAYBOLD.OTF
+          weight: 700
+        - asset: assets/fonts/SFPRODISPLAYSEMIBOLDITALIC.OTF
+          weight: 600
+          style: italic
+        - asset: assets/fonts/SFPRODISPLAYLIGHTITALIC.OTF
+          weight: 300
+          style: italic
+        - asset: assets/fonts/SFPRODISPLAYTHINITALIC.OTF
+          weight: 100
+          style: italic
+        - asset: assets/fonts/SFPRODISPLAYULTRALIGHTITALIC.OTF
+          weight: 200
+          style: italic
+        - asset: assets/fonts/SFPRODISPLAYHEAVYITALIC.OTF
+          weight: 800
+          style: italic
+        - asset: assets/fonts/SFPRODISPLAYBLACKITALIC.OTF
+          weight: 900
+          style: italic
     - family: Brunson
       fonts:
         - asset: assets/fonts/Brunson.ttf

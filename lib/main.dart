@@ -4306,6 +4306,34 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           '• Free Arua Youth Health Helpline: Dial 0800 200 600 (toll-free) to speak privately with an adolescent nurse.',
         ],
       ),
+      _LearnArticle(
+        tag: 'Cramp Relief',
+        category: 'Cycle',
+        title: 'Managing Period Pain & Cramps',
+        subtitle: 'Natural home remedies, hydration, warm compresses, and safe relief techniques.',
+        icon: Icons.spa_rounded,
+        content: [
+          'Menstrual cramps (dysmenorrhea) are caused by normal uterine contractions during your period. Most mild-to-moderate cramps can be relieved naturally at home:',
+          '• Warm Heat Compress: Apply a warm water bottle or heated towel wrapped in cloth to your lower abdomen. Heat relaxes muscles and improves blood flow.',
+          '• Hydration with Warm Fluids: Drink 8 to 10 cups of warm water or ginger tea daily. Staying hydrated reduces abdominal bloating and discomfort.',
+          '• Gentle Movement: Light walking, gentle stretching, or yoga releases endorphins, the body\'s natural pain relievers.',
+          '• Nutrition: Eat fresh local fruits (papayas, oranges, bananas) and leafy green vegetables rich in magnesium and iron.',
+        ],
+      ),
+      _LearnArticle(
+        tag: 'Family & Community',
+        category: 'Myths',
+        title: 'How Families & Schools Can Support',
+        subtitle: 'Creating an open, supportive environment free of shame or embarrassment.',
+        icon: Icons.people_outline_rounded,
+        content: [
+          'Every girl deserves dignity, privacy, and full encouragement at home and in school during her monthly period.',
+          '• Talk Openly: Discuss periods with your daughter before her first cycle so she feels confident rather than frightened.',
+          '• Keep Supplies Accessible: Ensure reusable kits, soap, and clean water are always ready at home before school resumes.',
+          '• Support Attendance: Encourage girls to attend school every single day. Period management should never interrupt education.',
+          '• Boys & Brothers Matter: Teach boys to respect their sisters and classmates, eliminating teasing and stigma forever.',
+        ],
+      ),
     ];
 
     final filteredArticles = articles.where((a) {
@@ -4319,6 +4347,63 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           eyebrow: 'PERIOD HEALTH & EDUCATION',
           title: 'Learn & Care',
           subtitle: 'Empowering guides, cycle tracking, and safe hygiene tips.',
+        ),
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFFE4F8F2), Color(0xFFF0FAF7)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFCEECE6)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: _deepTeal,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.phone_in_talk_rounded, color: Colors.white, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Adolescent Health Support Line',
+                      style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Dial 0800 200 600 (Toll-Free in Arua)',
+                      style: TextStyle(color: _deepTeal, fontWeight: FontWeight.w700, fontSize: 11.5),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton.tonal(
+                onPressed: () {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Calling Arua Adolescent Health Helpline: 0800 200 600...')),
+                  );
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: _deepTeal,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  visualDensity: VisualDensity.compact,
+                ),
+                child: const Text('Call', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 16),
         SingleChildScrollView(
@@ -4391,16 +4476,25 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEAF7EE),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          article.tag,
-                          style: const TextStyle(color: Color(0xFF16A34A), fontSize: 10, fontWeight: FontWeight.w800),
-                        ),
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEAF7EE),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              article.tag,
+                              style: const TextStyle(color: Color(0xFF16A34A), fontSize: 10, fontWeight: FontWeight.w800),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          const Text(
+                            '3 min read',
+                            style: TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w500),
+                          ),
+                        ],
                       ),
                       const SizedBox(height: 6),
                       Text(
@@ -4821,14 +4915,53 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           title: 'Request supplies',
           subtitle: 'The selected school can review this request in the local preview.',
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF2F9F7),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFD6EAE5)),
+          ),
+          child: const Row(
+            children: [
+              Icon(Icons.shield_outlined, color: _deepTeal, size: 20),
+              SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  '100% Anonymous & Free. No personal names or phone numbers are recorded or shared.',
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w600,
+                    height: 1.35,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 18),
         const _FieldLabel('Your area'),
         const SizedBox(height: 7),
         DropdownButtonFormField<String>(
           key: const ValueKey('pickup-area-dropdown'),
           initialValue: _selectedArea == 'Arua Central' ? 'Oli' : _selectedArea,
-          decoration: const InputDecoration(
-            prefixIcon: Icon(Icons.location_on_outlined),
+          decoration: InputDecoration(
+            prefixIcon: const Icon(Icons.location_on_outlined, color: _deepTeal),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: _line),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: _line),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(14),
+              borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+            ),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           ),
           items: _pickupSchoolsByArea.keys
               .map((area) => DropdownMenuItem(value: area, child: Text(area)))
@@ -4931,15 +5064,30 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         else if (_localRequests.isEmpty)
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.all(18),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 28),
             decoration: BoxDecoration(
               color: Colors.white,
               border: Border.all(color: _line),
-              borderRadius: BorderRadius.circular(13),
+              borderRadius: BorderRadius.circular(16),
             ),
-            child: const Text(
-              'No saved requests on this device yet.',
-              style: TextStyle(color: _muted, height: 1.5),
+            child: Column(
+              children: [
+                const Icon(Icons.inbox_outlined, color: _muted, size: 38),
+                const SizedBox(height: 10),
+                const Text(
+                  'No saved requests on this device yet.',
+                  style: TextStyle(color: _muted, height: 1.5, fontWeight: FontWeight.w600),
+                ),
+                const SizedBox(height: 14),
+                FilledButton.tonal(
+                  onPressed: () => setState(() => _supportSubTab = _SupportSubTab.requestForm),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFFE4F8F2),
+                    foregroundColor: _deepTeal,
+                  ),
+                  child: const Text('Make a request now'),
+                ),
+              ],
             ),
           )
         else ...[
@@ -5468,46 +5616,110 @@ class _LocalRequestCard extends StatelessWidget {
       _ => 'packs',
     };
 
+    final isDone = request.status == 'Collected' || request.status == 'Approved';
+    final isReady = request.status == 'Ready for pickup';
+    final badgeBg = isDone
+        ? _greenPale
+        : (isReady ? const Color(0xFFE0F2FE) : const Color(0xFFFEF3C7));
+    final badgeColor = isDone
+        ? _deepTeal
+        : (isReady ? const Color(0xFF0369A1) : const Color(0xFFB45309));
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.fromLTRB(15, 14, 8, 14),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.fromLTRB(16, 16, 10, 16),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: _line),
-        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE4F0EE)),
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A0E383A),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.only(top: 2),
-            child: Icon(Icons.save_outlined, color: _green, size: 21),
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE4F8F2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.inventory_2_outlined, color: _deepTeal, size: 22),
           ),
-          const SizedBox(width: 11),
+          const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'Request ${request.reference}',
-                  style: TextStyle(color: _ink, fontWeight: FontWeight.w800),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Request ${request.reference}',
+                        style: const TextStyle(
+                          color: _ink,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                        ),
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: badgeBg,
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        request.status,
+                        style: TextStyle(
+                          color: badgeColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 6),
-                Text('${request.quantity} $unit of ${request.product}'),
-                const SizedBox(height: 4),
                 Text(
-                  request.status,
-                  style: const TextStyle(color: _green, fontWeight: FontWeight.w700),
+                  '${request.quantity} $unit of ${request.product}',
+                  style: const TextStyle(
+                    color: _ink,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13.5,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Row(
+                  children: [
+                    const Icon(Icons.school_outlined, size: 14, color: _muted),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Pickup: ${request.school} (${request.area})',
+                        style: const TextStyle(color: _muted, fontSize: 12),
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 4),
-                Text(
-                  'Pickup: ${request.school} (${request.area})',
-                  style: const TextStyle(color: _muted, fontSize: 12),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Not sent over network${date.isEmpty ? '' : '  ·  $date'}',
-                  style: const TextStyle(color: _muted, fontSize: 11),
+                Row(
+                  children: [
+                    const Icon(Icons.verified_user_outlined, size: 13, color: _muted),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        'Not sent over network${date.isEmpty ? '' : '  ·  $date'}',
+                        style: const TextStyle(color: _muted, fontSize: 11),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -5516,7 +5728,7 @@ class _LocalRequestCard extends StatelessWidget {
             IconButton(
               tooltip: 'Delete saved request',
               onPressed: onDelete,
-              icon: const Icon(Icons.delete_outline_rounded),
+              icon: const Icon(Icons.delete_outline_rounded, color: Color(0xFFEF4444)),
               style: IconButton.styleFrom(minimumSize: const Size(48, 48)),
             )
           else
@@ -5541,32 +5753,32 @@ class _PickupPointCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: _greenPale,
-      borderRadius: BorderRadius.circular(12),
+      color: const Color(0xFFE8F6F2),
+      borderRadius: BorderRadius.circular(14),
       child: InkWell(
         key: const ValueKey('pickup-point-details'),
         onTap: onTap,
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(14),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 180),
           width: double.infinity,
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            border: Border.all(color: _green.withValues(alpha: 0.12)),
-            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFC7E7E2)),
+            borderRadius: BorderRadius.circular(14),
           ),
           child: Row(
             children: [
               Container(
-                width: 40,
-                height: 40,
+                width: 42,
+                height: 42,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: const Icon(Icons.location_on_outlined, color: _green),
+                child: const Icon(Icons.location_on_outlined, color: _deepTeal, size: 22),
               ),
-              const SizedBox(width: 11),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -5574,8 +5786,8 @@ class _PickupPointCard extends StatelessWidget {
                     Text(
                       'Pickup school for $area',
                       style: const TextStyle(
-                        color: _green,
-                        fontSize: 11,
+                        color: _deepTeal,
+                        fontSize: 11.5,
                         fontWeight: FontWeight.w700,
                       ),
                     ),
@@ -5585,13 +5797,13 @@ class _PickupPointCard extends StatelessWidget {
                       style: const TextStyle(
                         color: _ink,
                         fontWeight: FontWeight.w800,
-                        fontSize: 14,
+                        fontSize: 14.5,
                       ),
                     ),
                   ],
                 ),
               ),
-              const Icon(Icons.info_outline_rounded, color: _green, size: 19),
+              const Icon(Icons.info_outline_rounded, color: _deepTeal, size: 20),
             ],
           ),
         ),
@@ -6453,14 +6665,14 @@ class _ProductChoice extends StatelessWidget {
       onSelected: (_) => onTap(),
       showCheckmark: false,
       labelStyle: TextStyle(
-        color: selected ? _green : _ink,
+        color: selected ? _deepTeal : _ink,
         fontWeight: FontWeight.w700,
-        fontSize: 12,
+        fontSize: 12.5,
       ),
       backgroundColor: Colors.white,
-      selectedColor: _greenPale,
-      side: BorderSide(color: selected ? _green : _line),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      selectedColor: const Color(0xFFE4F8F2),
+      side: BorderSide(color: selected ? _deepTeal : _line, width: selected ? 1.5 : 1.0),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     );
   }
 }

@@ -37,25 +37,25 @@ class DefaultFirebaseOptions {
     apiKey: 'YOUR-WEB-API-KEY',
     appId: '1:1234567890:web:abcdef123456',
     messagingSenderId: '1234567890',
-    projectId: 'YOUR-FIREBASE-PROJECT-ID',
-    authDomain: 'YOUR-FIREBASE-PROJECT-ID.firebaseapp.com',
-    storageBucket: 'YOUR-FIREBASE-PROJECT-ID.appspot.com',
+    projectId: 'padcare-73556',
+    authDomain: 'padcare-73556.firebaseapp.com',
+    storageBucket: 'padcare-73556.firebasestorage.app',
   );
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'YOUR-ANDROID-API-KEY',
     appId: '1:1234567890:android:abcdef123456',
     messagingSenderId: '1234567890',
-    projectId: 'YOUR-FIREBASE-PROJECT-ID',
-    storageBucket: 'YOUR-FIREBASE-PROJECT-ID.appspot.com',
+    projectId: 'padcare-73556',
+    storageBucket: 'padcare-73556.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'YOUR-IOS-API-KEY',
     appId: '1:1234567890:ios:abcdef123456',
     messagingSenderId: '1234567890',
-    projectId: 'YOUR-FIREBASE-PROJECT-ID',
-    storageBucket: 'YOUR-FIREBASE-PROJECT-ID.appspot.com',
+    projectId: 'padcare-73556',
+    storageBucket: 'padcare-73556.firebasestorage.app',
     iosBundleId: 'com.padcare.padcare',
   );
 }

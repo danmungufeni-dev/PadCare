@@ -14,9 +14,12 @@ class DefaultFirebaseOptions {
 
   /// Helper to check whether real credentials have been supplied.
   static bool get isConfigured {
-    return web.projectId != _placeholder &&
-        web.apiKey != 'YOUR-WEB-API-KEY' &&
-        android.projectId != _placeholder;
+    if (kIsWeb) {
+      return web.projectId != _placeholder &&
+          web.apiKey != 'YOUR-WEB-API-KEY' &&
+          web.apiKey.isNotEmpty;
+    }
+    return android.projectId != _placeholder;
   }
 
   static FirebaseOptions get currentPlatform {
@@ -34,12 +37,13 @@ class DefaultFirebaseOptions {
   }
 
   static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'YOUR-WEB-API-KEY',
+    apiKey: 'AIzaSyA9-bGGnCi9FQVt3JZDRM9o9Wq4aIZBECA',
     appId: '1:527730536648:web:f68878a268bb8203bf35fd',
     messagingSenderId: '527730536648',
     projectId: 'padcare-73556',
     authDomain: 'padcare-73556.firebaseapp.com',
     storageBucket: 'padcare-73556.firebasestorage.app',
+    measurementId: 'G-HV2YLCTPQY',
   );
 
   static const FirebaseOptions android = FirebaseOptions(

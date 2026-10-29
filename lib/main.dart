@@ -932,26 +932,7 @@ class _AccessGateState extends State<AccessGate> {
             ),
           ),
         ),
-        const SizedBox(height: 12),
-        Center(
-          child: OutlinedButton.icon(
-            onPressed: () {
-              setState(() {
-                _currentTab = _AuthTab.signUp;
-                _role = _PortalRole.teacher;
-              });
-            },
-            icon: const Icon(Icons.school_outlined, size: 18),
-            label: const Text('Try Teacher Demo Access'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _deepTeal,
-              side: const BorderSide(color: Color(0xFFE2E8F0)),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-          ),
-        ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 24),
         Center(
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,

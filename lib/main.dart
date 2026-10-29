@@ -311,26 +311,12 @@ class _AccessGateState extends State<AccessGate> {
     }
   }
 
-  Future<void> _handleGoogleSignUp() async {
-    final result = await AuthService.signInWithGoogle();
-    if (!mounted) return;
-
-    if (!result.isSuccess) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.errorMessage ?? 'Google Sign-In failed'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
-      return;
-    }
-
-    final email = result.user?.email ?? result.fallbackEmail ?? 'google.user@gmail.com';
-    final name = result.user?.displayName ??
-        (email.contains('@') ? email.split('@').first : 'Google User');
-    final uid = result.user?.uid ?? 'google-$email';
+  Future<void> _routeAuthenticatedUser({
+    required String name,
+    required String email,
+    required String uid,
+  }) async {
     final isTeacher = _role == _PortalRole.teacher;
-
     UserProfile? profile = await FirestoreService.getUserProfile(uid);
     if (profile == null) {
       profile = UserProfile(
@@ -345,13 +331,7 @@ class _AccessGateState extends State<AccessGate> {
       await FirestoreService.saveUserProfile(profile);
     }
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Incorporated with Google account ($email)'),
-        backgroundColor: _deepTeal,
-      ),
-    );
-
+    if (!mounted) return;
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
@@ -391,6 +371,260 @@ class _AccessGateState extends State<AccessGate> {
         ),
       );
     }
+  }
+
+  void _showPhoneAuthDialog({required bool isSignUp}) {
+    final phoneController = TextEditingController();
+    final smsController = TextEditingController();
+    bool codeSent = false;
+    bool isLoading = false;
+    String? errorMsg;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                top: 24,
+                left: 20,
+                right: 20,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: _line,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: _greenPale,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(Icons.phone_android_rounded, color: _deepTeal, size: 24),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isSignUp ? 'Register with Phone' : 'Phone Sign In',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: _ink,
+                                  fontFamily: _fontHeading,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                codeSent
+                                    ? 'Enter the 6-digit code sent via SMS'
+                                    : 'Receive an SMS verification code',
+                                style: const TextStyle(fontSize: 12, color: _muted, fontFamily: _fontBody),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 20),
+                    if (errorMsg != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, color: Colors.red, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                errorMsg!,
+                                style: const TextStyle(color: Colors.red, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                    if (!codeSent) ...[
+                      TextField(
+                        controller: phoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number',
+                          hintText: 'e.g. 0772 123 456 or +256 7...',
+                          prefixIcon: const Icon(Icons.phone_rounded, color: _deepTeal, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      FilledButton(
+                        onPressed: isLoading
+                            ? null
+                            : () async {
+                                final phone = phoneController.text.trim();
+                                if (phone.isEmpty) {
+                                  setModalState(() => errorMsg = 'Please enter a phone number.');
+                                  return;
+                                }
+                                setModalState(() {
+                                  isLoading = true;
+                                  errorMsg = null;
+                                });
+                                final res = await AuthService.sendPhoneVerificationCode(phone);
+                                if (!context.mounted) return;
+                                if (res.isSuccess) {
+                                  setModalState(() {
+                                    isLoading = false;
+                                    codeSent = true;
+                                  });
+                                } else {
+                                  setModalState(() {
+                                    isLoading = false;
+                                    errorMsg = res.errorMessage ?? 'Could not send SMS code.';
+                                  });
+                                }
+                              },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _deepTeal,
+                          minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Send SMS Verification Code'),
+                      ),
+                    ] else ...[
+                      TextField(
+                        controller: smsController,
+                        keyboardType: TextInputType.number,
+                        maxLength: 6,
+                        decoration: InputDecoration(
+                          labelText: '6-digit SMS Code',
+                          hintText: '123456',
+                          prefixIcon: const Icon(Icons.lock_clock_rounded, color: _deepTeal, size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      FilledButton(
+                        onPressed: isLoading
+                            ? null
+                            : () async {
+                                final code = smsController.text.trim();
+                                if (code.length < 6) {
+                                  setModalState(() => errorMsg = 'Enter the complete 6-digit code.');
+                                  return;
+                                }
+                                setModalState(() {
+                                  isLoading = true;
+                                  errorMsg = null;
+                                });
+                                final isTeacher = _role == _PortalRole.teacher;
+                                final res = await AuthService.verifyPhoneCode(
+                                  code,
+                                  role: isTeacher ? 'teacher' : 'parent',
+                                  school: isTeacher ? _school : null,
+                                  displayName: _nameController.text.trim(),
+                                );
+                                if (!context.mounted) return;
+                                if (res.isSuccess) {
+                                  Navigator.of(context).pop();
+                                  _routeAuthenticatedUser(
+                                    name: res.user?.phoneNumber ?? 'PadCare User',
+                                    email: res.user?.phoneNumber ?? 'phone-user',
+                                    uid: res.user?.uid ?? 'phone-user',
+                                  );
+                                } else {
+                                  setModalState(() {
+                                    isLoading = false;
+                                    errorMsg = res.errorMessage ?? 'Invalid verification code.';
+                                  });
+                                }
+                              },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: _coral,
+                          minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                              )
+                            : const Text('Verify & Enter PadCare'),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _handleGoogleSignUp() async {
+    final result = await AuthService.signInWithGoogle();
+    if (!mounted) return;
+
+    if (!result.isSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.errorMessage ?? 'Google Sign-In failed'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final email = result.user?.email ?? result.fallbackEmail ?? 'google.user@gmail.com';
+    final name = result.user?.displayName ??
+        (email.contains('@') ? email.split('@').first : 'Google User');
+    final uid = result.user?.uid ?? 'google-$email';
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Incorporated with Google account ($email)'),
+        backgroundColor: _deepTeal,
+      ),
+    );
+
+    await _routeAuthenticatedUser(name: name, email: email, uid: uid);
   }
 
   Future<void> _handleLogin() async {
@@ -773,6 +1007,33 @@ class _AccessGateState extends State<AccessGate> {
                   const SizedBox(width: 12),
                   const Text(
                     'Sign up with Google',
+                    style: TextStyle(
+                      color: Color(0xFF1F2937),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14.5,
+                      fontFamily: _fontSubheading,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            OutlinedButton(
+              onPressed: () => _showPhoneAuthDialog(isSignUp: true),
+              style: OutlinedButton.styleFrom(
+                backgroundColor: Colors.white,
+                side: const BorderSide(color: Color(0xFFD0D7DE)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.phone_android_rounded, color: _deepTeal, size: 20),
+                  SizedBox(width: 12),
+                  Text(
+                    'Sign up with Phone Number',
                     style: TextStyle(
                       color: Color(0xFF1F2937),
                       fontWeight: FontWeight.w700,
@@ -1181,6 +1442,33 @@ class _AccessGateState extends State<AccessGate> {
                 const SizedBox(width: 10),
                 const Text(
                   'Continue with Google',
+                  style: TextStyle(
+                    color: Color(0xFF1F2937),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    fontFamily: _fontSubheading,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          OutlinedButton(
+            onPressed: () => _showPhoneAuthDialog(isSignUp: false),
+            style: OutlinedButton.styleFrom(
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: Color(0xFFD0D7DE)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              minimumSize: const Size(double.infinity, 48),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.phone_android_rounded, color: _deepTeal, size: 20),
+                SizedBox(width: 10),
+                Text(
+                  'Sign in with Phone Number',
                   style: TextStyle(
                     color: Color(0xFF1F2937),
                     fontWeight: FontWeight.w700,

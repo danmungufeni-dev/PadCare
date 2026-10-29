@@ -47,8 +47,8 @@ class DefaultFirebaseOptions {
   );
 
   static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'YOUR-ANDROID-API-KEY',
-    appId: '1:527730536648:android:f68878a268bb8203bf35fd',
+    apiKey: 'AIzaSyA9-bGGnCi9FQVt3JZDRM9o9Wq4aIZBECA',
+    appId: '1:527730536648:android:a9c986fa6f150ba3bf35fd',
     messagingSenderId: '527730536648',
     projectId: 'padcare-73556',
     storageBucket: 'padcare-73556.firebasestorage.app',

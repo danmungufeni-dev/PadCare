@@ -255,6 +255,156 @@ class AuthService {
     );
   }
 
+  static ConfirmationResult? _webConfirmationResult;
+  static String? _mobileVerificationId;
+
+  /// Normalizes phone numbers with +256 country code default for Uganda
+  static String formatPhoneNumber(String phone) {
+    var cleaned = phone.replaceAll(RegExp(r'[\s\-\(\)]'), '');
+    if (cleaned.startsWith('0')) {
+      cleaned = '+256${cleaned.substring(1)}';
+    } else if (!cleaned.startsWith('+')) {
+      cleaned = '+256$cleaned';
+    }
+    return cleaned;
+  }
+
+  /// Sends SMS verification code via Firebase Phone Auth
+  static Future<AuthResult> sendPhoneVerificationCode(String phone) async {
+    final cleanPhone = formatPhoneNumber(phone.trim());
+    if (cleanPhone.length < 9) {
+      return const AuthResult(
+        isSuccess: false,
+        errorMessage: 'Please enter a valid phone number (e.g. 0772 123 456 or +256 772 123 456).',
+      );
+    }
+
+    if (FirebaseService.isFirebaseAvailable && _auth != null) {
+      try {
+        if (kIsWeb) {
+          _webConfirmationResult = await _auth!.signInWithPhoneNumber(cleanPhone);
+          return const AuthResult(isSuccess: true);
+        } else {
+          final completer = Completer<AuthResult>();
+          await _auth!.verifyPhoneNumber(
+            phoneNumber: cleanPhone,
+            verificationCompleted: (PhoneAuthCredential credential) async {
+              try {
+                final userCred = await _auth!.signInWithCredential(credential);
+                completer.complete(AuthResult(isSuccess: true, user: userCred.user));
+              } catch (e) {
+                completer.complete(AuthResult(isSuccess: false, errorMessage: 'Auto verification failed: $e'));
+              }
+            },
+            verificationFailed: (FirebaseAuthException e) {
+              completer.complete(AuthResult(isSuccess: false, errorMessage: e.message ?? e.code));
+            },
+            codeSent: (String verificationId, int? resendToken) {
+              _mobileVerificationId = verificationId;
+              completer.complete(const AuthResult(isSuccess: true));
+            },
+            codeAutoRetrievalTimeout: (String verificationId) {
+              _mobileVerificationId = verificationId;
+            },
+          );
+          return await completer.future;
+        }
+      } on FirebaseAuthException catch (e) {
+        return AuthResult(
+          isSuccess: false,
+          errorMessage: e.message ?? 'Phone verification failed (${e.code}).',
+        );
+      } catch (e) {
+        return AuthResult(
+          isSuccess: false,
+          errorMessage: 'Phone verification error: $e',
+        );
+      }
+    }
+
+    // Offline / fallback mock mode
+    return AuthResult(
+      isSuccess: true,
+      fallbackEmail: '$cleanPhone@phone.padcare.org',
+    );
+  }
+
+  /// Verifies the 6-digit SMS code and completes sign-in
+  static Future<AuthResult> verifyPhoneCode(
+    String smsCode, {
+    String role = 'parent',
+    String? school,
+    String? displayName,
+  }) async {
+    final cleanCode = smsCode.trim();
+    if (cleanCode.isEmpty) {
+      return const AuthResult(
+        isSuccess: false,
+        errorMessage: 'Please enter the SMS code received.',
+      );
+    }
+
+    if (FirebaseService.isFirebaseAvailable && _auth != null) {
+      try {
+        UserCredential? userCred;
+        if (kIsWeb && _webConfirmationResult != null) {
+          userCred = await _webConfirmationResult!.confirm(cleanCode);
+        } else if (_mobileVerificationId != null) {
+          final credential = PhoneAuthProvider.credential(
+            verificationId: _mobileVerificationId!,
+            smsCode: cleanCode,
+          );
+          userCred = await _auth!.signInWithCredential(credential);
+        }
+
+        if (userCred != null && userCred.user != null) {
+          final isParent = role != 'teacher';
+          final profile = UserProfile(
+            uid: userCred.user!.uid,
+            email: userCred.user!.phoneNumber ?? 'phone-user',
+            displayName: displayName?.trim().isNotEmpty == true
+                ? displayName!.trim()
+                : (userCred.user!.phoneNumber ?? 'PadCare User'),
+            role: role,
+            school: school,
+            authorized: isParent,
+            status: isParent ? 'approved' : 'pending_approval',
+          );
+          await FirestoreService.saveUserProfile(profile);
+          return AuthResult(isSuccess: true, user: userCred.user);
+        }
+      } on FirebaseAuthException catch (e) {
+        return AuthResult(
+          isSuccess: false,
+          errorMessage: e.message ?? 'Invalid verification code (${e.code}).',
+        );
+      } catch (e) {
+        return AuthResult(
+          isSuccess: false,
+          errorMessage: 'Verification error: $e',
+        );
+      }
+    }
+
+    // Graceful offline mock
+    final isParent = role != 'teacher';
+    final offlineProfile = UserProfile(
+      uid: 'offline-phone-${DateTime.now().millisecondsSinceEpoch}',
+      email: '+256700000000',
+      displayName: displayName?.trim().isNotEmpty == true ? displayName!.trim() : 'Phone User',
+      role: role,
+      school: school,
+      authorized: isParent,
+      status: isParent ? 'approved' : 'pending_approval',
+    );
+    await FirestoreService.saveUserProfile(offlineProfile);
+
+    return const AuthResult(
+      isSuccess: true,
+      fallbackEmail: '+256700000000@phone.padcare.org',
+    );
+  }
+
   /// Signs the user out of Firebase and clears local session.
   static Future<void> signOut() async {
     if (FirebaseService.isFirebaseAvailable && _auth != null) {

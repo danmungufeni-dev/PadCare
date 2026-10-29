@@ -19,6 +19,46 @@ class AuthResult {
   });
 }
 
+class UserProfile {
+  final String uid;
+  final String email;
+  final String displayName;
+  final String role; // 'teacher' | 'parent' | 'admin'
+  final String? school;
+  final bool authorized;
+  final String status; // 'pending' | 'approved' | 'rejected'
+
+  const UserProfile({
+    required this.uid,
+    required this.email,
+    required this.displayName,
+    required this.role,
+    this.school,
+    required this.authorized,
+    required this.status,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'uid': uid,
+    'email': email,
+    'displayName': displayName,
+    'role': role,
+    'school': school,
+    'authorized': authorized,
+    'status': status,
+  };
+
+  factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
+    uid: json['uid'] as String? ?? '',
+    email: json['email'] as String? ?? '',
+    displayName: json['displayName'] as String? ?? '',
+    role: json['role'] as String? ?? 'parent',
+    school: json['school'] as String?,
+    authorized: json['authorized'] as bool? ?? (json['role'] == 'parent'),
+    status: json['status'] as String? ?? ((json['role'] == 'parent') ? 'approved' : 'pending'),
+  );
+}
+
 class FirebaseService {
   static bool _initialized = false;
   static bool _firebaseAvailable = false;
@@ -84,9 +124,15 @@ class AuthService {
         );
         return AuthResult(isSuccess: true, user: credential.user);
       } on FirebaseAuthException catch (e) {
+        String msg = 'Invalid email or password. Please verify your credentials.';
+        if (e.code == 'too-many-requests') {
+          msg = 'Too many failed login attempts. Please wait a moment and try again.';
+        } else if (e.code == 'user-disabled') {
+          msg = 'This account has been disabled. Please contact PadCare administration.';
+        }
         return AuthResult(
           isSuccess: false,
-          errorMessage: e.message ?? 'Authentication failed (${e.code}).',
+          errorMessage: msg,
         );
       } catch (e) {
         return AuthResult(
@@ -108,6 +154,8 @@ class AuthService {
     required String email,
     required String password,
     String? displayName,
+    String role = 'parent',
+    String? school,
   }) async {
     final cleanEmail = email.trim();
     if (cleanEmail.isEmpty) {
@@ -123,6 +171,8 @@ class AuthService {
       );
     }
 
+    final isParent = role != 'teacher';
+
     if (FirebaseService.isFirebaseAvailable && _auth != null) {
       try {
         final credential = await _auth!.createUserWithEmailAndPassword(
@@ -132,6 +182,19 @@ class AuthService {
         if (displayName != null && displayName.trim().isNotEmpty) {
           await credential.user?.updateDisplayName(displayName.trim());
         }
+
+        final uid = credential.user?.uid ?? cleanEmail;
+        final profile = UserProfile(
+          uid: uid,
+          email: cleanEmail,
+          displayName: displayName?.trim() ?? '',
+          role: role,
+          school: school,
+          authorized: isParent, // Teachers require backend authorization in Firebase
+          status: isParent ? 'approved' : 'pending_approval',
+        );
+        await FirestoreService.saveUserProfile(profile);
+
         return AuthResult(isSuccess: true, user: credential.user);
       } on FirebaseAuthException catch (e) {
         return AuthResult(
@@ -145,6 +208,17 @@ class AuthService {
         );
       }
     }
+
+    final localProfile = UserProfile(
+      uid: 'offline-$cleanEmail',
+      email: cleanEmail,
+      displayName: displayName?.trim() ?? '',
+      role: role,
+      school: school,
+      authorized: isParent,
+      status: isParent ? 'approved' : 'pending_approval',
+    );
+    await FirestoreService.saveUserProfile(localProfile);
 
     return AuthResult(
       isSuccess: true,
@@ -195,6 +269,48 @@ class AuthService {
 class FirestoreService {
   static FirebaseFirestore? get _db =>
       FirebaseService.isFirebaseAvailable ? FirebaseFirestore.instance : null;
+
+  static final Map<String, UserProfile> _offlineProfiles = {};
+
+  /// Saves or updates user profile in `users/{uid}`
+  static Future<void> saveUserProfile(UserProfile profile) async {
+    _offlineProfiles[profile.uid] = profile;
+    _offlineProfiles[profile.email] = profile;
+    if (!FirebaseService.isFirebaseAvailable || _db == null) return;
+    try {
+      await _db!.collection('users').doc(profile.uid).set({
+        ...profile.toJson(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Firestore saveUserProfile error: $e');
+    }
+  }
+
+  /// Fetches user profile from Firestore `users/{uid}` or offline cache
+  static Future<UserProfile?> getUserProfile(String uidOrEmail) async {
+    if (_offlineProfiles.containsKey(uidOrEmail)) {
+      return _offlineProfiles[uidOrEmail];
+    }
+    if (!FirebaseService.isFirebaseAvailable || _db == null) return null;
+    try {
+      final doc = await _db!.collection('users').doc(uidOrEmail).get();
+      if (doc.exists && doc.data() != null) {
+        return UserProfile.fromJson(doc.data()!);
+      }
+      final query = await _db!
+          .collection('users')
+          .where('email', isEqualTo: uidOrEmail)
+          .limit(1)
+          .get();
+      if (query.docs.isNotEmpty) {
+        return UserProfile.fromJson(query.docs.first.data());
+      }
+    } catch (e) {
+      debugPrint('Firestore getUserProfile error: $e');
+    }
+    return null;
+  }
 
   /// Saves or updates a menstrual care pad distribution request in Firestore.
   static Future<void> saveRequest(Map<String, dynamic> requestData) async {

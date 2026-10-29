@@ -1,10 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-void main() {
+import 'services/firebase_service.dart';
+
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await FirebaseService.initialize();
   runApp(const MyApp());
 }
 
@@ -214,8 +219,27 @@ class _AccessGateState extends State<AccessGate> {
     }
   }
 
-  void _handleLogin() {
+  Future<void> _handleLogin() async {
     final email = _emailController.text.trim();
+    final password = _passwordController.text.trim();
+
+    final result = await AuthService.signIn(
+      email: email.isEmpty ? 'guest@padcare.org' : email,
+      password: password.isEmpty ? 'padcare123' : password,
+    );
+
+    if (!mounted) return;
+
+    if (!result.isSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.errorMessage ?? 'Login failed'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
@@ -1480,6 +1504,13 @@ class _HomeScreenState extends State<HomeScreen> {
       final stock = Map<String, int>.from(data.stock)
         ..[_stockKey(widget.facility, supply.name)] = quantity;
       await _saveLocalData(_LocalData(requests: data.requests, stock: stock));
+      unawaited(
+        FirestoreService.updateSchoolStock(
+          schoolName: widget.facility,
+          kitsOnHand: stock[_stockKey(widget.facility, 'Emergency period kits')] ?? 0,
+          packsOnHand: stock[_stockKey(widget.facility, 'Disposable pad packs')] ?? 0,
+        ),
+      );
       if (!mounted) return;
       setState(() => supply.onHand = quantity);
     } catch (_) {
@@ -1530,6 +1561,7 @@ class _HomeScreenState extends State<HomeScreen> {
       await _saveLocalData(
         _LocalData(requests: updatedRequests, stock: stock),
       );
+      unawaited(FirestoreService.updateRequestStatus(request.id, status));
       if (!mounted) return;
       setState(() {
         _requests = updatedRequests;
@@ -2415,6 +2447,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       await _saveLocalData(
         _LocalData(requests: updatedRequests, stock: data.stock),
       );
+      unawaited(FirestoreService.saveRequest(request.toJson()));
       if (!mounted) return;
       setState(() {
         _localRequests = updatedRequests;
@@ -2441,6 +2474,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       await _saveLocalData(
         _LocalData(requests: updatedRequests, stock: data.stock),
       );
+      unawaited(FirestoreService.saveRequest(request.toJson()));
       if (!mounted) return;
       setState(() => _localRequests = updatedRequests);
     } catch (_) {

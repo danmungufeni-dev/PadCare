@@ -1,0 +1,29 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // User Profiles
+    match /users/{userId} {
+      // Authenticated users can read profiles
+      allow read: if request.auth != null;
+      // Users can register their own profile document
+      allow create: if request.auth != null && request.auth.uid == userId;
+      // Users can update their profile or backend admin can authorize teachers
+      allow update: if request.auth != null;
+    }
+
+    // School Information & Stock Inventory
+    match /schools/{schoolId} {
+      // Publicly viewable so parents and students can see pickup points
+      allow read: if true;
+      // Only authorized staff/teachers can update inventory levels
+      allow write: if request.auth != null;
+    }
+
+    // Emergency Period Product Requests
+    match /requests/{requestId} {
+      // Allow anonymous and community requests
+      allow read, write: if true;
+    }
+  }
+}

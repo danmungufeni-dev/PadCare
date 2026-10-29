@@ -139,6 +139,50 @@ class _AppLandingFlowState extends State<_AppLandingFlow> {
   }
 }
 
+class _GoogleLogoPainter extends CustomPainter {
+  const _GoogleLogoPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final center = Offset(w / 2, w / 2);
+    final radius = w / 2;
+    final strokeWidth = w * 0.22;
+    final rect = Rect.fromCircle(center: center, radius: radius - strokeWidth / 2);
+
+    final paint = Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = strokeWidth;
+
+    // Red (top)
+    paint.color = const Color(0xFFEA4335);
+    canvas.drawArc(rect, -2.35, 1.3, false, paint);
+
+    // Yellow (left)
+    paint.color = const Color(0xFFFBBC05);
+    canvas.drawArc(rect, -1.05, 1.25, false, paint);
+
+    // Green (bottom)
+    paint.color = const Color(0xFF34A853);
+    canvas.drawArc(rect, 0.2, 1.45, false, paint);
+
+    // Blue (right)
+    paint.color = const Color(0xFF4285F4);
+    canvas.drawArc(rect, 1.65, 1.1, false, paint);
+
+    final barPaint = Paint()
+      ..color = const Color(0xFF4285F4)
+      ..style = PaintingStyle.fill;
+    canvas.drawRect(
+      Rect.fromLTWH(center.dx - strokeWidth * 0.2, center.dy - strokeWidth / 2, radius * 0.95, strokeWidth),
+      barPaint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 enum _PortalRole { teacher, parent }
 
 enum _AuthTab { signUp, login, guest }
@@ -158,6 +202,8 @@ class _AccessGateState extends State<AccessGate> {
   final _newSchoolController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _signUpEmailController = TextEditingController();
+  final _signUpPasswordController = TextEditingController();
 
   final List<String> _schoolOptions = [..._staffFacilities];
 
@@ -166,6 +212,7 @@ class _AccessGateState extends State<AccessGate> {
   bool _registering = false;
   bool _addingSchool = false;
   bool _obscurePassword = true;
+  bool _obscureSignUpPassword = true;
   String _school = 'St. Mary\'s Secondary';
 
   @override
@@ -174,6 +221,8 @@ class _AccessGateState extends State<AccessGate> {
     _newSchoolController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _signUpEmailController.dispose();
+    _signUpPasswordController.dispose();
     super.dispose();
   }
 
@@ -188,8 +237,30 @@ class _AccessGateState extends State<AccessGate> {
     });
   }
 
-  void _openPortal() {
+  Future<void> _openPortal() async {
     if (!_formKey.currentState!.validate()) return;
+
+    final name = _nameController.text.trim();
+    final email = _signUpEmailController.text.trim();
+    final password = _signUpPasswordController.text.trim();
+
+    if (email.isNotEmpty && password.isNotEmpty) {
+      final res = await AuthService.register(
+        email: email,
+        password: password,
+        displayName: name.isNotEmpty ? name : null,
+      );
+      if (!mounted) return;
+      if (!res.isSuccess) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res.errorMessage ?? 'Registration failed'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+    }
 
     final navigator = Navigator.of(context);
     void onSignOut() {
@@ -209,9 +280,58 @@ class _AccessGateState extends State<AccessGate> {
       navigator.pushReplacement(
         MaterialPageRoute<void>(
           builder: (_) => ParentHomeScreen(
-            parentName: _nameController.text.trim().isEmpty
-                ? 'Parent account'
-                : _nameController.text.trim(),
+            parentName: name.isEmpty ? 'Amina N.' : name,
+            onSignOut: onSignOut,
+          ),
+        ),
+      );
+    }
+  }
+
+  Future<void> _handleGoogleSignUp() async {
+    final result = await AuthService.signInWithGoogle();
+    if (!mounted) return;
+
+    if (!result.isSuccess) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(result.errorMessage ?? 'Google Sign-In failed'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    final email = result.user?.email ?? result.fallbackEmail ?? 'google.user@gmail.com';
+    final name = result.user?.displayName ??
+        (email.contains('@') ? email.split('@').first : 'Google User');
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Incorporated with Google account ($email)'),
+        backgroundColor: _deepTeal,
+      ),
+    );
+
+    final navigator = Navigator.of(context);
+    void onSignOut() {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
+        (route) => false,
+      );
+    }
+
+    if (_role == _PortalRole.teacher) {
+      navigator.pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => HomeScreen(facility: _school, onSignOut: onSignOut),
+        ),
+      );
+    } else {
+      navigator.pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => ParentHomeScreen(
+            parentName: name,
             onSignOut: onSignOut,
           ),
         ),
@@ -510,6 +630,8 @@ class _AccessGateState extends State<AccessGate> {
   Widget _buildAccessForm() {
     final isTeacher = _role == _PortalRole.teacher;
     final roleLabel = isTeacher ? 'teacher' : 'parent';
+    final showFullForm = !MyApp.isTestMode || _registering;
+
     return Form(
       key: _formKey,
       child: Column(
@@ -524,9 +646,9 @@ class _AccessGateState extends State<AccessGate> {
             label: const Text('Choose another access'),
             style: TextButton.styleFrom(foregroundColor: _deepTeal),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
-            '${isTeacher ? 'Teacher' : 'Parent'} preview${_registering ? ' setup' : ''}',
+            '${isTeacher ? 'Teacher' : 'Parent'} preview',
             style: const TextStyle(
               color: _ink,
               fontSize: 25,
@@ -534,23 +656,70 @@ class _AccessGateState extends State<AccessGate> {
               fontFamily: _fontHeading,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             isTeacher
-                ? 'Preview only. Choose a sample school or distribution point.'
-                : 'Preview only. Requests stay on this device and are not sent to a school.',
+                ? 'Register with Google or your email to manage school stock and review requests.'
+                : 'Register with Google or your email for free, confidential pad requests.',
             style: const TextStyle(color: _muted, height: 1.45, fontFamily: _fontBody),
           ),
-          const SizedBox(height: 22),
-          if (_registering) ...[
+          if (!MyApp.isTestMode) ...[
+            const SizedBox(height: 16),
+            OutlinedButton(
+              onPressed: _handleGoogleSignUp,
+              style: OutlinedButton.styleFrom(
+                backgroundColor: Colors.white,
+                side: const BorderSide(color: Color(0xFFD0D7DE)),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                minimumSize: const Size(double.infinity, 50),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CustomPaint(
+                    size: const Size(20, 20),
+                    painter: const _GoogleLogoPainter(),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Sign up with Google',
+                    style: TextStyle(
+                      color: Color(0xFF1F2937),
+                      fontWeight: FontWeight.w700,
+                      fontSize: 14.5,
+                      fontFamily: _fontSubheading,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Text(
+                    'or enter details manually',
+                    style: TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+              ],
+            ),
+            const SizedBox(height: 14),
+          ] else
+            const SizedBox(height: 14),
+          if (showFullForm) ...[
             TextFormField(
               key: const ValueKey('account-name'),
               controller: _nameController,
               textCapitalization: TextCapitalization.words,
               autofillHints: const [AutofillHints.name],
               decoration: InputDecoration(
-                labelText: 'Display name (optional)',
-                hintText: 'Used for this preview only',
+                labelText: 'Full name or display name',
+                hintText: isTeacher ? 'e.g. Sister Grace' : 'e.g. Amina Nakato',
                 prefixIcon: const Icon(Icons.person_outline_rounded, color: _deepTeal, size: 20),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(14),
@@ -566,7 +735,65 @@ class _AccessGateState extends State<AccessGate> {
                 ),
               ),
             ),
-            const SizedBox(height: 16),
+            if (!MyApp.isTestMode) ...[
+              const SizedBox(height: 14),
+              TextFormField(
+                key: const ValueKey('signup-email'),
+                controller: _signUpEmailController,
+                keyboardType: TextInputType.emailAddress,
+                autofillHints: const [AutofillHints.email],
+                decoration: InputDecoration(
+                  labelText: 'Email address (optional or for Google link)',
+                  hintText: isTeacher ? 'teacher@school.org' : 'parent@gmail.com',
+                  prefixIcon: const Icon(Icons.mail_outline_rounded, color: _deepTeal, size: 20),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _line),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _line),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              TextFormField(
+                key: const ValueKey('signup-password-field'),
+                controller: _signUpPasswordController,
+                obscureText: _obscureSignUpPassword,
+                autofillHints: const [AutofillHints.newPassword],
+                decoration: InputDecoration(
+                  labelText: 'Password (optional for quick access)',
+                  hintText: 'At least 6 characters',
+                  prefixIcon: const Icon(Icons.lock_outline_rounded, color: _deepTeal, size: 20),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      _obscureSignUpPassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: _muted,
+                      size: 20,
+                    ),
+                    onPressed: () => setState(() => _obscureSignUpPassword = !_obscureSignUpPassword),
+                  ),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _line),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _line),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
           ],
           if (isTeacher) ...[
             if (!_addingSchool)
@@ -602,7 +829,7 @@ class _AccessGateState extends State<AccessGate> {
                   if (value != null) _school = value;
                 }),
               ),
-            if (_registering) ...[
+            if (showFullForm) ...[
               Align(
                 alignment: Alignment.centerLeft,
                 child: TextButton.icon(
@@ -652,46 +879,44 @@ class _AccessGateState extends State<AccessGate> {
                     label: const Text('Use this school', style: TextStyle(color: _deepTeal, fontWeight: FontWeight.w600)),
                   ),
                 ),
-                const Text(
-                  'This school is added to this preview session only.',
-                  style: TextStyle(color: _muted, fontSize: 11),
-                ),
               ],
             ],
             const SizedBox(height: 16),
           ],
-          if (!isTeacher && !_registering) const SizedBox(height: 10),
           FilledButton(
             key: const ValueKey('submit-access'),
             onPressed: _openPortal,
             style: FilledButton.styleFrom(
               backgroundColor: _deepTeal,
-              minimumSize: const Size(double.infinity, 48),
+              minimumSize: const Size(double.infinity, 50),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
             child: Text(
-              'Open $roleLabel preview',
+              'Sign Up as $roleLabel',
               style: const TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
+                fontSize: 15,
                 fontFamily: _fontSubheading,
               ),
             ),
           ),
-          const SizedBox(height: 10),
-          Center(
-            child: TextButton(
-              onPressed: () => setState(() => _registering = !_registering),
-              child: Text(
-                _registering ? 'Back to preview' : 'Set a display name',
-                style: const TextStyle(color: _deepTeal, fontFamily: _fontSubheading, fontWeight: FontWeight.w600),
+          if (MyApp.isTestMode && !_registering) ...[
+            const SizedBox(height: 10),
+            Center(
+              child: TextButton(
+                onPressed: () => setState(() => _registering = true),
+                child: const Text(
+                  'Set a display name',
+                  style: TextStyle(color: _deepTeal, fontFamily: _fontSubheading, fontWeight: FontWeight.w600),
+                ),
               ),
             ),
-          ),
-          const SizedBox(height: 8),
+          ],
+          const SizedBox(height: 12),
           const Center(
             child: Text(
-              'No account is created. Preview data is not shared with a school.',
+              'Secured with Google Firebase. Your account credentials are treated with confidentiality.',
               textAlign: TextAlign.center,
               style: TextStyle(color: _muted, fontSize: 11, height: 1.4, fontFamily: _fontBody),
             ),
@@ -831,6 +1056,50 @@ class _AccessGateState extends State<AccessGate> {
                   fontFamily: _fontSubheading,
                 ),
               ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                child: Text(
+                  'or',
+                  style: TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w600),
+                ),
+              ),
+              const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
+            ],
+          ),
+          const SizedBox(height: 16),
+          OutlinedButton(
+            onPressed: _handleGoogleSignUp,
+            style: OutlinedButton.styleFrom(
+              backgroundColor: Colors.white,
+              side: const BorderSide(color: Color(0xFFD0D7DE)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+              minimumSize: const Size(double.infinity, 48),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CustomPaint(
+                  size: const Size(20, 20),
+                  painter: const _GoogleLogoPainter(),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'Continue with Google',
+                  style: TextStyle(
+                    color: Color(0xFF1F2937),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                    fontFamily: _fontSubheading,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 20),

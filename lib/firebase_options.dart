@@ -35,8 +35,8 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions web = FirebaseOptions(
     apiKey: 'YOUR-WEB-API-KEY',
-    appId: '1:1234567890:web:abcdef123456',
-    messagingSenderId: '1234567890',
+    appId: '1:527730536648:web:f68878a268bb8203bf35fd',
+    messagingSenderId: '527730536648',
     projectId: 'padcare-73556',
     authDomain: 'padcare-73556.firebaseapp.com',
     storageBucket: 'padcare-73556.firebasestorage.app',
@@ -44,16 +44,16 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'YOUR-ANDROID-API-KEY',
-    appId: '1:1234567890:android:abcdef123456',
-    messagingSenderId: '1234567890',
+    appId: '1:527730536648:android:f68878a268bb8203bf35fd',
+    messagingSenderId: '527730536648',
     projectId: 'padcare-73556',
     storageBucket: 'padcare-73556.firebasestorage.app',
   );
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'YOUR-IOS-API-KEY',
-    appId: '1:1234567890:ios:abcdef123456',
-    messagingSenderId: '1234567890',
+    appId: '1:527730536648:ios:f68878a268bb8203bf35fd',
+    messagingSenderId: '527730536648',
     projectId: 'padcare-73556',
     storageBucket: 'padcare-73556.firebasestorage.app',
     iosBundleId: 'com.padcare.padcare',

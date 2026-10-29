@@ -130,14 +130,7 @@ class _AppLandingFlowState extends State<_AppLandingFlow> {
         onClose: () => setState(() => _showSplash = false),
       );
     }
-    return ParentHomeScreen(
-      parentName: 'Amina N.',
-      onSignOut: () {
-        Navigator.of(context).push(
-          MaterialPageRoute<void>(builder: (_) => const AccessGate()),
-        );
-      },
-    );
+    return const AccessGate();
   }
 }
 
@@ -163,12 +156,11 @@ class _AccessGateState extends State<AccessGate> {
 
   final List<String> _schoolOptions = [..._staffFacilities];
 
-  _AuthTab _currentTab = _AuthTab.signUp;
+  _AuthTab _currentTab = MyApp.isTestMode ? _AuthTab.signUp : _AuthTab.login;
   _PortalRole? _role;
   bool _registering = false;
   bool _addingSchool = false;
   bool _obscurePassword = true;
-  bool _rememberMe = true;
   String _school = 'St. Mary\'s Secondary';
 
   @override
@@ -275,7 +267,7 @@ class _AccessGateState extends State<AccessGate> {
     final isWide = screenWidth >= 960;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF163CB9),
+      backgroundColor: const Color(0xFF0F4D57),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -309,7 +301,7 @@ class _AccessGateState extends State<AccessGate> {
                             Expanded(
                               flex: 6,
                               child: Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 24),
                                 child: _buildLeftContent(),
                               ),
                             ),
@@ -340,38 +332,10 @@ class _AccessGateState extends State<AccessGate> {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            const _BrandLockup(),
-            TextButton.icon(
-              onPressed: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute<void>(
-                    builder: (_) => ParentHomeScreen(
-                      parentName: 'Amina N.',
-                      onSignOut: () => Navigator.of(context).pushReplacement(
-                        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
-                      ),
-                    ),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.arrow_forward_rounded, size: 16),
-              label: const Text('Skip to App'),
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFF163CB9),
-                textStyle: const TextStyle(
-                  fontWeight: FontWeight.w700,
-                  fontFamily: _fontSubheading,
-                ),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
+        const _BrandLockup(),
+        const SizedBox(height: 18),
         _buildTabBar(),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         _softTransition(
           key: ValueKey('tab-${_currentTab.name}-${_role?.name ?? 'norole'}'),
           child: _buildTabBody(),
@@ -415,14 +379,14 @@ class _AccessGateState extends State<AccessGate> {
           padding: const EdgeInsets.symmetric(vertical: 10),
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: isSelected ? const Color(0xFF163CB9) : Colors.transparent,
+            color: isSelected ? _deepTeal : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
             boxShadow: isSelected
-                ? [
+                ? const [
                     BoxShadow(
-                      color: const Color(0x4D163CB9),
+                      color: Color(0x33116B78),
                       blurRadius: 8,
-                      offset: const Offset(0, 2),
+                      offset: Offset(0, 2),
                     ),
                   ]
                 : null,
@@ -507,8 +471,8 @@ class _AccessGateState extends State<AccessGate> {
             icon: const Icon(Icons.home_outlined),
             label: const Text('Enter PadCare Directly'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF163CB9),
-              side: const BorderSide(color: Color(0xFF163CB9)),
+              foregroundColor: _deepTeal,
+              side: const BorderSide(color: _deepTeal),
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
@@ -530,7 +494,7 @@ class _AccessGateState extends State<AccessGate> {
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  foregroundColor: const Color(0xFF163CB9),
+                  foregroundColor: _deepTeal,
                 ),
                 child: const Text(
                   'Login',
@@ -559,7 +523,7 @@ class _AccessGateState extends State<AccessGate> {
             }),
             icon: const Icon(Icons.arrow_back_rounded, size: 18),
             label: const Text('Choose another access'),
-            style: TextButton.styleFrom(foregroundColor: const Color(0xFF163CB9)),
+            style: TextButton.styleFrom(foregroundColor: _deepTeal),
           ),
           const SizedBox(height: 12),
           Text(
@@ -660,7 +624,7 @@ class _AccessGateState extends State<AccessGate> {
             key: const ValueKey('submit-access'),
             onPressed: _openPortal,
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF163CB9),
+              backgroundColor: _deepTeal,
               minimumSize: const Size(double.infinity, 48),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
@@ -702,78 +666,60 @@ class _AccessGateState extends State<AccessGate> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Center(
-            child: Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: const Color(0xFFEFF6FF),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: const Icon(
-                Icons.home_rounded,
-                color: Color(0xFF163CB9),
-                size: 28,
-              ),
-            ),
-          ),
-          const SizedBox(height: 14),
-          const Center(
-            child: Text(
-              'Welcome home',
-              style: TextStyle(
-                color: _ink,
-                fontSize: 26,
-                fontWeight: FontWeight.w800,
-                fontFamily: _fontHeading,
-              ),
+          const SizedBox(height: 8),
+          const Text(
+            'Welcome back',
+            style: TextStyle(
+              color: _ink,
+              fontSize: 26,
+              fontWeight: FontWeight.w800,
+              fontFamily: _fontHeading,
             ),
           ),
           const SizedBox(height: 6),
-          const Center(
-            child: Text(
-              'Please enter your details.',
-              style: TextStyle(
-                color: _muted,
-                fontSize: 14,
-                fontFamily: _fontBody,
-              ),
+          const Text(
+            'Sign in to access school stock and request management.',
+            style: TextStyle(
+              color: _muted,
+              fontSize: 14,
+              fontFamily: _fontBody,
             ),
           ),
-          const SizedBox(height: 22),
+          const SizedBox(height: 24),
           TextFormField(
             key: const ValueKey('login-email'),
             controller: _emailController,
             keyboardType: TextInputType.emailAddress,
             decoration: InputDecoration(
-              hintText: 'Email',
-              hintStyle: const TextStyle(color: _muted, fontSize: 14, fontFamily: _fontBody),
-              suffixIcon: const Icon(Icons.mail_outline_rounded, color: _muted, size: 20),
+              labelText: 'Email address',
+              hintText: 'teacher@school.org or parent@gmail.com',
+              prefixIcon: const Icon(Icons.mail_outline_rounded, color: _deepTeal, size: 20),
               filled: true,
               fillColor: Colors.white,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: _line),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: _line),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFF163CB9), width: 1.5),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: _deepTeal, width: 1.5),
               ),
             ),
           ),
-          const SizedBox(height: 14),
+          const SizedBox(height: 16),
           TextFormField(
             key: const ValueKey('login-password'),
             controller: _passwordController,
             obscureText: _obscurePassword,
             decoration: InputDecoration(
-              hintText: 'Password',
-              hintStyle: const TextStyle(color: _muted, fontSize: 14, fontFamily: _fontBody),
+              labelText: 'Password',
+              hintText: 'Enter your password',
+              prefixIcon: const Icon(Icons.lock_outline_rounded, color: _deepTeal, size: 20),
               suffixIcon: IconButton(
                 icon: Icon(
                   _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
@@ -786,62 +732,45 @@ class _AccessGateState extends State<AccessGate> {
               fillColor: Colors.white,
               contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: _line),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: _line),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
-                borderSide: const BorderSide(color: Color(0xFF163CB9), width: 1.5),
+                borderRadius: BorderRadius.circular(14),
+                borderSide: const BorderSide(color: _deepTeal, width: 1.5),
               ),
             ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    width: 22,
-                    height: 22,
-                    child: Checkbox(
-                      value: _rememberMe,
-                      onChanged: (val) => setState(() => _rememberMe = val ?? true),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(5)),
-                      activeColor: const Color(0xFF163CB9),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Remember for 30 days',
-                    style: TextStyle(color: _muted, fontSize: 12, fontFamily: _fontBody),
-                  ),
-                ],
+          const SizedBox(height: 10),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Password reset instructions sent if email exists.')),
+                );
+              },
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               ),
-              TextButton(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Password reset instructions sent if email exists.')),
-                  );
-                },
-                style: TextButton.styleFrom(
-                  padding: EdgeInsets.zero,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: const Text(
-                  'Forgot password?',
-                  style: TextStyle(color: _muted, fontSize: 12, fontFamily: _fontBody),
+              child: const Text(
+                'Forgot password?',
+                style: TextStyle(
+                  color: _deepTeal,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  fontFamily: _fontSubheading,
                 ),
               ),
-            ],
+            ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
           SizedBox(
             width: double.infinity,
             height: 48,
@@ -849,8 +778,8 @@ class _AccessGateState extends State<AccessGate> {
               key: const ValueKey('submit-login'),
               onPressed: _handleLogin,
               style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF163CB9),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                backgroundColor: _deepTeal,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               ),
               child: const Text(
                 'Login',
@@ -863,45 +792,7 @@ class _AccessGateState extends State<AccessGate> {
               ),
             ),
           ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 12),
-                child: Text(
-                  'or',
-                  style: TextStyle(color: Colors.grey.shade500, fontSize: 12, fontFamily: _fontBody),
-                ),
-              ),
-              const Expanded(child: Divider(color: Color(0xFFE2E8F0))),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              _buildSocialButton(
-                icon: Icons.apple,
-                onTap: _handleLogin,
-                tooltip: 'Sign in with Apple',
-              ),
-              const SizedBox(width: 14),
-              _buildSocialButton(
-                icon: Icons.g_mobiledata_rounded,
-                isGoogle: true,
-                onTap: _handleLogin,
-                tooltip: 'Sign in with Google',
-              ),
-              const SizedBox(width: 14),
-              _buildSocialButton(
-                icon: Icons.public_rounded,
-                onTap: () => setState(() => _currentTab = _AuthTab.guest),
-                tooltip: 'Enter as Guest',
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 20),
           Center(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -916,7 +807,7 @@ class _AccessGateState extends State<AccessGate> {
                     padding: EdgeInsets.zero,
                     minimumSize: Size.zero,
                     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    foregroundColor: const Color(0xFF163CB9),
+                    foregroundColor: _deepTeal,
                   ),
                   child: const Text(
                     'Sign Up',
@@ -945,7 +836,7 @@ class _AccessGateState extends State<AccessGate> {
             ),
             child: const Icon(
               Icons.explore_rounded,
-              color: Color(0xFF163CB9),
+              color: _deepTeal,
               size: 28,
             ),
           ),
@@ -995,7 +886,7 @@ class _AccessGateState extends State<AccessGate> {
               ),
             ),
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF163CB9),
+              backgroundColor: _deepTeal,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
             ),
           ),
@@ -1012,7 +903,7 @@ class _AccessGateState extends State<AccessGate> {
             icon: const Icon(Icons.school_outlined, size: 18),
             label: const Text('Try Teacher Demo Access'),
             style: OutlinedButton.styleFrom(
-              foregroundColor: const Color(0xFF163CB9),
+              foregroundColor: _deepTeal,
               side: const BorderSide(color: Color(0xFFE2E8F0)),
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -1034,7 +925,7 @@ class _AccessGateState extends State<AccessGate> {
                   padding: EdgeInsets.zero,
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  foregroundColor: const Color(0xFF163CB9),
+                  foregroundColor: _deepTeal,
                 ),
                 child: const Text(
                   'Sign Up',
@@ -1045,49 +936,6 @@ class _AccessGateState extends State<AccessGate> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildSocialButton({
-    required IconData icon,
-    required VoidCallback onTap,
-    required String tooltip,
-    bool isGoogle = false,
-  }) {
-    return Tooltip(
-      message: tooltip,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
-          width: 48,
-          height: 48,
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: const Color(0xFFE2E8F0)),
-            borderRadius: BorderRadius.circular(14),
-            boxShadow: const [
-              BoxShadow(
-                color: Color(0x0A000000),
-                blurRadius: 4,
-                offset: Offset(0, 2),
-              ),
-            ],
-          ),
-          alignment: Alignment.center,
-          child: isGoogle
-              ? const Text(
-                  'G',
-                  style: TextStyle(
-                    color: Color(0xFFEA4335),
-                    fontWeight: FontWeight.w900,
-                    fontSize: 20,
-                    fontFamily: _fontHeading,
-                  ),
-                )
-              : Icon(icon, color: const Color(0xFF1E293B), size: 22),
-        ),
-      ),
     );
   }
 }

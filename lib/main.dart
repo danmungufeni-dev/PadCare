@@ -477,32 +477,7 @@ class _AccessGateState extends State<AccessGate> {
         const _PrivacyNote(
           text: 'Requests do not ask for a girl\'s name, age, or class.',
         ),
-        const SizedBox(height: 18),
-        Center(
-          child: OutlinedButton.icon(
-            onPressed: () {
-              Navigator.of(context).pushReplacement(
-                MaterialPageRoute<void>(
-                  builder: (_) => ParentHomeScreen(
-                    parentName: 'Amina N.',
-                    onSignOut: () => Navigator.of(context).pushReplacement(
-                      MaterialPageRoute<void>(builder: (_) => const AccessGate()),
-                    ),
-                  ),
-                ),
-              );
-            },
-            icon: const Icon(Icons.home_outlined),
-            label: const Text('Enter PadCare Directly'),
-            style: OutlinedButton.styleFrom(
-              foregroundColor: _deepTeal,
-              side: const BorderSide(color: _deepTeal),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-          ),
-        ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 24),
         Center(
           child: Wrap(
             alignment: WrapAlignment.center,
@@ -573,9 +548,22 @@ class _AccessGateState extends State<AccessGate> {
               controller: _nameController,
               textCapitalization: TextCapitalization.words,
               autofillHints: const [AutofillHints.name],
-              decoration: const InputDecoration(
+              decoration: InputDecoration(
                 labelText: 'Display name (optional)',
                 hintText: 'Used for this preview only',
+                prefixIcon: const Icon(Icons.person_outline_rounded, color: _deepTeal, size: 20),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _line),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _line),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+                ),
               ),
             ),
             const SizedBox(height: 16),
@@ -586,8 +574,21 @@ class _AccessGateState extends State<AccessGate> {
                 key: const ValueKey('teacher-school-dropdown'),
                 isExpanded: true,
                 initialValue: _school,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: 'School or distribution point',
+                  prefixIcon: const Icon(Icons.school_outlined, color: _deepTeal, size: 20),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _line),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _line),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+                  ),
                 ),
                 items: _schoolOptions
                     .map(
@@ -609,9 +610,11 @@ class _AccessGateState extends State<AccessGate> {
                       setState(() => _addingSchool = !_addingSchool),
                   icon: Icon(
                     _addingSchool ? Icons.close_rounded : Icons.add_rounded,
+                    color: _deepTeal,
                   ),
                   label: Text(
                     _addingSchool ? 'Cancel school entry' : 'Add a school',
+                    style: const TextStyle(color: _deepTeal, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -620,7 +623,21 @@ class _AccessGateState extends State<AccessGate> {
                   key: const ValueKey('new-school-name'),
                   controller: _newSchoolController,
                   textCapitalization: TextCapitalization.words,
-                  decoration: const InputDecoration(labelText: 'School name'),
+                  decoration: InputDecoration(
+                    labelText: 'School name',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: _line),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: _line),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+                    ),
+                  ),
                   validator: (value) => value == null || value.trim().isEmpty
                       ? 'Enter a school name or cancel to select an existing school'
                       : null,
@@ -631,8 +648,8 @@ class _AccessGateState extends State<AccessGate> {
                   child: TextButton.icon(
                     key: const ValueKey('save-school'),
                     onPressed: _saveSchool,
-                    icon: const Icon(Icons.check_rounded),
-                    label: const Text('Use this school'),
+                    icon: const Icon(Icons.check_rounded, color: _deepTeal),
+                    label: const Text('Use this school', style: TextStyle(color: _deepTeal, fontWeight: FontWeight.w600)),
                   ),
                 ),
                 const Text(
@@ -650,7 +667,7 @@ class _AccessGateState extends State<AccessGate> {
             style: FilledButton.styleFrom(
               backgroundColor: _deepTeal,
               minimumSize: const Size(double.infinity, 48),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             ),
             child: Text(
               'Open $roleLabel preview',
@@ -667,7 +684,7 @@ class _AccessGateState extends State<AccessGate> {
               onPressed: () => setState(() => _registering = !_registering),
               child: Text(
                 _registering ? 'Back to preview' : 'Set a display name',
-                style: const TextStyle(fontFamily: _fontSubheading),
+                style: const TextStyle(color: _deepTeal, fontFamily: _fontSubheading, fontWeight: FontWeight.w600),
               ),
             ),
           ),
@@ -1055,21 +1072,21 @@ class _WaveArtPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final rect = Offset.zero & size;
 
-    // 1. Base deep midnight-blue to indigo background
+    // 1. Base deep teal to forest background
     final bgPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Color(0xFF090D24),
-          Color(0xFF0F1B4C),
-          Color(0xFF1E3A8A),
-          Color(0xFF080D21),
+          Color(0xFF041E22),
+          Color(0xFF0A3B43),
+          Color(0xFF0F545E),
+          Color(0xFF04191C),
         ],
       ).createShader(rect);
     canvas.drawRect(rect, bgPaint);
 
-    // 2. Glowing back wave (violet / royal blue)
+    // 2. Glowing back wave (teal / deep sea)
     final backWave = Path();
     backWave.moveTo(0, size.height * 0.28);
     backWave.cubicTo(
@@ -1086,14 +1103,14 @@ class _WaveArtPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Color(0xFF2563EB),
-          Color(0xFF1D4ED8),
-          Color(0xFF0A1033),
+          Color(0xFF147A88),
+          Color(0xFF0D606C),
+          Color(0xFF052A30),
         ],
       ).createShader(rect);
     canvas.drawPath(backWave, backPaint);
 
-    // 3. Smooth curving deep blue 3D valley wave
+    // 3. Smooth curving deep teal valley wave
     final midWave = Path();
     midWave.moveTo(0, size.height * 0.55);
     midWave.cubicTo(
@@ -1110,9 +1127,9 @@ class _WaveArtPainter extends CustomPainter {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Color(0xFF1E40AF),
-          Color(0xFF172554),
-          Color(0xFF030712),
+          Color(0xFF1F9EAE),
+          Color(0xFF116B78),
+          Color(0xFF07333A),
         ],
       ).createShader(rect);
     canvas.drawPath(midWave, midPaint);
@@ -1134,21 +1151,21 @@ class _WaveArtPainter extends CustomPainter {
         begin: Alignment.topCenter,
         end: Alignment.bottomCenter,
         colors: [
-          Color(0xFF1E3A8A),
-          Color(0xFF0A0F29),
+          Color(0xFF35B9B4),
+          Color(0xFF0D5E6A),
         ],
       ).createShader(rect);
     canvas.drawPath(foreWave, forePaint);
 
-    // 5. Glowing lavender/lilac rim edge
+    // 5. Glowing mint rim edge
     final rimPaint = Paint()
       ..shader = const LinearGradient(
         begin: Alignment.centerLeft,
         end: Alignment.centerRight,
         colors: [
-          Color(0xFFC7D2FE),
-          Color(0xFFA5B4FC),
-          Color(0xFF6366F1),
+          Color(0xFFA5EAC5),
+          Color(0xFF6EE7B7),
+          Color(0xFF14B8A6),
           Colors.transparent,
         ],
       ).createShader(rect)
@@ -5938,7 +5955,7 @@ class _TeacherRequestCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.assignment_outlined, color: _green, size: 20),
+              const Icon(Icons.assignment_outlined, color: _deepTeal, size: 20),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
@@ -5949,12 +5966,27 @@ class _TeacherRequestCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
-                request.status,
-                style: const TextStyle(
-                  color: _green,
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
+                decoration: BoxDecoration(
+                  color: request.status == 'Collected' || request.status == 'Approved'
+                      ? _greenPale
+                      : (request.status == 'Ready for pickup'
+                          ? const Color(0xFFE0F2FE)
+                          : const Color(0xFFFEF3C7)),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  request.status,
+                  style: TextStyle(
+                    color: request.status == 'Collected' || request.status == 'Approved'
+                        ? _deepTeal
+                        : (request.status == 'Ready for pickup'
+                            ? const Color(0xFF0369A1)
+                            : const Color(0xFFB45309)),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ],
@@ -6079,13 +6111,36 @@ class _StockManagementCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      supply.name,
-                      style: const TextStyle(
-                        color: _ink,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w800,
-                      ),
+                    Row(
+                      children: [
+                        Text(
+                          supply.name,
+                          style: const TextStyle(
+                            color: _ink,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        if (low) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFF1F2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFFECDD3)),
+                            ),
+                            child: const Text(
+                              'Low Stock',
+                              style: TextStyle(
+                                color: Color(0xFFE11D48),
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                     const SizedBox(height: 4),
                     Text(
@@ -6099,9 +6154,21 @@ class _StockManagementCard extends StatelessWidget {
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined, size: 16),
                 label: const Text('Edit'),
-                style: TextButton.styleFrom(foregroundColor: _green),
+                style: TextButton.styleFrom(foregroundColor: _deepTeal),
               ),
             ],
+          ),
+          const SizedBox(height: 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: (supply.onHand / ((supply.lowAt * 2).clamp(1, 9999))).clamp(0.0, 1.0),
+              backgroundColor: const Color(0xFFF1F5F9),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                low ? const Color(0xFFE11D48) : _deepTeal,
+              ),
+              minHeight: 5,
+            ),
           ),
           const Divider(height: 18, color: _line),
           Row(

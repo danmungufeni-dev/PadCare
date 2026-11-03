@@ -57,4 +57,25 @@ class WhatsAppService {
       return false;
     }
   }
+
+  /// Sends or opens a WhatsApp notification for a ready package
+  static Future<bool> sendPickupNotification({
+    required String reference,
+    required String school,
+    String? recipientPhone,
+  }) async {
+    final message = 'Hello! Your confidential PadCare package (Ref: $reference) is packed and ready for pickup at $school with the Senior Woman Teacher.';
+    final target = (recipientPhone != null && recipientPhone.trim().isNotEmpty)
+        ? recipientPhone.replaceAll(RegExp(r'[\s\+\-]'), '')
+        : '';
+    final url = target.isNotEmpty
+        ? 'https://wa.me/$target?text=${Uri.encodeComponent(message)}'
+        : 'https://wa.me/?text=${Uri.encodeComponent(message)}';
+    try {
+      openExternalUrl(url);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 }

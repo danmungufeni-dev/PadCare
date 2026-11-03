@@ -7,6 +7,8 @@ import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/firebase_service.dart';
+import 'services/geo_service.dart';
+import 'services/momo_service.dart';
 import 'services/whatsapp_service.dart';
 
 void main() async {
@@ -2814,10 +2816,84 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _loadingLocalData = true;
   bool _localDataFailed = false;
 
+  StreamSubscription<List<Map<String, dynamic>>>? _requestsSubscription;
+  StreamSubscription<Map<String, dynamic>?>? _stockSubscription;
+
   @override
   void initState() {
     super.initState();
     _loadSchoolData();
+    _subscribeToCloudSync();
+  }
+
+  @override
+  void dispose() {
+    _requestsSubscription?.cancel();
+    _stockSubscription?.cancel();
+    super.dispose();
+  }
+
+  void _subscribeToCloudSync() {
+    if (MyApp.isTestMode) return;
+
+    _requestsSubscription =
+        FirestoreService.streamRequestsForSchool(widget.facility).listen((cloudDocs) {
+      if (!mounted || cloudDocs.isEmpty) return;
+      _syncCloudRequests(cloudDocs);
+    });
+
+    _stockSubscription =
+        FirestoreService.streamSchoolStock(widget.facility).listen((stockData) {
+      if (!mounted || stockData == null) return;
+      _syncCloudStock(stockData);
+    });
+  }
+
+  void _syncCloudRequests(List<Map<String, dynamic>> cloudDocs) {
+    final Map<String, _LocalRequest> byId = {
+      for (final req in _requests) req.id: req,
+    };
+
+    for (final doc in cloudDocs) {
+      try {
+        final req = _LocalRequest.fromJson(doc);
+        if (req.id.isNotEmpty) {
+          byId[req.id] = req;
+        }
+      } catch (_) {}
+    }
+
+    final merged = byId.values.toList()
+      ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+
+    setState(() {
+      _requests = merged;
+      for (final supply in _supplies) {
+        supply.reserved = _reservedFor(supply.name, requests: merged);
+      }
+    });
+
+    _readLocalData().then((localData) {
+      _saveLocalData(_LocalData(requests: merged, stock: localData.stock));
+    }).catchError((_) {});
+  }
+
+  void _syncCloudStock(Map<String, dynamic> stockData) {
+    final kits = (stockData['kitsOnHand'] as num?)?.toInt();
+    final packs = (stockData['packsOnHand'] as num?)?.toInt();
+
+    if (kits == null && packs == null) return;
+
+    setState(() {
+      for (final supply in _supplies) {
+        if (supply.name == 'Reusable pads' && kits != null) {
+          supply.onHand = kits;
+        } else if (supply.name == 'Disposable pads' && packs != null) {
+          supply.onHand = packs;
+        }
+        supply.reserved = _reservedFor(supply.name);
+      }
+    });
   }
 
   List<_LocalRequest> get _facilityRequests => _requests
@@ -2951,6 +3027,26 @@ class _HomeScreenState extends State<HomeScreen> {
           item.reserved = _reservedFor(item.name, requests: updatedRequests);
         }
       });
+
+      if (status == 'Ready for pickup' && !MyApp.isTestMode) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Request ${request.reference} is ready for pickup!'),
+            backgroundColor: const Color(0xFF1B6A60),
+            duration: const Duration(seconds: 5),
+            action: SnackBarAction(
+              label: 'Notify WhatsApp',
+              textColor: const Color(0xFF86EFAC),
+              onPressed: () {
+                WhatsAppService.sendPickupNotification(
+                  reference: request.reference,
+                  school: widget.facility,
+                );
+              },
+            ),
+          ),
+        );
+      }
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -3723,18 +3819,57 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   String _userDisplayName = '';
   String _selectedLearnCategory = 'All';
 
+  StreamSubscription<List<Map<String, dynamic>>>? _parentRequestsSubscription;
+
   @override
   void initState() {
     super.initState();
     _userDisplayName = widget.parentName;
     _loadLocalRequests();
+    _subscribeToCloudRequests();
   }
 
   @override
   void dispose() {
+    _parentRequestsSubscription?.cancel();
     _homeSearchController.dispose();
     _mapSearchController.dispose();
     super.dispose();
+  }
+
+  void _subscribeToCloudRequests() {
+    if (MyApp.isTestMode) return;
+
+    _parentRequestsSubscription =
+        FirestoreService.streamAllRequests().listen((cloudDocs) {
+      if (!mounted || cloudDocs.isEmpty) return;
+
+      final Map<String, _LocalRequest> byId = {
+        for (final req in _localRequests) req.id: req,
+      };
+
+      bool changed = false;
+      for (final doc in cloudDocs) {
+        try {
+          final cloudReq = _LocalRequest.fromJson(doc);
+          if (byId.containsKey(cloudReq.id)) {
+            if (byId[cloudReq.id]!.status != cloudReq.status) {
+              byId[cloudReq.id] = cloudReq;
+              changed = true;
+            }
+          }
+        } catch (_) {}
+      }
+
+      if (changed) {
+        final updated = byId.values.toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
+        setState(() => _localRequests = updated);
+        _readLocalData().then((localData) {
+          _saveLocalData(_LocalData(requests: updated, stock: localData.stock));
+        }).catchError((_) {});
+      }
+    });
   }
 
   Future<void> _loadLocalRequests() async {
@@ -4234,13 +4369,20 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             _buildDirectionStep('2', 'Follow ${point.directions}.', '650m'),
             _buildDirectionStep('3', 'Arrive at ${point.name} entrance on your right.', '200m'),
             const SizedBox(height: 20),
-            ElevatedButton(
+            ElevatedButton.icon(
               onPressed: () {
                 Navigator.pop(context);
+                final coords = GeoService.aruaCoordinates[point.id] ?? GeoService.aruaCenter;
+                GeoService.openDirections(
+                  latitude: coords.latitude,
+                  longitude: coords.longitude,
+                  destinationName: point.name,
+                );
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Starting live route guidance to ${point.name}...')),
+                  SnackBar(content: Text('Opening Google Maps route to ${point.name}...')),
                 );
               },
+              icon: const Icon(Icons.navigation_rounded, size: 18),
               style: ElevatedButton.styleFrom(
                 backgroundColor: _deepTeal,
                 foregroundColor: Colors.white,
@@ -4248,8 +4390,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 elevation: 0,
               ),
-              child: const Text(
-                'Start Walking Navigation',
+              label: const Text(
+                'Open in Google Maps / Navigation',
                 style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
               ),
             ),
@@ -4383,8 +4525,21 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               ),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
+                  final phone = phoneController.text.trim();
+                  if (phone.isEmpty || phone.length < 8) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please enter your Mobile Money phone number.')),
+                    );
+                    return;
+                  }
                   Navigator.pop(context);
+                  await MoMoService.processDonation(
+                    phone: phone,
+                    amountUgx: selectedAmount,
+                    provider: selectedMethod,
+                    donorName: _userDisplayName,
+                  );
                   _showDonationSuccessDialog(selectedAmount, selectedMethod);
                 },
                 style: ElevatedButton.styleFrom(
@@ -6051,7 +6206,48 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 '1 out of 10 schoolgirls in rural Uganda misses class every month during their period. Your direct donation supplies verified reusable hygiene kits.',
                 style: TextStyle(color: _muted, fontSize: 13, height: 1.5),
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
+              StreamBuilder<int>(
+                stream: MoMoService.streamTotalKitsSponsored(),
+                initialData: 142,
+                builder: (context, snapshot) {
+                  final kits = snapshot.data ?? 142;
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF0FDF4),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFBBF7D0)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.volunteer_activism_rounded, color: Color(0xFF16A34A), size: 24),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '$kits Reusable Pad Kits Funded',
+                                style: const TextStyle(
+                                  color: Color(0xFF15803D),
+                                  fontWeight: FontWeight.w900,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const Text(
+                                'Live community milestone in Arua City',
+                                style: TextStyle(color: _muted, fontSize: 11),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 16),
               FilledButton.icon(
                 onPressed: _openDonationSheet,
                 icon: const Icon(Icons.favorite_rounded),

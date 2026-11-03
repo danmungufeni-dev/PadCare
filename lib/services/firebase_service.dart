@@ -574,4 +574,51 @@ class FirestoreService {
       debugPrint('Firestore updateSchoolStock error: $e');
     }
   }
+
+  /// Real-time stream of period product requests for a specific school.
+  static Stream<List<Map<String, dynamic>>> streamRequestsForSchool(String schoolName) {
+    if (!FirebaseService.isFirebaseAvailable || _db == null) {
+      return const Stream.empty();
+    }
+    return _db!
+        .collection('requests')
+        .where('school', isEqualTo: schoolName)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList())
+        .handleError((error) {
+          debugPrint('streamRequestsForSchool error: $error');
+          return <Map<String, dynamic>>[];
+        });
+  }
+
+  /// Real-time stream of all requests across Arua City.
+  static Stream<List<Map<String, dynamic>>> streamAllRequests() {
+    if (!FirebaseService.isFirebaseAvailable || _db == null) {
+      return const Stream.empty();
+    }
+    return _db!
+        .collection('requests')
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList())
+        .handleError((error) {
+          debugPrint('streamAllRequests error: $error');
+          return <Map<String, dynamic>>[];
+        });
+  }
+
+  /// Real-time stream of school stock inventory.
+  static Stream<Map<String, dynamic>?> streamSchoolStock(String schoolName) {
+    if (!FirebaseService.isFirebaseAvailable || _db == null) {
+      return const Stream.empty();
+    }
+    return _db!
+        .collection('schools')
+        .doc(schoolName)
+        .snapshots()
+        .map((doc) => doc.exists ? doc.data() : null)
+        .handleError((error) {
+          debugPrint('streamSchoolStock error: $error');
+          return null;
+        });
+  }
 }

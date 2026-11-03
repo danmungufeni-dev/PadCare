@@ -25,5 +25,13 @@ service cloud.firestore {
       // Allow anonymous and community requests
       allow read, write: if true;
     }
+
+    // Community Pad Drive Donations (MoMo)
+    match /donations/{donationId} {
+      // Publicly readable for total sponsored milestones
+      allow read: if true;
+      // Allow community members to submit donations
+      allow write: if true;
+    }
   }
 }

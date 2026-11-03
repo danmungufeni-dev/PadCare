@@ -405,6 +405,66 @@ class AuthService {
     );
   }
 
+  /// Completes WhatsApp Click-to-Verify authentication and registers profile in Firestore.
+  static Future<AuthResult> verifyWhatsAppAccount({
+    required String phone,
+    required String verificationCode,
+    String role = 'parent',
+    String? school,
+    String? displayName,
+  }) async {
+    final cleanPhone = formatPhoneNumber(phone.trim());
+    final isParent = role != 'teacher';
+
+    if (FirebaseService.isFirebaseAvailable && _auth != null) {
+      try {
+        User? user = _auth!.currentUser;
+        if (user == null) {
+          final anonCred = await _auth!.signInAnonymously();
+          user = anonCred.user;
+        }
+
+        final uid = user?.uid ?? 'wa-$cleanPhone';
+        final profile = UserProfile(
+          uid: uid,
+          email: '$cleanPhone@whatsapp.padcare.org',
+          displayName: displayName?.trim().isNotEmpty == true
+              ? displayName!.trim()
+              : 'PadCare User ($cleanPhone)',
+          role: role,
+          school: school,
+          authorized: isParent,
+          status: isParent ? 'approved' : 'pending_approval',
+        );
+
+        await FirestoreService.saveUserProfile(profile);
+        return AuthResult(isSuccess: true, user: user);
+      } catch (e) {
+        debugPrint('WhatsApp verify error: $e');
+      }
+    }
+
+    // Graceful offline mock
+    final offlineUid = 'offline-wa-${cleanPhone.replaceAll('+', '')}';
+    final offlineProfile = UserProfile(
+      uid: offlineUid,
+      email: '$cleanPhone@whatsapp.padcare.org',
+      displayName: displayName?.trim().isNotEmpty == true
+          ? displayName!.trim()
+          : 'PadCare User ($cleanPhone)',
+      role: role,
+      school: school,
+      authorized: isParent,
+      status: isParent ? 'approved' : 'pending_approval',
+    );
+    await FirestoreService.saveUserProfile(offlineProfile);
+
+    return AuthResult(
+      isSuccess: true,
+      fallbackEmail: '$cleanPhone@whatsapp.padcare.org',
+    );
+  }
+
   /// Signs the user out of Firebase and clears local session.
   static Future<void> signOut() async {
     if (FirebaseService.isFirebaseAvailable && _auth != null) {

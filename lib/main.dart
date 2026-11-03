@@ -2,10 +2,12 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/firebase_service.dart';
+import 'services/whatsapp_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -177,6 +179,54 @@ class _GoogleLogoPainter extends CustomPainter {
       Rect.fromLTWH(center.dx - strokeWidth * 0.2, center.dy - strokeWidth / 2, radius * 0.95, strokeWidth),
       barPaint,
     );
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
+class _WhatsAppLogoPainter extends CustomPainter {
+  const _WhatsAppLogoPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final double w = size.width;
+    final double h = size.height;
+    final center = Offset(w / 2, h / 2);
+    final radius = w / 2;
+
+    // Outer WhatsApp green circle
+    final bgPaint = Paint()
+      ..color = const Color(0xFF25D366)
+      ..style = PaintingStyle.fill;
+    canvas.drawCircle(center, radius, bgPaint);
+
+    // Inner white speech bubble with handset tail
+    final whitePaint = Paint()
+      ..color = Colors.white
+      ..style = PaintingStyle.fill;
+
+    final bubblePath = Path()
+      ..addOval(Rect.fromCircle(center: Offset(w * 0.5, h * 0.48), radius: radius * 0.62))
+      ..moveTo(w * 0.35, h * 0.68)
+      ..lineTo(w * 0.22, h * 0.80)
+      ..lineTo(w * 0.45, h * 0.74)
+      ..close();
+    canvas.drawPath(bubblePath, whitePaint);
+
+    // Green phone handset silhouette inside
+    final phonePaint = Paint()
+      ..color = const Color(0xFF25D366)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w * 0.09
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    final phoneHandset = Path()
+      ..moveTo(w * 0.38, h * 0.39)
+      ..quadraticBezierTo(w * 0.36, h * 0.50, w * 0.49, h * 0.60)
+      ..lineTo(w * 0.60, h * 0.61);
+    canvas.drawPath(phoneHandset, phonePaint);
   }
 
   @override
@@ -371,6 +421,367 @@ class _AccessGateState extends State<AccessGate> {
         ),
       );
     }
+  }
+
+  void _showWhatsAppAuthDialog({required bool isSignUp}) {
+    final phoneController = TextEditingController();
+    String? generatedCode;
+    bool isLoading = false;
+    bool hasOpenedWhatsApp = false;
+    String? errorMsg;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (bottomSheetContext) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final isTeacher = _role == _PortalRole.teacher;
+
+            return Container(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+                top: 24,
+                left: 20,
+                right: 20,
+              ),
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 44,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: _line,
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE7FCE9),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const CustomPaint(
+                            size: Size(26, 26),
+                            painter: _WhatsAppLogoPainter(),
+                          ),
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isSignUp ? 'Register with WhatsApp' : 'Sign In via WhatsApp',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.w800,
+                                  color: _ink,
+                                  fontFamily: _fontHeading,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                generatedCode == null
+                                    ? 'Instant, free verification via WhatsApp chat'
+                                    : 'Send code to verify your phone number',
+                                style: const TextStyle(fontSize: 12, color: _muted, fontFamily: _fontBody),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 18),
+                    if (errorMsg != null) ...[
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: Colors.red.shade50,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: Colors.red.shade200),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.error_outline_rounded, color: Colors.red, size: 18),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                errorMsg!,
+                                style: const TextStyle(color: Colors.red, fontSize: 12),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                    ],
+                    if (generatedCode == null) ...[
+                      TextField(
+                        controller: phoneController,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          labelText: 'Phone Number',
+                          hintText: 'e.g. 0772 123 456 or +256 7...',
+                          prefixIcon: const Icon(Icons.phone_rounded, color: Color(0xFF25D366), size: 20),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Text(
+                          isTeacher
+                              ? 'Senior Woman Teacher verification for $_school'
+                              : 'Parent / community pad access across Arua City',
+                          style: const TextStyle(color: _muted, fontSize: 11, fontFamily: _fontBody),
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      FilledButton(
+                        onPressed: isLoading
+                            ? null
+                            : () {
+                                final phone = phoneController.text.trim();
+                                if (phone.isEmpty || phone.length < 8) {
+                                  setModalState(() => errorMsg = 'Please enter a valid phone number.');
+                                  return;
+                                }
+                                setModalState(() {
+                                  errorMsg = null;
+                                  generatedCode = WhatsAppService.generateVerificationCode();
+                                });
+                              },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            CustomPaint(
+                              size: Size(18, 18),
+                              painter: _WhatsAppLogoPainter(),
+                            ),
+                            SizedBox(width: 10),
+                            Text(
+                              'Generate WhatsApp Verification Code',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else ...[
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFBBF7D0)),
+                        ),
+                        child: Column(
+                          children: [
+                            const Text(
+                              'YOUR VERIFICATION CODE',
+                              style: TextStyle(
+                                fontSize: 11,
+                                letterSpacing: 1.2,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF15803D),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFF86EFAC)),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    generatedCode!,
+                                    style: const TextStyle(
+                                      fontSize: 26,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: 2,
+                                      color: Color(0xFF166534),
+                                      fontFamily: _fontHeading,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 10),
+                                  IconButton(
+                                    icon: const Icon(Icons.copy_rounded, size: 18, color: Color(0xFF166534)),
+                                    tooltip: 'Copy code',
+                                    onPressed: () {
+                                      Clipboard.setData(ClipboardData(text: generatedCode!));
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        const SnackBar(
+                                          content: Text('Verification code copied to clipboard!'),
+                                          duration: Duration(seconds: 2),
+                                        ),
+                                      );
+                                    },
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            Text(
+                              'Phone: ${phoneController.text.trim()} • Helpline: +256 700 000 000',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 11.5, color: _muted, fontFamily: _fontBody),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      FilledButton.icon(
+                        icon: const CustomPaint(
+                          size: Size(18, 18),
+                          painter: _WhatsAppLogoPainter(),
+                        ),
+                        label: Text(hasOpenedWhatsApp ? 'Re-open WhatsApp Chat' : 'Open WhatsApp to Send Code'),
+                        onPressed: () async {
+                          setModalState(() => hasOpenedWhatsApp = true);
+                          final cleanPhone = AuthService.formatPhoneNumber(phoneController.text.trim());
+                          final success = await WhatsAppService.launchWhatsApp(
+                            phone: cleanPhone,
+                            code: generatedCode!,
+                            name: _nameController.text.trim(),
+                            school: isTeacher ? _school : null,
+                            isTeacher: isTeacher,
+                          );
+                          final msg = WhatsAppService.buildWhatsAppUrl(
+                            phone: cleanPhone,
+                            code: generatedCode!,
+                            name: _nameController.text.trim(),
+                            school: isTeacher ? _school : null,
+                            isTeacher: isTeacher,
+                          );
+                          Clipboard.setData(ClipboardData(text: msg));
+                          if (!success && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('WhatsApp link copied! Paste into WhatsApp to send.'),
+                                duration: Duration(seconds: 3),
+                              ),
+                            );
+                          }
+                        },
+                        style: FilledButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          foregroundColor: Colors.white,
+                          minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      OutlinedButton(
+                        onPressed: isLoading
+                            ? null
+                            : () async {
+                                setModalState(() {
+                                  isLoading = true;
+                                  errorMsg = null;
+                                });
+
+                                final cleanPhone = AuthService.formatPhoneNumber(phoneController.text.trim());
+                                final displayName = _nameController.text.trim().isNotEmpty
+                                    ? _nameController.text.trim()
+                                    : (isTeacher ? 'Teacher ($cleanPhone)' : 'Parent ($cleanPhone)');
+
+                                final res = await AuthService.verifyWhatsAppAccount(
+                                  phone: cleanPhone,
+                                  verificationCode: generatedCode!,
+                                  role: isTeacher ? 'teacher' : 'parent',
+                                  school: isTeacher ? _school : null,
+                                  displayName: displayName,
+                                );
+
+                                if (!context.mounted) return;
+                                if (res.isSuccess) {
+                                  Navigator.of(context).pop();
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('Verified via WhatsApp ($cleanPhone)'),
+                                      backgroundColor: const Color(0xFF25D366),
+                                    ),
+                                  );
+                                  _routeAuthenticatedUser(
+                                    name: displayName,
+                                    email: '$cleanPhone@whatsapp.padcare.org',
+                                    uid: res.user?.uid ?? 'wa-$cleanPhone',
+                                  );
+                                } else {
+                                  setModalState(() {
+                                    isLoading = false;
+                                    errorMsg = res.errorMessage ?? 'Verification failed.';
+                                  });
+                                }
+                              },
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: _deepTeal, width: 1.5),
+                          foregroundColor: _deepTeal,
+                          minimumSize: const Size(double.infinity, 48),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        ),
+                        child: isLoading
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: _deepTeal),
+                              )
+                            : const Text(
+                                'I Have Sent the WhatsApp Message',
+                                style: TextStyle(fontWeight: FontWeight.w700),
+                              ),
+                      ),
+                    ],
+                    const SizedBox(height: 12),
+                    Center(
+                      child: TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pop();
+                          _showPhoneAuthDialog(isSignUp: isSignUp);
+                        },
+                        style: TextButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          visualDensity: VisualDensity.compact,
+                          foregroundColor: _muted,
+                        ),
+                        child: const Text(
+                          'Prefer regular SMS? Send SMS OTP instead',
+                          style: TextStyle(fontSize: 11.5, decoration: TextDecoration.underline),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   void _showPhoneAuthDialog({required bool isSignUp}) {
@@ -1019,10 +1430,10 @@ class _AccessGateState extends State<AccessGate> {
             ),
             const SizedBox(height: 10),
             OutlinedButton(
-              onPressed: () => _showPhoneAuthDialog(isSignUp: true),
+              onPressed: () => _showWhatsAppAuthDialog(isSignUp: true),
               style: OutlinedButton.styleFrom(
                 backgroundColor: Colors.white,
-                side: const BorderSide(color: Color(0xFFD0D7DE)),
+                side: const BorderSide(color: Color(0xFF25D366), width: 1.5),
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                 padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
                 minimumSize: const Size(double.infinity, 50),
@@ -1030,10 +1441,13 @@ class _AccessGateState extends State<AccessGate> {
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.phone_android_rounded, color: _deepTeal, size: 20),
+                  CustomPaint(
+                    size: Size(20, 20),
+                    painter: _WhatsAppLogoPainter(),
+                  ),
                   SizedBox(width: 12),
                   Text(
-                    'Sign up with Phone Number',
+                    'Sign up with WhatsApp',
                     style: TextStyle(
                       color: Color(0xFF1F2937),
                       fontWeight: FontWeight.w700,
@@ -1454,10 +1868,10 @@ class _AccessGateState extends State<AccessGate> {
           ),
           const SizedBox(height: 10),
           OutlinedButton(
-            onPressed: () => _showPhoneAuthDialog(isSignUp: false),
+            onPressed: () => _showWhatsAppAuthDialog(isSignUp: false),
             style: OutlinedButton.styleFrom(
               backgroundColor: Colors.white,
-              side: const BorderSide(color: Color(0xFFD0D7DE)),
+              side: const BorderSide(color: Color(0xFF25D366), width: 1.5),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
               minimumSize: const Size(double.infinity, 48),
@@ -1465,10 +1879,13 @@ class _AccessGateState extends State<AccessGate> {
             child: const Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Icon(Icons.phone_android_rounded, color: _deepTeal, size: 20),
+                CustomPaint(
+                  size: Size(18, 18),
+                  painter: _WhatsAppLogoPainter(),
+                ),
                 SizedBox(width: 10),
                 Text(
-                  'Sign in with Phone Number',
+                  'Sign in with WhatsApp',
                   style: TextStyle(
                     color: Color(0xFF1F2937),
                     fontWeight: FontWeight.w700,

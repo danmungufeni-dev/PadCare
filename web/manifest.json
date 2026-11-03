@@ -1,12 +1,13 @@
 {
-    "name": "PadCare",
+    "name": "PadCare - Arua Emergency Pad Network",
     "short_name": "PadCare",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#a9003c",
-    "theme_color": "#a9003c",
-    "description": "A new Flutter project.",
+    "background_color": "#E4F8F2",
+    "theme_color": "#116B78",
+    "description": "Emergency menstrual health & supply distribution network for Arua City, Uganda.",
     "orientation": "portrait-primary",
+    "categories": ["medical", "health", "education"],
     "prefer_related_applications": false,
     "icons": [
         {

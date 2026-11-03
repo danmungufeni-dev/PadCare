@@ -4274,6 +4274,30 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     ),
                   ],
                 ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      setState(() {
+                        _selectedArea = point.area;
+                        _selectedIndex = 3;
+                        _supportSubTab = _SupportSubTab.requestForm;
+                      });
+                    },
+                    icon: const Icon(Icons.volunteer_activism_rounded, size: 18),
+                    label: Text('Request Emergency Pads at ${point.name}'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF16A34A),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -4681,12 +4705,88 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     ? const Icon(Icons.check_circle_rounded, color: _deepTeal)
                     : null,
                 onTap: () {
-                  setState(() => _selectedArea = area);
+                  setState(() {
+                    _selectedArea = area;
+                    final match = _kSupportPoints.firstWhere(
+                      (p) => p.area.toLowerCase() == area.toLowerCase(),
+                      orElse: () => _selectedMapPoint,
+                    );
+                    _selectedMapPoint = match;
+                  });
                   Navigator.pop(context);
                 },
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+
+  void _openMapFilterSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(22)),
+      ),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: const EdgeInsets.fromLTRB(20, 18, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Filter Support Locations',
+                    style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 18),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _selectedMapFilter = 'Open Now';
+                        _mapSearchQuery = '';
+                        _mapSearchController.clear();
+                      });
+                      Navigator.pop(context);
+                    },
+                    child: const Text('Reset', style: TextStyle(color: _deepTeal, fontWeight: FontWeight.w700)),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  'Open Now',
+                  'In Stock',
+                  'Verified',
+                  'NGO & Clinics',
+                  'Schools',
+                ].map((filter) {
+                  final active = _selectedMapFilter == filter;
+                  return ChoiceChip(
+                    label: Text(filter),
+                    selected: active,
+                    selectedColor: _deepTeal,
+                    labelStyle: TextStyle(
+                      color: active ? Colors.white : _ink,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                    ),
+                    onSelected: (selected) {
+                      setState(() => _selectedMapFilter = filter);
+                      Navigator.pop(context);
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -5481,7 +5581,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       child: IconButton(
                         padding: EdgeInsets.zero,
                         icon: const Icon(Icons.tune_rounded, color: _deepTeal, size: 18),
-                        onPressed: () {},
+                        onPressed: _openMapFilterSheet,
                       ),
                     ),
                   ],

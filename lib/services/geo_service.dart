@@ -48,23 +48,51 @@ class GeoService {
     return degrees * math.pi / 180.0;
   }
 
-  /// Builds a Google Maps walking navigation link
+  /// Builds a Google Maps turn-by-turn navigation link
   static String getNavigationUrl({
     required double latitude,
     required double longitude,
     required String destinationName,
   }) {
-    final query = Uri.encodeComponent('$destinationName, Arua City, Uganda');
-    return 'https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude&destination_place_id=$query';
+    return 'https://www.google.com/maps/dir/?api=1&destination=$latitude,$longitude';
   }
 
-  /// Opens live turn-by-turn walking directions in Google Maps or OpenStreetMap
+  /// Builds a direct Google Maps pin link with location name
+  static String getPlaceUrl({
+    required double latitude,
+    required double longitude,
+    required String destinationName,
+  }) {
+    final query = Uri.encodeComponent('$destinationName, Arua, Uganda');
+    return 'https://www.google.com/maps/search/?api=1&query=$latitude,$longitude+($query)';
+  }
+
+  /// Opens live turn-by-turn walking/driving directions directly in Google Maps
   static Future<bool> openDirections({
     required double latitude,
     required double longitude,
     required String destinationName,
   }) async {
     final url = getNavigationUrl(
+      latitude: latitude,
+      longitude: longitude,
+      destinationName: destinationName,
+    );
+    try {
+      openExternalUrl(url);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Opens the facility pin directly in Google Maps
+  static Future<bool> openPlace({
+    required double latitude,
+    required double longitude,
+    required String destinationName,
+  }) async {
+    final url = getPlaceUrl(
       latitude: latitude,
       longitude: longitude,
       destinationName: destinationName,

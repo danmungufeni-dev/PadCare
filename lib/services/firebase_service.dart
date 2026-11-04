@@ -8,12 +8,14 @@ import '../firebase_options.dart';
 class AuthResult {
   final bool isSuccess;
   final String? errorMessage;
+  final String? errorCode;
   final User? user;
   final String? fallbackEmail;
 
   const AuthResult({
     required this.isSuccess,
     this.errorMessage,
+    this.errorCode,
     this.user,
     this.fallbackEmail,
   });
@@ -238,11 +240,15 @@ class AuthService {
       } on FirebaseAuthException catch (e) {
         return AuthResult(
           isSuccess: false,
-          errorMessage: e.message ?? 'Google Sign-In failed (${e.code}).',
+          errorCode: e.code,
+          errorMessage: e.code == 'unauthorized-domain'
+              ? 'This domain is not authorized in Firebase. Use http://localhost:8080 or add your domain under Firebase Auth > Settings > Authorized Domains.'
+              : (e.message ?? 'Google Sign-In failed (${e.code}).'),
         );
       } catch (e) {
         return AuthResult(
           isSuccess: false,
+          errorCode: 'unknown',
           errorMessage: 'Google Sign-In error: $e',
         );
       }

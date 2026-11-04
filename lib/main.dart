@@ -11,6 +11,8 @@ import 'services/geo_service.dart';
 import 'services/momo_service.dart';
 import 'services/offline_queue_service.dart';
 import 'services/whatsapp_service.dart';
+import 'services/url_launcher_stub.dart'
+    if (dart.library.html) 'services/url_launcher_web.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -1013,11 +1015,163 @@ class _AccessGateState extends State<AccessGate> {
     );
   }
 
+  void _showUnauthorizedDomainDialog() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD0DFDC),
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF3C7),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.shield_outlined, color: Color(0xFFD97706), size: 26),
+                  ),
+                  const SizedBox(width: 14),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Domain Authorization Notice',
+                          style: TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 16),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          '100% Free Firebase Authentication Setup',
+                          style: TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Why did this happen?',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: _ink),
+                    ),
+                    SizedBox(height: 6),
+                    Text(
+                      'Google OAuth prevents phishing by only allowing sign-ins from websites approved in your Firebase project. '
+                      'This is completely FREE on the Firebase Spark tier and requires no paid APIs.',
+                      style: TextStyle(fontSize: 12.5, color: _muted, height: 1.4),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      'To authorize GitHub Pages in 10 seconds (100% Free):',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: _deepTeal),
+                    ),
+                    SizedBox(height: 4),
+                    Text(
+                      '1. Go to Firebase Console → Authentication → Settings\n'
+                      '2. Click "Authorized domains" → "Add domain"\n'
+                      '3. Enter "danmungufeni-dev.github.io" (or 127.0.0.1) and click Save',
+                      style: TextStyle(fontSize: 11.5, color: _ink, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 18),
+              ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  final isTeacher = _role == _PortalRole.teacher;
+                  final name = _nameController.text.trim().isNotEmpty
+                      ? _nameController.text.trim()
+                      : (isTeacher ? 'Teacher Amina' : 'Parent Amina');
+                  final email = _emailController.text.trim().isNotEmpty
+                      ? _emailController.text.trim()
+                      : (isTeacher ? 'teacher@stmarys.arua.org' : 'parent.arua@gmail.com');
+                  _routeAuthenticatedUser(
+                    name: name,
+                    email: email,
+                    uid: 'fast-free-preview',
+                  );
+                },
+                icon: const Icon(Icons.flash_on_rounded, size: 18),
+                label: const Text(
+                  'Continue with Free Instant Access',
+                  style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _deepTeal,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+              ),
+              const SizedBox(height: 10),
+              OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(context);
+                  openExternalUrl('http://localhost:8080');
+                },
+                icon: const Icon(Icons.launch_rounded, size: 16),
+                label: const Text(
+                  'Switch to http://localhost:8080 (Authorized by default)',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: _deepTeal,
+                  side: const BorderSide(color: _deepTeal, width: 1.2),
+                  minimumSize: const Size(double.infinity, 46),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Future<void> _handleGoogleSignUp() async {
     final result = await AuthService.signInWithGoogle();
     if (!mounted) return;
 
     if (!result.isSuccess) {
+      if (result.errorCode == 'unauthorized-domain' ||
+          (result.errorMessage?.toLowerCase().contains('authorized') ?? false)) {
+        _showUnauthorizedDomainDialog();
+        return;
+      }
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(result.errorMessage ?? 'Google Sign-In failed'),

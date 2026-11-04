@@ -320,4 +320,35 @@ void main() {
 
     expect(find.text('Active Hub Restock Orders'), findsOneWidget);
   });
+
+  testWidgets('tapping logo navigates back to home screen and splash preview tile is removed', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Parent or guardian'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('submit-access')));
+    await tester.pumpAndSettle();
+
+    // Verify on home screen initially
+    expect(find.text('Hello, there!'), findsOneWidget);
+
+    // Navigate to Profile tab
+    await tester.tap(find.text('Profile'));
+    await tester.pumpAndSettle();
+    expect(find.text('Profile & Access'), findsOneWidget);
+
+    // Verify preview splash screen is removed
+    expect(find.text('Preview Splash Screen'), findsNothing);
+
+    // Tap PadCare logo to return to Home
+    final logo = find.byKey(const ValueKey('padcare-logo')).first;
+    await tester.tap(logo);
+    await tester.pumpAndSettle();
+
+    // Verify we are back on Home tab
+    expect(find.text('Hello, there!'), findsOneWidget);
+  });
 }

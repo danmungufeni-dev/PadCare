@@ -3254,6 +3254,13 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _TopBar(
               initials: 'SM',
+              onLogoTap: () {
+                if (Navigator.of(context).canPop()) {
+                  Navigator.of(context).pop();
+                } else {
+                  setState(() => _selectedIndex = 0);
+                }
+              },
               onNotificationTap: () => setState(() => _selectedIndex = 1),
               onSignOut: widget.onSignOut,
             ),
@@ -4566,11 +4573,13 @@ void _showGlobalImpactSheet(BuildContext context) {
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.onNotificationTap,
+    this.onLogoTap,
     this.onSignOut,
     this.initials = 'SM',
   });
 
   final VoidCallback onNotificationTap;
+  final VoidCallback? onLogoTap;
   final VoidCallback? onSignOut;
   final String initials;
 
@@ -4580,14 +4589,23 @@ class _TopBar extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(20, 11, 18, 8),
       child: Row(
         children: [
-          const _BrandMark(),
-          const SizedBox(width: 9),
-          const Text(
-            'PadCare',
-            style: TextStyle(
-              color: _ink,
-              fontSize: 21,
-              fontWeight: FontWeight.w800,
+          InkWell(
+            onTap: onLogoTap,
+            borderRadius: BorderRadius.circular(10),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _BrandMark(),
+                SizedBox(width: 9),
+                Text(
+                  'PadCare',
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 8),
@@ -5977,17 +5995,6 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     );
   }
 
-  void _openSplashScreenModal() {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => _PadCareSplashScreen(
-          onClose: () => Navigator.of(context).pop(),
-        ),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -6053,16 +6060,29 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       padding: const EdgeInsets.fromLTRB(18, 10, 16, 6),
       child: Row(
         children: [
-          const _BrandMark(),
-          const SizedBox(width: 8),
-          const Text(
-            'PadCare',
-            style: TextStyle(
-              color: _ink,
-              fontSize: 21,
-              fontWeight: FontWeight.w900,
-              letterSpacing: -0.4,
-              fontFamily: _fontHeading,
+          InkWell(
+            onTap: () {
+              if (_selectedIndex != 0) {
+                setState(() => _selectedIndex = 0);
+              }
+            },
+            borderRadius: BorderRadius.circular(10),
+            child: const Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _BrandMark(),
+                SizedBox(width: 8),
+                Text(
+                  'PadCare',
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.4,
+                    fontFamily: _fontHeading,
+                  ),
+                ),
+              ],
             ),
           ),
           const SizedBox(width: 10),
@@ -7634,7 +7654,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         const _FacilityHeader(
           eyebrow: 'SETTINGS & ACCOUNT',
           title: 'Profile & Access',
-          subtitle: 'Manage roles, view splash preview, and local preferences.',
+          subtitle: 'Manage roles, distribution points, and local preferences.',
         ),
         const SizedBox(height: 18),
         Container(
@@ -7674,16 +7694,6 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           ),
         ),
         const SizedBox(height: 16),
-        ListTile(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          tileColor: Colors.white,
-          leading: const Icon(Icons.smartphone_rounded, color: _deepTeal),
-          title: const Text('Preview Splash Screen', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
-          subtitle: const Text('View the 3D PadCare launch visual'),
-          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-          onTap: _openSplashScreenModal,
-        ),
-        const SizedBox(height: 10),
         ListTile(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           tileColor: Colors.white,

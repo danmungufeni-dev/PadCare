@@ -4156,7 +4156,7 @@ const _kSupportPoints = <_SupportPoint>[
     hours: 'Open 24/7',
     inStock: true,
     isVerified: true,
-    directions: 'Directions, & conflow',
+    directions: 'Hospital Road, Arua Central',
     mapOffsetPercent: Offset(0.50, 0.48),
     pinLabel: 'Clinic',
     supplies: 'Emergency hospital stock',

@@ -33,5 +33,10 @@ service cloud.firestore {
       // Allow community members to submit donations
       allow write: if true;
     }
+
+    // School Emergency Restock Requisitions (Matron -> Arua Central Hub)
+    match /restock_requests/{requisitionId} {
+      allow read, write: if true;
+    }
   }
 }

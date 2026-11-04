@@ -621,4 +621,35 @@ class FirestoreService {
           return null;
         });
   }
+
+  /// Saves a school restock requisition to Firestore `restock_requests`.
+  static Future<void> saveRestockRequest(Map<String, dynamic> data) async {
+    if (!FirebaseService.isFirebaseAvailable || _db == null) return;
+    try {
+      final id = data['id']?.toString() ??
+          'RESTOCK-${DateTime.now().millisecondsSinceEpoch}';
+      await _db!.collection('restock_requests').doc(id).set({
+        ...data,
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Firestore saveRestockRequest error: $e');
+    }
+  }
+
+  /// Streams restock requisitions for a specific school.
+  static Stream<List<Map<String, dynamic>>> streamRestockRequests(String schoolName) {
+    if (!FirebaseService.isFirebaseAvailable || _db == null) {
+      return const Stream.empty();
+    }
+    return _db!
+        .collection('restock_requests')
+        .where('school', isEqualTo: schoolName)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList())
+        .handleError((error) {
+          debugPrint('streamRestockRequests error: $error');
+          return <Map<String, dynamic>>[];
+        });
+  }
 }

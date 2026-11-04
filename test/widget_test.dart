@@ -281,4 +281,43 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Nile View School'), findsOneWidget);
   });
+
+  testWidgets('teacher can request stock from hub and perform bulk restock', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const MyApp());
+
+    await tester.tap(find.text('Senior woman teacher'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('submit-access')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Stock'));
+    await tester.pumpAndSettle();
+
+    // Verify bulk restock +10
+    expect(find.text('42 kits on hand'), findsOneWidget);
+    final bulkAdd = find.text('+10').first;
+    await tester.ensureVisible(bulkAdd);
+    await tester.tap(bulkAdd);
+    await tester.pumpAndSettle();
+    expect(find.text('52 kits on hand'), findsOneWidget);
+
+    // Verify restock from hub dialog and submission
+    final hubBtn = find.byKey(const ValueKey('request-restock-hub-btn'));
+    await tester.ensureVisible(hubBtn);
+    await tester.tap(hubBtn);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Hub Restock Requisition'), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey('submit-restock-requisition-btn')));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('Requisition RESTOCK-'), findsOneWidget);
+    await tester.tap(find.text('Done'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Active Hub Restock Orders'), findsOneWidget);
+  });
 }

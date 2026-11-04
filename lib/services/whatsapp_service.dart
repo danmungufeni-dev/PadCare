@@ -78,4 +78,23 @@ class WhatsAppService {
       return false;
     }
   }
+
+  /// Opens a WhatsApp chat with any custom text message.
+  static Future<bool> launchMessage({
+    String? phone,
+    required String message,
+  }) async {
+    final target = (phone != null && phone.trim().isNotEmpty)
+        ? phone.replaceAll(RegExp(r'[\s\+\-]'), '')
+        : '';
+    final url = target.isNotEmpty
+        ? 'https://wa.me/$target?text=${Uri.encodeComponent(message)}'
+        : 'https://wa.me/?text=${Uri.encodeComponent(message)}';
+    try {
+      openExternalUrl(url);
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
 }

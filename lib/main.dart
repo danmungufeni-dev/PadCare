@@ -9,11 +9,13 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'services/firebase_service.dart';
 import 'services/geo_service.dart';
 import 'services/momo_service.dart';
+import 'services/offline_queue_service.dart';
 import 'services/whatsapp_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await FirebaseService.initialize();
+  await OfflineQueueService.init();
   runApp(const MyApp());
 }
 
@@ -2818,6 +2820,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   StreamSubscription<List<Map<String, dynamic>>>? _requestsSubscription;
   StreamSubscription<Map<String, dynamic>?>? _stockSubscription;
+  StreamSubscription<List<Map<String, dynamic>>>? _restockSubscription;
+  List<Map<String, dynamic>> _restockRequisitions = [];
 
   @override
   void initState() {
@@ -2830,6 +2834,7 @@ class _HomeScreenState extends State<HomeScreen> {
   void dispose() {
     _requestsSubscription?.cancel();
     _stockSubscription?.cancel();
+    _restockSubscription?.cancel();
     super.dispose();
   }
 
@@ -2846,6 +2851,12 @@ class _HomeScreenState extends State<HomeScreen> {
         FirestoreService.streamSchoolStock(widget.facility).listen((stockData) {
       if (!mounted || stockData == null) return;
       _syncCloudStock(stockData);
+    });
+
+    _restockSubscription =
+        FirestoreService.streamRestockRequests(widget.facility).listen((requisitions) {
+      if (!mounted || requisitions.isEmpty) return;
+      setState(() => _restockRequisitions = requisitions);
     });
   }
 
@@ -2964,8 +2975,18 @@ class _HomeScreenState extends State<HomeScreen> {
       unawaited(
         FirestoreService.updateSchoolStock(
           schoolName: widget.facility,
-          kitsOnHand: stock[_stockKey(widget.facility, 'Emergency period kits')] ?? 0,
-          packsOnHand: stock[_stockKey(widget.facility, 'Disposable pad packs')] ?? 0,
+          kitsOnHand: stock[_stockKey(widget.facility, 'Reusable pads')] ?? stock[_stockKey(widget.facility, 'Emergency period kits')] ?? 0,
+          packsOnHand: stock[_stockKey(widget.facility, 'Disposable pads')] ?? stock[_stockKey(widget.facility, 'Disposable pad packs')] ?? 0,
+        ),
+      );
+      unawaited(
+        OfflineQueueService.enqueue(
+          type: 'update_school_stock',
+          payload: {
+            'school': widget.facility,
+            'kitsOnHand': stock[_stockKey(widget.facility, 'Reusable pads')] ?? stock[_stockKey(widget.facility, 'Emergency period kits')] ?? 0,
+            'packsOnHand': stock[_stockKey(widget.facility, 'Disposable pads')] ?? stock[_stockKey(widget.facility, 'Disposable pad packs')] ?? 0,
+          },
         ),
       );
       if (!mounted) return;
@@ -3019,6 +3040,12 @@ class _HomeScreenState extends State<HomeScreen> {
         _LocalData(requests: updatedRequests, stock: stock),
       );
       unawaited(FirestoreService.updateRequestStatus(request.id, status));
+      unawaited(
+        OfflineQueueService.enqueue(
+          type: 'update_request_status',
+          payload: {'id': request.id, 'status': status},
+        ),
+      );
       if (!mounted) return;
       setState(() {
         _requests = updatedRequests;
@@ -3229,6 +3256,21 @@ class _HomeScreenState extends State<HomeScreen> {
           subtitle: '${widget.facility}  ·  Sample starting stock',
         ),
         const SizedBox(height: 12),
+        ElevatedButton.icon(
+          key: const ValueKey('request-restock-hub-btn'),
+          onPressed: _openRestockRequisitionDialog,
+          icon: const Icon(Icons.local_shipping_rounded),
+          label: const Text('Request Restock from Arua Central Hub'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _deepTeal,
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(48),
+            elevation: 0,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
+          ),
+        ),
+        const SizedBox(height: 12),
         const _PrivacyNote(
           text: 'Preview only: staff identity is not verified. Stock changes are stored on this device.',
         ),
@@ -3249,10 +3291,88 @@ class _HomeScreenState extends State<HomeScreen> {
               supply: supply,
               onDecrease: () => _changeStock(supply, -1),
               onIncrease: () => _changeStock(supply, 1),
+              onBulkIncrease: () => _changeStock(supply, 10),
               onEdit: () => _showStockEditDialog(supply),
             ),
           ),
         ),
+        if (_restockRequisitions.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          const _SectionTitle('Active Hub Restock Orders'),
+          const SizedBox(height: 10),
+          ..._restockRequisitions.take(3).map((req) {
+            final status = req['status'] as String? ?? 'Pending Dispatch';
+            final isUrgent = req['urgency']?.toString().contains('Emergency') ?? false;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: _line),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE4F8F2),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.inventory_2_outlined, color: _deepTeal, size: 20),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              req['reference'] ?? 'Restock',
+                              style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: _ink),
+                            ),
+                            if (isUrgent) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFFF1F2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: const Text(
+                                  'URGENT',
+                                  style: TextStyle(color: Color(0xFFE11D48), fontSize: 9, fontWeight: FontWeight.w800),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${req['quantity']}x ${req['product']}',
+                          style: const TextStyle(color: _muted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFFFBEB),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFFDE68A)),
+                    ),
+                    child: Text(
+                      status,
+                      style: const TextStyle(color: Color(0xFFB45309), fontSize: 11, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        ],
         const SizedBox(height: 12),
         const Text(
           'Approved requests reserve stock. On-hand stock changes when a request is marked collected.',
@@ -3408,6 +3528,232 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
+  void _openRestockRequisitionDialog() {
+    String selectedSupply = 'Disposable pad packs';
+    int requestedQty = 50;
+    String urgency = 'Standard (within 48h)';
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (context, setModalState) => SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            22,
+            16,
+            22,
+            MediaQuery.of(context).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD0DFDC),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE4F8F2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.local_shipping_rounded, color: _deepTeal, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Hub Restock Requisition',
+                          style: TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 18),
+                        ),
+                        Text(
+                          '${widget.facility}  ·  Arua Central Logistics Desk',
+                          style: const TextStyle(color: _muted, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              const Text('Supply Type Needed', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: _ink)),
+              const SizedBox(height: 6),
+              DropdownButtonFormField<String>(
+                initialValue: selectedSupply,
+                decoration: InputDecoration(
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'Disposable pad packs', child: Text('Disposable pad packs (10/pack)')),
+                  DropdownMenuItem(value: 'Reusable pad kits', child: Text('Reusable pad kits (4/kit)')),
+                  DropdownMenuItem(value: 'Hygiene & antiseptic soap', child: Text('Hygiene & antiseptic soap (bars)')),
+                  DropdownMenuItem(value: 'Full combined emergency package', child: Text('Full combined emergency package')),
+                ],
+                onChanged: (val) {
+                  if (val != null) setModalState(() => selectedSupply = val);
+                },
+              ),
+              const SizedBox(height: 16),
+              const Text('Quantity Required', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: _ink)),
+              const SizedBox(height: 8),
+              Row(
+                children: [25, 50, 100, 200].map((qty) {
+                  final selected = requestedQty == qty;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text('$qty'),
+                      selected: selected,
+                      selectedColor: _deepTeal,
+                      labelStyle: TextStyle(
+                        color: selected ? Colors.white : _ink,
+                        fontWeight: FontWeight.w800,
+                      ),
+                      onSelected: (_) => setModalState(() => requestedQty = qty),
+                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+              const Text('Urgency Level', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: _ink)),
+              const SizedBox(height: 6),
+              SegmentedButton<String>(
+                segments: const [
+                  ButtonSegment(value: 'Standard (within 48h)', label: Text('Standard (48h)')),
+                  ButtonSegment(value: 'Critical Emergency (Today)', label: Text('🚨 Urgent Today')),
+                ],
+                selected: {urgency},
+                onSelectionChanged: (val) => setModalState(() => urgency = val.first),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                key: const ValueKey('submit-restock-requisition-btn'),
+                onPressed: () async {
+                  final ref = 'RESTOCK-${DateTime.now().millisecondsSinceEpoch % 100000}';
+                  final requisitionData = {
+                    'id': ref,
+                    'reference': ref,
+                    'school': widget.facility,
+                    'product': selectedSupply,
+                    'quantity': requestedQty,
+                    'urgency': urgency,
+                    'status': 'Pending Dispatch',
+                    'timestamp': DateTime.now().toIso8601String(),
+                  };
+
+                  setState(() {
+                    _restockRequisitions = [requisitionData, ..._restockRequisitions];
+                  });
+
+                  await OfflineQueueService.enqueue(
+                    type: 'restock_request',
+                    payload: requisitionData,
+                  );
+
+                  if (!mounted) return;
+                  if (sheetContext.mounted) {
+                    Navigator.pop(sheetContext);
+                  }
+
+                  _showRestockSubmittedSheet(requisitionData);
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _deepTeal,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: const Text('Submit Requisition Order', style: TextStyle(fontWeight: FontWeight.w800)),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showRestockSubmittedSheet(Map<String, dynamic> data) {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Center(
+              child: Container(
+                width: 42,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFD0DFDC),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            const Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 48),
+            const SizedBox(height: 10),
+            Text(
+              'Requisition ${data['reference']} Logged!',
+              style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: _ink),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              '${data['quantity']}x ${data['product']} for ${widget.facility}',
+              style: const TextStyle(color: _muted, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: () {
+                Navigator.pop(context);
+                final message =
+                    'Hello PadCare Arua Logistics Desk, ${widget.facility} has submitted Requisition ${data['reference']} for ${data['quantity']}x ${data['product']} (${data['urgency']}). Please confirm dispatch schedule.';
+                WhatsAppService.launchMessage(phone: '+256700000000', message: message);
+              },
+              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 18),
+              label: const Text('Notify Logistics Hub via WhatsApp'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF25D366),
+                foregroundColor: Colors.white,
+                minimumSize: const Size.fromHeight(48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Done', style: TextStyle(color: _muted, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 final _primaryButtonStyle = FilledButton.styleFrom(
@@ -3431,6 +3777,97 @@ class _Supply {
   final int lowAt;
   final String unit;
   int reserved = 0;
+}
+
+class _OfflineSyncPill extends StatelessWidget {
+  const _OfflineSyncPill();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: OfflineQueueService.pendingCount,
+      builder: (context, count, _) {
+        return ValueListenableBuilder<bool>(
+          valueListenable: OfflineQueueService.isSyncing,
+          builder: (context, syncing, _) {
+            if (count == 0) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFDCFCE7)),
+                ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(Icons.cloud_done_rounded, color: Color(0xFF16A34A), size: 13),
+                    SizedBox(width: 4),
+                    Text(
+                      'Synced',
+                      style: TextStyle(color: Color(0xFF16A34A), fontSize: 10, fontWeight: FontWeight.w700),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return InkWell(
+              onTap: syncing
+                  ? null
+                  : () async {
+                      final synced = await OfflineQueueService.flush();
+                      if (context.mounted && !MyApp.isTestMode) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              synced > 0
+                                  ? 'Synced $synced changes with Cloud Firestore!'
+                                  : 'Attempting cloud sync...',
+                            ),
+                            backgroundColor: const Color(0xFF116B78),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      }
+                    },
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (syncing)
+                      const SizedBox(
+                        width: 11,
+                        height: 11,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD97706)),
+                      )
+                    else
+                      const Icon(Icons.sync_problem_rounded, color: Color(0xFFD97706), size: 13),
+                    const SizedBox(width: 4),
+                    Text(
+                      syncing ? 'Syncing...' : '$count offline',
+                      style: const TextStyle(
+                        color: Color(0xFFB45309),
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
 }
 
 class _TopBar extends StatelessWidget {
@@ -3460,6 +3897,8 @@ class _TopBar extends StatelessWidget {
               fontWeight: FontWeight.w800,
             ),
           ),
+          const SizedBox(width: 8),
+          const _OfflineSyncPill(),
           const Spacer(),
           IconButton(
             tooltip: 'Request activity',
@@ -3964,6 +4403,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         _LocalData(requests: updatedRequests, stock: data.stock),
       );
       unawaited(FirestoreService.saveRequest(request.toJson()));
+      unawaited(
+        OfflineQueueService.enqueue(
+          type: 'save_request',
+          payload: request.toJson(),
+        ),
+      );
       if (!mounted) return;
       setState(() {
         _localRequests = updatedRequests;
@@ -3991,6 +4436,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         _LocalData(requests: updatedRequests, stock: data.stock),
       );
       unawaited(FirestoreService.saveRequest(request.toJson()));
+      unawaited(
+        OfflineQueueService.enqueue(
+          type: 'save_request',
+          payload: request.toJson(),
+        ),
+      );
       if (!mounted) return;
       setState(() => _localRequests = updatedRequests);
     } catch (_) {
@@ -4911,6 +5362,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               ),
             ),
           ),
+          const SizedBox(width: 8),
+          const _OfflineSyncPill(),
           const Spacer(),
           IconButton(
             tooltip: 'Request activity',
@@ -7957,22 +8410,25 @@ class _StockManagementCard extends StatelessWidget {
     required this.supply,
     required this.onDecrease,
     required this.onIncrease,
+    this.onBulkIncrease,
     required this.onEdit,
   });
 
   final _Supply supply;
   final VoidCallback onDecrease;
   final VoidCallback onIncrease;
+  final VoidCallback? onBulkIncrease;
   final VoidCallback onEdit;
 
   @override
   Widget build(BuildContext context) {
     final low = supply.onHand - supply.reserved <= supply.lowAt;
+    final isCritical = supply.onHand < 5;
     return Container(
       padding: const EdgeInsets.fromLTRB(14, 13, 8, 13),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: _line),
+        border: Border.all(color: isCritical ? const Color(0xFFFECDD3) : _line),
         borderRadius: BorderRadius.circular(13),
       ),
       child: Column(
@@ -7993,19 +8449,44 @@ class _StockManagementCard extends StatelessWidget {
                             fontWeight: FontWeight.w800,
                           ),
                         ),
-                        if (low) ...[
+                        if (isCritical) ...[
                           const SizedBox(width: 8),
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFFF1F2),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFFECDD3)),
+                              border: Border.all(color: const Color(0xFFF43F5E)),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.warning_amber_rounded, color: Color(0xFFE11D48), size: 12),
+                                SizedBox(width: 3),
+                                Text(
+                                  'Critical (< 5 left)',
+                                  style: TextStyle(
+                                    color: Color(0xFFE11D48),
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ] else if (low) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFFFBEB),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFFDE68A)),
                             ),
                             child: const Text(
                               'Low Stock',
                               style: TextStyle(
-                                color: Color(0xFFE11D48),
+                                color: Color(0xFFB45309),
                                 fontSize: 10,
                                 fontWeight: FontWeight.w700,
                               ),
@@ -8037,7 +8518,7 @@ class _StockManagementCard extends StatelessWidget {
               value: (supply.onHand / ((supply.lowAt * 2).clamp(1, 9999))).clamp(0.0, 1.0),
               backgroundColor: const Color(0xFFF1F5F9),
               valueColor: AlwaysStoppedAnimation<Color>(
-                low ? const Color(0xFFE11D48) : _deepTeal,
+                isCritical ? const Color(0xFFE11D48) : (low ? const Color(0xFFF59E0B) : _deepTeal),
               ),
               minHeight: 5,
             ),
@@ -8052,7 +8533,7 @@ class _StockManagementCard extends StatelessWidget {
                       TextSpan(
                         text: '${supply.onHand}',
                         style: TextStyle(
-                          color: low ? _coral : _ink,
+                          color: isCritical ? const Color(0xFFE11D48) : (low ? _coral : _ink),
                           fontSize: 25,
                           fontWeight: FontWeight.w800,
                         ),
@@ -8086,6 +8567,31 @@ class _StockManagementCard extends StatelessWidget {
                   fixedSize: const Size(40, 40),
                 ),
               ),
+              if (onBulkIncrease != null) ...[
+                const SizedBox(width: 5),
+                InkWell(
+                  onTap: onBulkIncrease,
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 9),
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE4F8F2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFF99E2D2)),
+                    ),
+                    child: const Text(
+                      '+10',
+                      style: TextStyle(
+                        color: _deepTeal,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
             ],
           ),
           if (supply.reserved > 0)

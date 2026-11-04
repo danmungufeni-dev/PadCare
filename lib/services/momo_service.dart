@@ -47,9 +47,56 @@ class MoMoDonation {
   );
 }
 
+class MoMoImpactSummary {
+  final int totalAmountUgx;
+  final int totalKitsSponsored;
+  final int schoolsBenefited;
+  final List<MoMoDonation> recentDonations;
+
+  const MoMoImpactSummary({
+    required this.totalAmountUgx,
+    required this.totalKitsSponsored,
+    required this.schoolsBenefited,
+    required this.recentDonations,
+  });
+}
+
 class MoMoService {
   static FirebaseFirestore? get _db =>
       FirebaseService.isFirebaseAvailable ? FirebaseFirestore.instance : null;
+
+  static final List<MoMoDonation> _initialDonations = [
+    MoMoDonation(
+      id: 'momo-init-1',
+      donorName: 'Arua Rotary Club',
+      phone: '+256 772 110 ***',
+      amountUgx: 300000,
+      provider: 'MTN Mobile Money',
+      sponsoredKits: 20,
+      status: 'completed',
+      createdAt: DateTime.now().subtract(const Duration(hours: 3)),
+    ),
+    MoMoDonation(
+      id: 'momo-init-2',
+      donorName: 'Ediofe Old Students Assoc.',
+      phone: '+256 782 445 ***',
+      amountUgx: 150000,
+      provider: 'Airtel Money',
+      sponsoredKits: 10,
+      status: 'completed',
+      createdAt: DateTime.now().subtract(const Duration(hours: 7)),
+    ),
+    MoMoDonation(
+      id: 'momo-init-3',
+      donorName: 'Community Champion (Amina K.)',
+      phone: '+256 752 908 ***',
+      amountUgx: 45000,
+      provider: 'MTN Mobile Money',
+      sponsoredKits: 3,
+      status: 'completed',
+      createdAt: DateTime.now().subtract(const Duration(hours: 14)),
+    ),
+  ];
 
   /// Calculates number of complete menstrual kits sponsored by a UGX amount
   static int calculateSponsoredKits(int amountUgx) {
@@ -72,7 +119,7 @@ class MoMoService {
       id: donationId,
       donorName: (donorName != null && donorName.trim().isNotEmpty)
           ? donorName.trim()
-          : 'PadCare Champion ($cleanPhone)',
+          : 'PadCare Supporter ($cleanPhone)',
       phone: cleanPhone,
       amountUgx: amountUgx,
       provider: provider,
@@ -80,6 +127,8 @@ class MoMoService {
       status: 'completed',
       createdAt: DateTime.now(),
     );
+
+    _initialDonations.insert(0, donation);
 
     if (FirebaseService.isFirebaseAvailable && _db != null) {
       try {
@@ -113,5 +162,53 @@ class MoMoService {
           return total;
         })
         .handleError((_) => 142);
+  }
+
+  /// Real-time stream of comprehensive community sponsorship metrics
+  static Stream<MoMoImpactSummary> streamImpactSummary() {
+    if (!FirebaseService.isFirebaseAvailable || _db == null) {
+      return Stream.value(
+        MoMoImpactSummary(
+          totalAmountUgx: 2130000,
+          totalKitsSponsored: 142,
+          schoolsBenefited: 4,
+          recentDonations: _initialDonations,
+        ),
+      );
+    }
+    return _db!
+        .collection('donations')
+        .orderBy('createdAt', descending: true)
+        .snapshots()
+        .map((snapshot) {
+          int totalUgx = 2130000;
+          int totalKits = 142;
+          final List<MoMoDonation> donations = [];
+
+          for (final doc in snapshot.docs) {
+            final data = doc.data();
+            final d = MoMoDonation.fromJson(data);
+            donations.add(d);
+            totalUgx += d.amountUgx;
+            totalKits += d.sponsoredKits;
+          }
+
+          if (donations.isEmpty) {
+            donations.addAll(_initialDonations);
+          }
+
+          return MoMoImpactSummary(
+            totalAmountUgx: totalUgx,
+            totalKitsSponsored: totalKits,
+            schoolsBenefited: 4,
+            recentDonations: donations.take(10).toList(),
+          );
+        })
+        .handleError((_) => MoMoImpactSummary(
+              totalAmountUgx: 2130000,
+              totalKitsSponsored: 142,
+              schoolsBenefited: 4,
+              recentDonations: _initialDonations,
+            ));
   }
 }

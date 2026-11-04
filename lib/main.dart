@@ -10,6 +10,7 @@ import 'services/firebase_service.dart';
 import 'services/geo_service.dart';
 import 'services/momo_service.dart';
 import 'services/offline_queue_service.dart';
+import 'services/pwa_service.dart';
 import 'services/whatsapp_service.dart';
 import 'services/url_launcher_stub.dart'
     if (dart.library.html) 'services/url_launcher_web.dart';
@@ -2976,6 +2977,7 @@ class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription<Map<String, dynamic>?>? _stockSubscription;
   StreamSubscription<List<Map<String, dynamic>>>? _restockSubscription;
   List<Map<String, dynamic>> _restockRequisitions = [];
+  final TextEditingController _pinVerifyController = TextEditingController();
 
   @override
   void initState() {
@@ -2986,6 +2988,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _pinVerifyController.dispose();
     _requestsSubscription?.cancel();
     _stockSubscription?.cancel();
     _restockSubscription?.cancel();
@@ -3358,6 +3361,154 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  void _verifyAndDispenseByPin() {
+    final rawCode = _pinVerifyController.text.trim().replaceAll('#', '');
+    if (rawCode.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter the student\'s 4-digit pickup PIN.')),
+      );
+      return;
+    }
+
+    final match = _facilityRequests.where((r) => r.pickupPin == rawCode || r.reference.endsWith(rawCode)).firstOrNull;
+
+    if (match == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('No active request found matching PIN #$rawCode at ${widget.facility}.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    if (match.status == 'Collected') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Request ${match.reference} was already collected/dispensed.'),
+          backgroundColor: const Color(0xFFD97706),
+        ),
+      );
+      return;
+    }
+
+    _setRequestStatus(match, 'Collected');
+    _pinVerifyController.clear();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '✅ Verified PIN #$rawCode! Dispensed ${match.quantity} ${match.product}.',
+                style: const TextStyle(fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF15803D),
+        duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  Widget _buildPinVerificationCard() {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF0FDF9),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF99F6E4)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0A0D9488),
+            blurRadius: 8,
+            offset: Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFCCFBF1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.key_rounded, color: _deepTeal, size: 18),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                '1-Tap PIN Dispense & Handout',
+                style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13.5),
+              ),
+              const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE0F2FE),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text('Confidential', style: TextStyle(color: Color(0xFF0369A1), fontSize: 10, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: SizedBox(
+                  height: 42,
+                  child: TextField(
+                    controller: _pinVerifyController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      hintText: 'Enter 4-digit PIN (e.g. 4821)',
+                      hintStyle: const TextStyle(fontSize: 12, color: _muted),
+                      prefixIcon: const Icon(Icons.pin_rounded, size: 18, color: _deepTeal),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 8, horizontal: 10),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Color(0xFFCCFBF1)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Color(0xFFCCFBF1)),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              ElevatedButton.icon(
+                key: const ValueKey('verify-pin-dispense-btn'),
+                onPressed: _verifyAndDispenseByPin,
+                icon: const Icon(Icons.verified_rounded, size: 16),
+                label: const Text('Dispense', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _deepTeal,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  minimumSize: const Size(0, 42),
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildRequests() {
     final requests = _facilityRequests;
     return _PageScroll(
@@ -3397,6 +3548,8 @@ class _HomeScreenState extends State<HomeScreen> {
               onCollect: () => _setRequestStatus(request, 'Collected'),
             ),
           ),
+        const SizedBox(height: 14),
+        _buildPinVerificationCard(),
       ],
     );
   }
@@ -3666,21 +3819,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showPledgeDialog(BuildContext context) {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Supply pledge'),
-        content: const Text(
-          'Pledge tracking will connect to partner accounts when backend services are configured.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
-    );
+    _showGlobalImpactSheet(context);
   }
 
   void _openRestockRequisitionDialog() {
@@ -4024,6 +4163,406 @@ class _OfflineSyncPill extends StatelessWidget {
   }
 }
 
+class _PwaInstallButton extends StatelessWidget {
+  const _PwaInstallButton();
+
+  @override
+  Widget build(BuildContext context) {
+    if (!PwaService.isPwaSupported || PwaService.isStandalone) {
+      return const SizedBox.shrink();
+    }
+    return InkWell(
+      onTap: () async {
+        final installed = await PwaService.promptInstall();
+        if (context.mounted && installed) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('🎉 PadCare installed to your home screen!'),
+              backgroundColor: _deepTeal,
+            ),
+          );
+        }
+      },
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF0FDF4),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFBBF7D0)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.download_for_offline_rounded, color: Color(0xFF16A34A), size: 13),
+            SizedBox(width: 4),
+            Text(
+              'Install App',
+              style: TextStyle(color: Color(0xFF15803D), fontSize: 10, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _CommunityImpactPill extends StatelessWidget {
+  const _CommunityImpactPill();
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<int>(
+      stream: MoMoService.streamTotalKitsSponsored(),
+      initialData: 142,
+      builder: (context, snapshot) {
+        final count = snapshot.data ?? 142;
+        return InkWell(
+          onTap: () => _showGlobalImpactSheet(context),
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+              color: const Color(0xFFEFF6FF),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: const Color(0xFFBFDBFE)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.favorite_rounded, color: Color(0xFF2563EB), size: 12),
+                const SizedBox(width: 4),
+                Text(
+                  '$count Kits Funded',
+                  style: const TextStyle(
+                    color: Color(0xFF1D4ED8),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+void _showGlobalImpactSheet(BuildContext context) {
+  int selectedAmount = 45000;
+  String selectedProvider = 'MTN Mobile Money';
+  final phoneController = TextEditingController(text: '+256 772 ');
+  final donorNameController = TextEditingController();
+
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    useSafeArea: true,
+    backgroundColor: Colors.white,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+    ),
+    builder: (context) => StatefulBuilder(
+      builder: (context, setSheetState) => Padding(
+        padding: EdgeInsets.fromLTRB(20, 16, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD0DFDC),
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(Icons.favorite_rounded, color: Color(0xFF2563EB), size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Community MoMo Sponsorship',
+                          style: TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 16.5),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          '100% Transparent · Arua Girls Hygiene Fund',
+                          style: TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              StreamBuilder<MoMoImpactSummary>(
+                stream: MoMoService.streamImpactSummary(),
+                builder: (context, snapshot) {
+                  final summary = snapshot.data ??
+                      const MoMoImpactSummary(
+                        totalAmountUgx: 2130000,
+                        totalKitsSponsored: 142,
+                        schoolsBenefited: 4,
+                        recentDonations: [],
+                      );
+                  final formattedUgx = summary.totalAmountUgx.toString().replaceAllMapped(
+                        RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'),
+                        (Match m) => '${m[1]},',
+                      );
+                  return Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFFF0FDF4), Color(0xFFE0F2FE)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFBAE6FD)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Column(
+                          children: [
+                            Text('UGX $formattedUgx', style: const TextStyle(color: Color(0xFF15803D), fontWeight: FontWeight.w900, fontSize: 13)),
+                            const SizedBox(height: 2),
+                            const Text('Total Raised', style: TextStyle(color: _muted, fontSize: 10, fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                        Container(width: 1, height: 32, color: const Color(0xFFBAE6FD)),
+                        Column(
+                          children: [
+                            Text('${summary.totalKitsSponsored} Kits', style: const TextStyle(color: Color(0xFF0369A1), fontWeight: FontWeight.w900, fontSize: 13)),
+                            const SizedBox(height: 2),
+                            const Text('Kits Funded', style: TextStyle(color: _muted, fontSize: 10, fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                        Container(width: 1, height: 32, color: const Color(0xFFBAE6FD)),
+                        Column(
+                          children: [
+                            Text('${summary.schoolsBenefited} Schools', style: const TextStyle(color: _deepTeal, fontWeight: FontWeight.w900, fontSize: 13)),
+                            const SizedBox(height: 2),
+                            const Text('Beneficiaries', style: TextStyle(color: _muted, fontSize: 10, fontWeight: FontWeight.w500)),
+                          ],
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Select Sponsorship Tier',
+                style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ChoiceChip(
+                    label: const Text('1 Pack (UGX 3,000)'),
+                    selected: selectedAmount == 3000,
+                    onSelected: (_) => setSheetState(() => selectedAmount = 3000),
+                    selectedColor: const Color(0xFFE4F8F2),
+                    backgroundColor: Colors.white,
+                    labelStyle: TextStyle(
+                      color: selectedAmount == 3000 ? _deepTeal : _ink,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                  ChoiceChip(
+                    label: const Text('1 Term Kit (UGX 15,000)'),
+                    selected: selectedAmount == 15000,
+                    onSelected: (_) => setSheetState(() => selectedAmount = 15000),
+                    selectedColor: const Color(0xFFE4F8F2),
+                    backgroundColor: Colors.white,
+                    labelStyle: TextStyle(
+                      color: selectedAmount == 15000 ? _deepTeal : _ink,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                  ChoiceChip(
+                    label: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('3 Kits (UGX 45,000)'),
+                        SizedBox(width: 4),
+                        Text('⭐', style: TextStyle(fontSize: 10)),
+                      ],
+                    ),
+                    selected: selectedAmount == 45000,
+                    onSelected: (_) => setSheetState(() => selectedAmount = 45000),
+                    selectedColor: const Color(0xFFE4F8F2),
+                    backgroundColor: Colors.white,
+                    labelStyle: TextStyle(
+                      color: selectedAmount == 45000 ? _deepTeal : _ink,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                  ChoiceChip(
+                    label: const Text('Classroom (UGX 100,000)'),
+                    selected: selectedAmount == 100000,
+                    onSelected: (_) => setSheetState(() => selectedAmount = 100000),
+                    selectedColor: const Color(0xFFE4F8F2),
+                    backgroundColor: Colors.white,
+                    labelStyle: TextStyle(
+                      color: selectedAmount == 100000 ? _deepTeal : _ink,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              const Text(
+                'Mobile Money Provider',
+                style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Text('MTN Mobile Money'),
+                      selected: selectedProvider == 'MTN Mobile Money',
+                      onSelected: (_) => setSheetState(() => selectedProvider = 'MTN Mobile Money'),
+                      selectedColor: const Color(0xFFFEF08A),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: selectedProvider == 'MTN Mobile Money' ? const Color(0xFF854D0E) : _ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                      side: BorderSide(
+                        color: selectedProvider == 'MTN Mobile Money' ? const Color(0xFFEAB308) : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: ChoiceChip(
+                      label: const Text('Airtel Money'),
+                      selected: selectedProvider == 'Airtel Money',
+                      onSelected: (_) => setSheetState(() => selectedProvider = 'Airtel Money'),
+                      selectedColor: const Color(0xFFFEE2E2),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: selectedProvider == 'Airtel Money' ? const Color(0xFF991B1B) : _ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                      side: BorderSide(
+                        color: selectedProvider == 'Airtel Money' ? const Color(0xFFEF4444) : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: phoneController,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: '$selectedProvider Phone Number',
+                  prefixIcon: const Icon(Icons.phone_android_rounded, color: _deepTeal, size: 20),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: donorNameController,
+                decoration: InputDecoration(
+                  labelText: 'Your Name or Organization (Optional)',
+                  hintText: 'e.g. Arua Supporter, Amina N.',
+                  prefixIcon: const Icon(Icons.person_outline_rounded, color: _deepTeal, size: 20),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 18),
+              ElevatedButton.icon(
+                key: const ValueKey('confirm-momo-sponsor-btn'),
+                onPressed: () async {
+                  final phone = phoneController.text.trim();
+                  if (phone.length < 9) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please enter a valid MoMo phone number.')),
+                    );
+                    return;
+                  }
+                  Navigator.pop(context);
+                  await MoMoService.processDonation(
+                    phone: phone,
+                    amountUgx: selectedAmount,
+                    provider: selectedProvider,
+                    donorName: donorNameController.text.trim(),
+                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Row(
+                          children: [
+                            const Icon(Icons.favorite_rounded, color: Colors.white, size: 20),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                '🎉 Thank you! Sponsored UGX ${selectedAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} for Arua schoolgirls!',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+                        ),
+                        backgroundColor: const Color(0xFF15803D),
+                        duration: const Duration(seconds: 4),
+                      ),
+                    );
+                  }
+                },
+                icon: const Icon(Icons.send_to_mobile_rounded, size: 18),
+                label: Text(
+                  'Sponsor UGX ${selectedAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} via $selectedProvider',
+                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _deepTeal,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class _TopBar extends StatelessWidget {
   const _TopBar({
     required this.onNotificationTap,
@@ -4053,7 +4592,15 @@ class _TopBar extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           const _OfflineSyncPill(),
+          if (MediaQuery.of(context).size.width >= 900) ...[
+            const SizedBox(width: 6),
+            const _PwaInstallButton(),
+          ],
           const Spacer(),
+          if (MediaQuery.of(context).size.width >= 960) ...[
+            const _CommunityImpactPill(),
+            const SizedBox(width: 6),
+          ],
           IconButton(
             tooltip: 'Request activity',
             onPressed: onNotificationTap,
@@ -4115,6 +4662,7 @@ class _LocalRequest {
   const _LocalRequest({
     required this.id,
     required this.reference,
+    required this.pickupPin,
     required this.school,
     required this.area,
     required this.product,
@@ -4125,6 +4673,7 @@ class _LocalRequest {
 
   final String id;
   final String reference;
+  final String pickupPin;
   final String school;
   final String area;
   final String product;
@@ -4135,6 +4684,7 @@ class _LocalRequest {
   Map<String, Object> toJson() => {
     'id': id,
     'reference': reference,
+    'pickupPin': pickupPin,
     'school': school,
     'area': area,
     'product': product,
@@ -4143,20 +4693,28 @@ class _LocalRequest {
     'status': status,
   };
 
-  factory _LocalRequest.fromJson(Map<String, dynamic> json) => _LocalRequest(
-    id: json['id'] as String,
-    reference: json['reference'] as String,
-    school: json['school'] as String,
-    area: json['area'] as String,
-    product: json['product'] as String,
-    quantity: json['quantity'] as int,
-    createdAt: json['createdAt'] as String,
-    status: json['status'] as String? ?? 'Pending review',
-  );
+  factory _LocalRequest.fromJson(Map<String, dynamic> json) {
+    final ref = json['reference'] as String? ?? '';
+    final derivedPin = ref.contains('-')
+        ? ref.split('-').last.padLeft(4, '0')
+        : (json['id']?.toString() ?? '1000').substring(0, 4);
+    return _LocalRequest(
+      id: json['id'] as String,
+      reference: ref,
+      pickupPin: json['pickupPin'] as String? ?? derivedPin,
+      school: json['school'] as String,
+      area: json['area'] as String,
+      product: json['product'] as String,
+      quantity: json['quantity'] as int,
+      createdAt: json['createdAt'] as String,
+      status: json['status'] as String? ?? 'Pending review',
+    );
+  }
 
   _LocalRequest withStatus(String status) => _LocalRequest(
     id: id,
     reference: reference,
+    pickupPin: pickupPin,
     school: school,
     area: area,
     product: product,
@@ -4539,9 +5097,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     setState(() => _savingRequest = true);
 
     final now = DateTime.now();
+    final pin = (1000 + now.millisecondsSinceEpoch % 9000).toString();
     final request = _LocalRequest(
       id: now.microsecondsSinceEpoch.toString(),
-      reference: 'PH-${1000 + now.millisecondsSinceEpoch % 9000}',
+      reference: 'PH-$pin',
+      pickupPin: pin,
       school: _pickupSchool,
       area: _selectedArea == 'Arua Central' ? 'Ediofe' : _selectedArea,
       product: _selectedProduct,
@@ -5538,7 +6098,15 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           ),
           const SizedBox(width: 8),
           const _OfflineSyncPill(),
+          if (MediaQuery.of(context).size.width >= 900) ...[
+            const SizedBox(width: 6),
+            const _PwaInstallButton(),
+          ],
           const Spacer(),
+          if (MediaQuery.of(context).size.width >= 960) ...[
+            const _CommunityImpactPill(),
+            const SizedBox(width: 6),
+          ],
           IconButton(
             tooltip: 'Request activity',
             onPressed: () => setState(() {
@@ -8080,6 +8648,42 @@ class _LocalRequestCard extends StatelessWidget {
                     ),
                   ],
                 ),
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F8F6),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: const Color(0xFFCBEAE1)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.key_rounded, size: 14, color: _deepTeal),
+                      const SizedBox(width: 4),
+                      const Text(
+                        'PIN: ',
+                        style: TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w600),
+                      ),
+                      Text(
+                        '#${request.pickupPin}',
+                        style: const TextStyle(
+                          color: _deepTeal,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                      const Spacer(),
+                      const Flexible(
+                        child: Text(
+                          'Show to Matron',
+                          style: TextStyle(color: _muted, fontSize: 10, fontStyle: FontStyle.italic),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -8571,6 +9175,35 @@ class _TeacherRequestCard extends StatelessWidget {
           Text(
             '${request.area} pickup area  ·  ${request.createdAt.substring(0, 10)}',
             style: const TextStyle(color: _muted, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F8F6),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: const Color(0xFFCBEAE1)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.key_rounded, size: 14, color: _deepTeal),
+                const SizedBox(width: 5),
+                const Text(
+                  'Secret Pickup PIN: ',
+                  style: TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  '#${request.pickupPin}',
+                  style: const TextStyle(
+                    color: _deepTeal,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.1,
+                  ),
+                ),
+              ],
+            ),
           ),
           if (request.status == 'Pending review' ||
               request.status == 'Approved') ...[

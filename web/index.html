@@ -65,6 +65,33 @@
     window.addEventListener('dart-app-ready', function () {
       _loaderObserver.disconnect();
     });
+
+    // PWA BeforeInstallPrompt Handler
+    window._deferredPwaPrompt = null;
+    window._canInstallPwa = false;
+    window.addEventListener('beforeinstallprompt', function (e) {
+      e.preventDefault();
+      window._deferredPwaPrompt = e;
+      window._canInstallPwa = true;
+      window.dispatchEvent(new CustomEvent('pwa-installable'));
+    });
+    window.addEventListener('appinstalled', function () {
+      window._deferredPwaPrompt = null;
+      window._canInstallPwa = false;
+      window.dispatchEvent(new CustomEvent('pwa-installed'));
+    });
+    window.installPadCarePwa = async function () {
+      if (window._deferredPwaPrompt) {
+        window._deferredPwaPrompt.prompt();
+        const choice = await window._deferredPwaPrompt.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          window._deferredPwaPrompt = null;
+          window._canInstallPwa = false;
+          return true;
+        }
+      }
+      return false;
+    };
   </script>
 </head>
 <body>

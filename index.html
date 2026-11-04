@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <!--
+    If you are serving your web app in a path other than the root, change the
+    href value below to reflect the base path you are serving from.
+
+    The path provided below has to start and end with a slash "/" in order for
+    it to work correctly.
+
+    For more details:
+    * https://developer.mozilla.org/en-US/docs/Web/HTML/Element/base
+
+    This is a placeholder for base href that will be replaced by the value of
+    the `--base-href` argument provided to `flutter build`.
+  -->
+  <base href="/PadCare/">
+
+  <meta charset="UTF-8">
+  <meta content="IE=Edge" http-equiv="X-UA-Compatible">
+  <meta name="description" content="PadCare - Emergency menstrual health & supply distribution network for Arua City, Uganda.">
+  <meta name="theme-color" content="#116B78">
+
+  <!-- iOS meta tags & icons -->
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black">
+  <meta name="apple-mobile-web-app-title" content="PadCare">
+  <link rel="apple-touch-icon" href="icons/Icon-192.png">
+
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="favicon.png"/>
+
+  <title>PadCare</title>
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    /* Suppress the default Flutter debug loading ribbon */
+    .flutter-loader,
+    .flutter-loader * {
+      display: none !important;
+      visibility: hidden !important;
+      height: 0 !important;
+      max-height: 0 !important;
+      opacity: 0 !important;
+      pointer-events: none !important;
+    }
+
+    body {
+      margin: 0;
+      background-color: #E4F8F2;
+    }
+  </style>
+  <script>
+    // Remove the loader element immediately if inserted by Flutter dev tools
+    const _loaderObserver = new MutationObserver(function (mutations) {
+      for (const mutation of mutations) {
+        for (const node of mutation.addedNodes) {
+          if (node.nodeType === 1 && (node.classList?.contains('flutter-loader') || node.className === 'flutter-loader')) {
+            node.remove();
+          }
+        }
+      }
+    });
+    _loaderObserver.observe(document.documentElement, { childList: true, subtree: true });
+    window.addEventListener('dart-app-ready', function () {
+      _loaderObserver.disconnect();
+    });
+  </script>
+</head>
+<body>
+  <!--
+    You can customize the "flutter_bootstrap.js" script.
+    This is useful to provide a custom configuration to the Flutter loader
+    or to give the user feedback during the initialization process.
+
+    For more details:
+    * https://docs.flutter.dev/platform-integration/web/initialization
+  -->
+  <div id="loading-container" style="position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background-color: #E4F8F2; z-index: 999999; transition: opacity 0.3s ease-out;">
+    <div id="lottie-animation" style="width: 180px; height: 180px;"></div>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lottie-web/5.12.2/lottie.min.js"></script>
+  <script>
+    try {
+      lottie.loadAnimation({
+        container: document.getElementById('lottie-animation'),
+        renderer: 'svg',
+        loop: true,
+        autoplay: true,
+        path: 'loading-transparent.json'
+      });
+    } catch (e) {
+      console.warn('Lottie preloader initialization:', e);
+    }
+
+    function _removeLoadingScreen() {
+      const el = document.getElementById('loading-container');
+      if (el) {
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+        setTimeout(function () { el.remove(); }, 350);
+      }
+    }
+
+    window.addEventListener('flutter-first-frame', _removeLoadingScreen);
+    window.addEventListener('dart-app-ready', function () {
+      setTimeout(_removeLoadingScreen, 200);
+    });
+  </script>
+
+  <script src="flutter_bootstrap.js" async></script>
+</body>
+</html>

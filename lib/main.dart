@@ -4257,10 +4257,13 @@ class _CommunityImpactPill extends StatelessWidget {
 }
 
 void _showGlobalImpactSheet(BuildContext context) {
-  int selectedAmount = 45000;
+  int selectedAmount = 3000;
+  String selectedType = 'pads';
+  bool isCustom = false;
   String selectedProvider = 'MTN Mobile Money';
   final phoneController = TextEditingController(text: '+256 772 ');
   final donorNameController = TextEditingController();
+  final customAmountController = TextEditingController();
 
   showModalBottomSheet<void>(
     context: context,
@@ -4378,6 +4381,53 @@ void _showGlobalImpactSheet(BuildContext context) {
               ),
               const SizedBox(height: 18),
               const Text(
+                'Sponsorship Category',
+                style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  ChoiceChip(
+                    avatar: const Icon(Icons.clean_hands_outlined, size: 16),
+                    label: const Text('Pad Packs (UGX 3,000/-)'),
+                    selected: selectedType == 'pads' && !isCustom,
+                    onSelected: (_) => setSheetState(() {
+                      selectedType = 'pads';
+                      isCustom = false;
+                      selectedAmount = 3000;
+                      customAmountController.clear();
+                    }),
+                    selectedColor: const Color(0xFFE4F8F2),
+                    backgroundColor: Colors.white,
+                    labelStyle: TextStyle(
+                      color: selectedType == 'pads' && !isCustom ? _deepTeal : _ink,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  ChoiceChip(
+                    avatar: const Icon(Icons.medical_services_outlined, size: 16),
+                    label: const Text('Reusable Kits (UGX 15,000/-)'),
+                    selected: selectedType == 'kits' && !isCustom,
+                    onSelected: (_) => setSheetState(() {
+                      selectedType = 'kits';
+                      isCustom = false;
+                      selectedAmount = 15000;
+                      customAmountController.clear();
+                    }),
+                    selectedColor: const Color(0xFFE4F8F2),
+                    backgroundColor: Colors.white,
+                    labelStyle: TextStyle(
+                      color: selectedType == 'kits' && !isCustom ? _deepTeal : _ink,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              const Text(
                 'Select Sponsorship Tier',
                 style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13),
               ),
@@ -4386,63 +4436,176 @@ void _showGlobalImpactSheet(BuildContext context) {
                 spacing: 8,
                 runSpacing: 8,
                 children: [
-                  ChoiceChip(
-                    label: const Text('1 Pack (UGX 3,000)'),
-                    selected: selectedAmount == 3000,
-                    onSelected: (_) => setSheetState(() => selectedAmount = 3000),
-                    selectedColor: const Color(0xFFE4F8F2),
-                    backgroundColor: Colors.white,
-                    labelStyle: TextStyle(
-                      color: selectedAmount == 3000 ? _deepTeal : _ink,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11.5,
+                  if (selectedType == 'pads') ...[
+                    ChoiceChip(
+                      label: const Text('1 Pack (UGX 3,000)'),
+                      selected: selectedAmount == 3000 && !isCustom,
+                      onSelected: (_) => setSheetState(() {
+                        selectedAmount = 3000;
+                        isCustom = false;
+                      }),
+                      selectedColor: const Color(0xFFE4F8F2),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: selectedAmount == 3000 && !isCustom ? _deepTeal : _ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11.5,
+                      ),
                     ),
-                  ),
-                  ChoiceChip(
-                    label: const Text('1 Term Kit (UGX 15,000)'),
-                    selected: selectedAmount == 15000,
-                    onSelected: (_) => setSheetState(() => selectedAmount = 15000),
-                    selectedColor: const Color(0xFFE4F8F2),
-                    backgroundColor: Colors.white,
-                    labelStyle: TextStyle(
-                      color: selectedAmount == 15000 ? _deepTeal : _ink,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11.5,
+                    ChoiceChip(
+                      label: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('3 Packs (UGX 9,000)'),
+                          SizedBox(width: 4),
+                          Text('⭐', style: TextStyle(fontSize: 10)),
+                        ],
+                      ),
+                      selected: selectedAmount == 9000 && !isCustom,
+                      onSelected: (_) => setSheetState(() {
+                        selectedAmount = 9000;
+                        isCustom = false;
+                      }),
+                      selectedColor: const Color(0xFFE4F8F2),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: selectedAmount == 9000 && !isCustom ? _deepTeal : _ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11.5,
+                      ),
                     ),
-                  ),
+                    ChoiceChip(
+                      label: const Text('5 Packs (UGX 15,000)'),
+                      selected: selectedAmount == 15000 && !isCustom,
+                      onSelected: (_) => setSheetState(() {
+                        selectedAmount = 15000;
+                        isCustom = false;
+                      }),
+                      selectedColor: const Color(0xFFE4F8F2),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: selectedAmount == 15000 && !isCustom ? _deepTeal : _ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                    ChoiceChip(
+                      label: const Text('10 Packs (UGX 30,000)'),
+                      selected: selectedAmount == 30000 && !isCustom,
+                      onSelected: (_) => setSheetState(() {
+                        selectedAmount = 30000;
+                        isCustom = false;
+                      }),
+                      selectedColor: const Color(0xFFE4F8F2),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: selectedAmount == 30000 && !isCustom ? _deepTeal : _ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ] else ...[
+                    ChoiceChip(
+                      label: const Text('1 Reusable Kit (UGX 15,000)'),
+                      selected: selectedAmount == 15000 && !isCustom,
+                      onSelected: (_) => setSheetState(() {
+                        selectedAmount = 15000;
+                        isCustom = false;
+                      }),
+                      selectedColor: const Color(0xFFE4F8F2),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: selectedAmount == 15000 && !isCustom ? _deepTeal : _ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                    ChoiceChip(
+                      label: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text('3 Kits (UGX 45,000)'),
+                          SizedBox(width: 4),
+                          Text('⭐', style: TextStyle(fontSize: 10)),
+                        ],
+                      ),
+                      selected: selectedAmount == 45000 && !isCustom,
+                      onSelected: (_) => setSheetState(() {
+                        selectedAmount = 45000;
+                        isCustom = false;
+                      }),
+                      selectedColor: const Color(0xFFE4F8F2),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: selectedAmount == 45000 && !isCustom ? _deepTeal : _ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                    ChoiceChip(
+                      label: const Text('Classroom / 7 Kits (UGX 105,000)'),
+                      selected: selectedAmount == 105000 && !isCustom,
+                      onSelected: (_) => setSheetState(() {
+                        selectedAmount = 105000;
+                        isCustom = false;
+                      }),
+                      selectedColor: const Color(0xFFE4F8F2),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: selectedAmount == 105000 && !isCustom ? _deepTeal : _ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
                   ChoiceChip(
                     label: const Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Text('3 Kits (UGX 45,000)'),
+                        Icon(Icons.edit_note_rounded, size: 15, color: _deepTeal),
                         SizedBox(width: 4),
-                        Text('⭐', style: TextStyle(fontSize: 10)),
+                        Text('Specified Amount'),
                       ],
                     ),
-                    selected: selectedAmount == 45000,
-                    onSelected: (_) => setSheetState(() => selectedAmount = 45000),
+                    selected: isCustom,
+                    onSelected: (_) => setSheetState(() {
+                      isCustom = true;
+                    }),
                     selectedColor: const Color(0xFFE4F8F2),
                     backgroundColor: Colors.white,
                     labelStyle: TextStyle(
-                      color: selectedAmount == 45000 ? _deepTeal : _ink,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 11.5,
-                    ),
-                  ),
-                  ChoiceChip(
-                    label: const Text('Classroom (UGX 100,000)'),
-                    selected: selectedAmount == 100000,
-                    onSelected: (_) => setSheetState(() => selectedAmount = 100000),
-                    selectedColor: const Color(0xFFE4F8F2),
-                    backgroundColor: Colors.white,
-                    labelStyle: TextStyle(
-                      color: selectedAmount == 100000 ? _deepTeal : _ink,
+                      color: isCustom ? _deepTeal : _ink,
                       fontWeight: FontWeight.w700,
                       fontSize: 11.5,
                     ),
                   ),
                 ],
               ),
+              if (isCustom) ...[
+                const SizedBox(height: 10),
+                TextField(
+                  controller: customAmountController,
+                  keyboardType: TextInputType.number,
+                  autofocus: true,
+                  onChanged: (text) {
+                    final digits = text.replaceAll(RegExp(r'[^0-9]'), '');
+                    final parsed = int.tryParse(digits) ?? 0;
+                    setSheetState(() => selectedAmount = parsed);
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'Specified Amount to Sponsor',
+                    hintText: 'Enter custom amount in UGX (e.g. 6000, 25000)',
+                    prefixText: 'UGX ',
+                    prefixStyle: const TextStyle(fontWeight: FontWeight.w800, color: _deepTeal),
+                    suffixText: selectedType == 'pads'
+                        ? (selectedAmount >= 3000 ? '${(selectedAmount / 3000).floor()} Pad Packs' : null)
+                        : (selectedAmount >= 15000 ? '${(selectedAmount / 15000).floor()} Reusable Kits' : null),
+                    suffixStyle: const TextStyle(fontWeight: FontWeight.w700, color: _green, fontSize: 12),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                ),
+              ],
               const SizedBox(height: 14),
               const Text(
                 'Mobile Money Provider',
@@ -5658,9 +5821,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   }
 
   void _openDonationSheet() {
-    int selectedAmount = 45000;
+    int selectedAmount = 3000;
+    String selectedCategory = 'pads';
+    bool isCustom = false;
     String selectedMethod = 'MTN Mobile Money';
     final phoneController = TextEditingController(text: '+256 772 ');
+    final customAmountController = TextEditingController();
 
     showModalBottomSheet<void>(
       context: context,
@@ -5673,115 +5839,239 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setSheetState) => Padding(
           padding: EdgeInsets.fromLTRB(22, 16, 22, MediaQuery.of(context).viewInsets.bottom + 28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD0DFDC),
-                    borderRadius: BorderRadius.circular(2.5),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD0DFDC),
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 18),
-              const Row(
-                children: [
-                  Text('🎁', style: TextStyle(fontSize: 22)),
-                  SizedBox(width: 8),
-                  Text(
-                    'Donate to PadCare Project',
-                    style: TextStyle(color: _ink, fontSize: 20, fontWeight: FontWeight.w900),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Voluntary contributions support the developer and ongoing app infrastructure (distinct from donating sanitary pads to community members).',
-                style: TextStyle(color: _muted, fontSize: 12.5, height: 1.45),
-              ),
-              const SizedBox(height: 18),
-              Row(
-                children: [
-                  _buildDonationTierWidget('1 Kit', 'UGX 15,000', 15000, selectedAmount == 15000, () => setSheetState(() => selectedAmount = 15000)),
-                  const SizedBox(width: 8),
-                  _buildDonationTierWidget('3 Kits', 'UGX 45,000', 45000, selectedAmount == 45000, () => setSheetState(() => selectedAmount = 45000), popular: true),
-                  const SizedBox(width: 8),
-                  _buildDonationTierWidget('1 Term', 'UGX 80,000', 80000, selectedAmount == 80000, () => setSheetState(() => selectedAmount = 80000)),
-                ],
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Payment Method',
-                style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13),
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: ['MTN Mobile Money', 'Airtel Money', 'Card'].map((method) {
-                  final isSel = selectedMethod == method;
-                  return Padding(
-                    padding: const EdgeInsets.only(right: 8),
-                    child: ChoiceChip(
-                      label: Text(method),
-                      selected: isSel,
-                      onSelected: (_) => setSheetState(() => selectedMethod = method),
+                const SizedBox(height: 18),
+                const Row(
+                  children: [
+                    Text('🎁', style: TextStyle(fontSize: 22)),
+                    SizedBox(width: 8),
+                    Text(
+                      'Donate to PadCare Project',
+                      style: TextStyle(color: _ink, fontSize: 20, fontWeight: FontWeight.w900),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Voluntary contributions support the developer and ongoing app infrastructure (distinct from donating sanitary pads to community members).',
+                  style: TextStyle(color: _muted, fontSize: 12.5, height: 1.45),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Contribution Category',
+                  style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    ChoiceChip(
+                      avatar: const Icon(Icons.clean_hands_outlined, size: 16),
+                      label: const Text('Pad Packs (UGX 3,000/-)'),
+                      selected: selectedCategory == 'pads' && !isCustom,
+                      onSelected: (_) => setSheetState(() {
+                        selectedCategory = 'pads';
+                        isCustom = false;
+                        selectedAmount = 3000;
+                        customAmountController.clear();
+                      }),
                       selectedColor: const Color(0xFFE4F8F2),
                       backgroundColor: Colors.white,
                       labelStyle: TextStyle(
-                        color: isSel ? _deepTeal : _ink,
+                        color: selectedCategory == 'pads' && !isCustom ? _deepTeal : _ink,
                         fontWeight: FontWeight.w700,
                         fontSize: 12,
                       ),
-                      side: BorderSide(color: isSel ? _deepTeal : const Color(0xFFD6ECE6)),
                     ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 12),
-              TextField(
-                controller: phoneController,
-                keyboardType: TextInputType.phone,
-                decoration: InputDecoration(
-                  labelText: selectedMethod == 'Card' ? 'Card Number or Phone' : 'Mobile Money Phone Number',
-                  prefixIcon: const Icon(Icons.payment_rounded, color: _deepTeal),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                    const SizedBox(width: 8),
+                    ChoiceChip(
+                      avatar: const Icon(Icons.medical_services_outlined, size: 16),
+                      label: const Text('Reusable Kits (UGX 15,000/-)'),
+                      selected: selectedCategory == 'kits' && !isCustom,
+                      onSelected: (_) => setSheetState(() {
+                        selectedCategory = 'kits';
+                        isCustom = false;
+                        selectedAmount = 15000;
+                        customAmountController.clear();
+                      }),
+                      selectedColor: const Color(0xFFE4F8F2),
+                      backgroundColor: Colors.white,
+                      labelStyle: TextStyle(
+                        color: selectedCategory == 'kits' && !isCustom ? _deepTeal : _ink,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () async {
-                  final phone = phoneController.text.trim();
-                  if (phone.isEmpty || phone.length < 8) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Please enter your Mobile Money phone number.')),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    if (selectedCategory == 'pads') ...[
+                      _buildDonationTierWidget('1 Pack', 'UGX 3,000', 3000, selectedAmount == 3000 && !isCustom, () {
+                        setSheetState(() {
+                          selectedAmount = 3000;
+                          isCustom = false;
+                        });
+                      }),
+                      const SizedBox(width: 6),
+                      _buildDonationTierWidget('3 Packs', 'UGX 9,000', 9000, selectedAmount == 9000 && !isCustom, () {
+                        setSheetState(() {
+                          selectedAmount = 9000;
+                          isCustom = false;
+                        });
+                      }, popular: true),
+                      const SizedBox(width: 6),
+                      _buildDonationTierWidget('5 Packs', 'UGX 15,000', 15000, selectedAmount == 15000 && !isCustom, () {
+                        setSheetState(() {
+                          selectedAmount = 15000;
+                          isCustom = false;
+                        });
+                      }),
+                    ] else ...[
+                      _buildDonationTierWidget('1 Kit', 'UGX 15,000', 15000, selectedAmount == 15000 && !isCustom, () {
+                        setSheetState(() {
+                          selectedAmount = 15000;
+                          isCustom = false;
+                        });
+                      }),
+                      const SizedBox(width: 6),
+                      _buildDonationTierWidget('2 Kits', 'UGX 30,000', 30000, selectedAmount == 30000 && !isCustom, () {
+                        setSheetState(() {
+                          selectedAmount = 30000;
+                          isCustom = false;
+                        });
+                      }),
+                      const SizedBox(width: 6),
+                      _buildDonationTierWidget('3 Kits', 'UGX 45,000', 45000, selectedAmount == 45000 && !isCustom, () {
+                        setSheetState(() {
+                          selectedAmount = 45000;
+                          isCustom = false;
+                        });
+                      }, popular: true),
+                    ],
+                    const SizedBox(width: 6),
+                    _buildDonationTierWidget('Custom', 'Specified', -1, isCustom, () {
+                      setSheetState(() {
+                        isCustom = true;
+                      });
+                    }),
+                  ],
+                ),
+                if (isCustom) ...[
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: customAmountController,
+                    keyboardType: TextInputType.number,
+                    autofocus: true,
+                    onChanged: (val) {
+                      final digits = val.replaceAll(RegExp(r'[^0-9]'), '');
+                      final parsed = int.tryParse(digits) ?? 0;
+                      setSheetState(() => selectedAmount = parsed);
+                    },
+                    decoration: InputDecoration(
+                      labelText: 'Specify Contribution Amount',
+                      hintText: 'Enter amount in UGX (e.g. 6000, 20000)',
+                      prefixText: 'UGX ',
+                      prefixStyle: const TextStyle(fontWeight: FontWeight.w800, color: _deepTeal),
+                      suffixText: selectedCategory == 'pads'
+                          ? (selectedAmount >= 3000 ? '${(selectedAmount / 3000).floor()} Pad Packs' : null)
+                          : (selectedAmount >= 15000 ? '${(selectedAmount / 15000).floor()} Reusable Kits' : null),
+                      suffixStyle: const TextStyle(fontWeight: FontWeight.w700, color: _green, fontSize: 12),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 16),
+                const Text(
+                  'Payment Method',
+                  style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13),
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: ['MTN Mobile Money', 'Airtel Money', 'Card'].map((method) {
+                    final isSel = selectedMethod == method;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text(method),
+                        selected: isSel,
+                        onSelected: (_) => setSheetState(() => selectedMethod = method),
+                        selectedColor: const Color(0xFFE4F8F2),
+                        backgroundColor: Colors.white,
+                        labelStyle: TextStyle(
+                          color: isSel ? _deepTeal : _ink,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 12,
+                        ),
+                        side: BorderSide(color: isSel ? _deepTeal : const Color(0xFFD6ECE6)),
+                      ),
                     );
-                    return;
-                  }
-                  Navigator.pop(context);
-                  await MoMoService.processDonation(
-                    phone: phone,
-                    amountUgx: selectedAmount,
-                    provider: selectedMethod,
-                    donorName: _userDisplayName,
-                  );
-                  _showDonationSuccessDialog(selectedAmount, selectedMethod);
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _deepTeal,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 50),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                  elevation: 0,
+                  }).toList(),
                 ),
-                child: Text(
-                  'Contribute UGX ${selectedAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}',
-                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: phoneController,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: selectedMethod == 'Card' ? 'Card Number or Phone' : 'Mobile Money Phone Number',
+                    prefixIcon: const Icon(Icons.payment_rounded, color: _deepTeal),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
                 ),
-              ),
-            ],
+                const SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () async {
+                    final phone = phoneController.text.trim();
+                    if (phone.isEmpty || phone.length < 8) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please enter your Mobile Money phone number.')),
+                      );
+                      return;
+                    }
+                    if (selectedAmount < 500) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Please enter a valid contribution amount.')),
+                      );
+                      return;
+                    }
+                    Navigator.pop(context);
+                    await MoMoService.processDonation(
+                      phone: phone,
+                      amountUgx: selectedAmount,
+                      provider: selectedMethod,
+                      donorName: _userDisplayName,
+                    );
+                    _showDonationSuccessDialog(selectedAmount, selectedMethod);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _deepTeal,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 50),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: Text(
+                    'Contribute UGX ${selectedAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')}',
+                    style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -5793,39 +6083,42 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 3),
           decoration: BoxDecoration(
             color: selected ? const Color(0xFFE4F8F2) : Colors.white,
             border: Border.all(
               color: selected ? _deepTeal : (popular ? _green : _line),
               width: selected ? 2 : 1,
             ),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Column(
             children: [
-              if (popular)
-                Container(
-                  margin: const EdgeInsets.only(bottom: 4),
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: _deepTeal,
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  child: const Text('Popular', style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w800)),
+              Container(
+                margin: const EdgeInsets.only(bottom: 2),
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1.5),
+                decoration: BoxDecoration(
+                  color: popular ? _deepTeal : Colors.transparent,
+                  borderRadius: BorderRadius.circular(4),
                 ),
+                child: Text(
+                  popular ? 'Popular' : '',
+                  style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w800),
+                ),
+              ),
               Text(
                 title,
                 style: TextStyle(
                   color: selected ? _deepTeal : _ink,
                   fontWeight: FontWeight.w800,
-                  fontSize: 13,
+                  fontSize: 12,
                 ),
               ),
-              const SizedBox(height: 3),
+              const SizedBox(height: 2),
               Text(
                 amount,
-                style: const TextStyle(color: _muted, fontSize: 11, fontWeight: FontWeight.w600),
+                style: const TextStyle(color: _muted, fontSize: 9.5, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
               ),
             ],
           ),

@@ -39,7 +39,7 @@ class MoMoDonation {
     id: json['id'] as String? ?? '',
     donorName: json['donorName'] as String? ?? 'Anonymous Donor',
     phone: json['phone'] as String? ?? '',
-    amountUgx: (json['amountUgx'] as num?)?.toInt() ?? 15000,
+    amountUgx: (json['amountUgx'] as num?)?.toInt() ?? 3000,
     provider: json['provider'] as String? ?? 'MTN Mobile Money',
     sponsoredKits: (json['sponsoredKits'] as num?)?.toInt() ?? 1,
     status: json['status'] as String? ?? 'completed',
@@ -72,7 +72,7 @@ class MoMoService {
       phone: '+256 772 110 ***',
       amountUgx: 300000,
       provider: 'MTN Mobile Money',
-      sponsoredKits: 20,
+      sponsoredKits: 100,
       status: 'completed',
       createdAt: DateTime.now().subtract(const Duration(hours: 3)),
     ),
@@ -82,7 +82,7 @@ class MoMoService {
       phone: '+256 782 445 ***',
       amountUgx: 150000,
       provider: 'Airtel Money',
-      sponsoredKits: 10,
+      sponsoredKits: 50,
       status: 'completed',
       createdAt: DateTime.now().subtract(const Duration(hours: 7)),
     ),
@@ -92,16 +92,16 @@ class MoMoService {
       phone: '+256 752 908 ***',
       amountUgx: 45000,
       provider: 'MTN Mobile Money',
-      sponsoredKits: 3,
+      sponsoredKits: 15,
       status: 'completed',
       createdAt: DateTime.now().subtract(const Duration(hours: 14)),
     ),
   ];
 
-  /// Calculates number of complete menstrual kits sponsored by a UGX amount
+  /// Calculates number of complete menstrual kits sponsored by a UGX amount (UGX 3,000 per kit)
   static int calculateSponsoredKits(int amountUgx) {
-    if (amountUgx < 15000) return 1;
-    return (amountUgx / 15000).floor();
+    if (amountUgx < 3000) return 1;
+    return (amountUgx / 3000).floor();
   }
 
   /// Processes and records a Mobile Money pad sponsorship in Cloud Firestore

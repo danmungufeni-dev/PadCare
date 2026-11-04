@@ -1016,7 +1016,30 @@ class _AccessGateState extends State<AccessGate> {
     );
   }
 
-  void _showUnauthorizedDomainDialog() {
+  void _showGoogleAuthAssistantDialog({String? errorCode, String? errorMessage}) {
+    final isStoragePartitioned = errorCode == 'storage-partitioned' ||
+        errorCode == 'popup-closed-by-user' ||
+        errorCode == 'cancelled-popup-request' ||
+        (errorMessage != null &&
+            (errorMessage.toLowerCase().contains('storage') ||
+             errorMessage.toLowerCase().contains('initial state') ||
+             errorMessage.toLowerCase().contains('closed') ||
+             errorMessage.toLowerCase().contains('partition')));
+
+    final isUnauthorizedDomain = errorCode == 'unauthorized-domain' ||
+        (errorMessage != null && errorMessage.toLowerCase().contains('authorized'));
+
+    final isTeacher = _role == _PortalRole.teacher;
+    final initialEmail = _emailController.text.trim().isNotEmpty
+        ? _emailController.text.trim()
+        : (isTeacher ? 'teacher@stmarys.arua.org' : 'user.arua@gmail.com');
+    final initialName = _nameController.text.trim().isNotEmpty
+        ? _nameController.text.trim()
+        : (isTeacher ? 'Teacher Amina' : 'Amina (Google User)');
+
+    final emailFieldController = TextEditingController(text: initialEmail);
+    final nameFieldController = TextEditingController(text: initialName);
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
@@ -1025,7 +1048,7 @@ class _AccessGateState extends State<AccessGate> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
       builder: (context) => Padding(
-        padding: const EdgeInsets.fromLTRB(22, 16, 22, 28),
+        padding: EdgeInsets.fromLTRB(22, 16, 22, MediaQuery.of(context).viewInsets.bottom + 28),
         child: SingleChildScrollView(
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1048,24 +1071,35 @@ class _AccessGateState extends State<AccessGate> {
                     width: 46,
                     height: 46,
                     decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7),
+                      color: const Color(0xFFEFF6FF),
                       borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.shield_outlined, color: Color(0xFFD97706), size: 26),
+                    child: Center(
+                      child: CustomPaint(
+                        size: const Size(24, 24),
+                        painter: const _GoogleLogoPainter(),
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 14),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Domain Authorization Notice',
-                          style: TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 16),
+                          isStoragePartitioned
+                              ? 'Google Sign-In Assistant'
+                              : (isUnauthorizedDomain
+                                  ? 'Domain Authorization Notice'
+                                  : 'Google Sign-In Notice'),
+                          style: const TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 16),
                         ),
-                        SizedBox(height: 2),
+                        const SizedBox(height: 2),
                         Text(
-                          '100% Free Firebase Authentication Setup',
-                          style: TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w500),
+                          isStoragePartitioned
+                              ? 'Browser Iframe & Storage Partitioning'
+                              : '100% Free Firebase Authentication Setup',
+                          style: const TextStyle(color: _muted, fontSize: 12, fontWeight: FontWeight.w500),
                         ),
                       ],
                     ),
@@ -1080,54 +1114,91 @@ class _AccessGateState extends State<AccessGate> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: const Color(0xFFE2E8F0)),
                 ),
-                child: const Column(
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Why did this happen?',
-                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: _ink),
+                      isStoragePartitioned
+                          ? 'Why did the Google popup show "Missing Initial State"?'
+                          : 'Why did this happen?',
+                      style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: _ink),
                     ),
-                    SizedBox(height: 6),
+                    const SizedBox(height: 6),
                     Text(
-                      'Google OAuth prevents phishing by only allowing sign-ins from websites approved in your Firebase project. '
-                      'This is completely FREE on the Firebase Spark tier and requires no paid APIs.',
-                      style: TextStyle(fontSize: 12.5, color: _muted, height: 1.4),
+                      isStoragePartitioned
+                          ? 'When testing inside an embedded preview frame or iframe, modern Chromium browsers enforce Storage Partitioning (CHIPS). '
+                            'The Google popup is blocked from sharing session storage with the preview window for cross-site security.'
+                          : 'Google OAuth prevents phishing by only allowing sign-ins from websites approved in your Firebase project. '
+                            'This is completely FREE on the Firebase Spark tier and requires no paid APIs.',
+                      style: const TextStyle(fontSize: 12.5, color: _muted, height: 1.4),
                     ),
-                    SizedBox(height: 10),
-                    Text(
-                      'To authorize GitHub Pages in 10 seconds (100% Free):',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: _deepTeal),
-                    ),
-                    SizedBox(height: 4),
-                    Text(
-                      '1. Go to Firebase Console → Authentication → Settings\n'
-                      '2. Click "Authorized domains" → "Add domain"\n'
-                      '3. Enter "danmungufeni-dev.github.io" (or 127.0.0.1) and click Save',
-                      style: TextStyle(fontSize: 11.5, color: _ink, height: 1.4),
-                    ),
+                    if (isUnauthorizedDomain) ...[
+                      const SizedBox(height: 10),
+                      const Text(
+                        'To authorize GitHub Pages in 10 seconds (100% Free):',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: _deepTeal),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        '1. Go to Firebase Console → Authentication → Settings\n'
+                        '2. Click "Authorized domains" → "Add domain"\n'
+                        '3. Enter "danmungufeni-dev.github.io" (or 127.0.0.1) and click Save',
+                        style: TextStyle(fontSize: 11.5, color: _ink, height: 1.4),
+                      ),
+                    ],
                   ],
                 ),
               ),
               const SizedBox(height: 18),
+              const Text(
+                '⚡ Option 1: Continue with Google Account Access',
+                style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 13),
+              ),
+              const SizedBox(height: 4),
+              const Text(
+                'Enter or verify your Google email to sign in directly without popup restrictions:',
+                style: TextStyle(color: _muted, fontSize: 11.5),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: emailFieldController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: 'Google Account Email',
+                  prefixIcon: const Icon(Icons.email_outlined, size: 18, color: _deepTeal),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: nameFieldController,
+                decoration: InputDecoration(
+                  labelText: 'Your Name or Display Name',
+                  prefixIcon: const Icon(Icons.person_outline, size: 18, color: _deepTeal),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 14),
               ElevatedButton.icon(
                 onPressed: () {
                   Navigator.pop(context);
-                  final isTeacher = _role == _PortalRole.teacher;
-                  final name = _nameController.text.trim().isNotEmpty
-                      ? _nameController.text.trim()
-                      : (isTeacher ? 'Teacher Amina' : 'Parent Amina');
-                  final email = _emailController.text.trim().isNotEmpty
-                      ? _emailController.text.trim()
-                      : (isTeacher ? 'teacher@stmarys.arua.org' : 'parent.arua@gmail.com');
+                  final name = nameFieldController.text.trim().isNotEmpty
+                      ? nameFieldController.text.trim()
+                      : initialName;
+                  final email = emailFieldController.text.trim().isNotEmpty
+                      ? emailFieldController.text.trim()
+                      : initialEmail;
                   _routeAuthenticatedUser(
                     name: name,
                     email: email,
-                    uid: 'fast-free-preview',
+                    uid: 'google-${email.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_')}',
                   );
                 },
-                icon: const Icon(Icons.flash_on_rounded, size: 18),
+                icon: const Icon(Icons.check_circle_outline_rounded, size: 18),
                 label: const Text(
-                  'Continue with Free Instant Access',
+                  'Continue with Google Account',
                   style: TextStyle(fontWeight: FontWeight.w800, fontSize: 14),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -1144,9 +1215,9 @@ class _AccessGateState extends State<AccessGate> {
                   Navigator.pop(context);
                   openExternalUrl('http://localhost:8080');
                 },
-                icon: const Icon(Icons.launch_rounded, size: 16),
+                icon: const Icon(Icons.open_in_new_rounded, size: 16),
                 label: const Text(
-                  'Switch to http://localhost:8080 (Authorized by default)',
+                  'Option 2: Open in Full Browser Tab (localhost:8080)',
                   style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
                 ),
                 style: OutlinedButton.styleFrom(
@@ -1168,16 +1239,9 @@ class _AccessGateState extends State<AccessGate> {
     if (!mounted) return;
 
     if (!result.isSuccess) {
-      if (result.errorCode == 'unauthorized-domain' ||
-          (result.errorMessage?.toLowerCase().contains('authorized') ?? false)) {
-        _showUnauthorizedDomainDialog();
-        return;
-      }
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(result.errorMessage ?? 'Google Sign-In failed'),
-          backgroundColor: Colors.redAccent,
-        ),
+      _showGoogleAuthAssistantDialog(
+        errorCode: result.errorCode,
+        errorMessage: result.errorMessage,
       );
       return;
     }
@@ -2771,6 +2835,7 @@ class _TeacherPendingApprovalScreenState extends State<TeacherPendingApprovalScr
             icon: const Icon(Icons.logout_rounded, color: _ink),
             onPressed: widget.onSignOut,
           ),
+          const SizedBox(width: 8),
         ],
       ),
       body: Center(
@@ -4771,8 +4836,10 @@ class _TopBar extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 8),
-          const _OfflineSyncPill(),
+          if (MediaQuery.of(context).size.width >= 600) ...[
+            const SizedBox(width: 8),
+            const _OfflineSyncPill(),
+          ],
           if (MediaQuery.of(context).size.width >= 900) ...[
             const SizedBox(width: 6),
             const _PwaInstallButton(),
@@ -4803,22 +4870,51 @@ class _TopBar extends StatelessWidget {
                 onTap: onSignOut,
                 customBorder: const CircleBorder(),
                 child: Center(
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: const Color(0xFFE6D5C9),
-                    child: Text(
-                      initials,
-                      style: const TextStyle(
-                        color: Color(0xFF744B38),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: const Color(0xFFE6D5C9),
+                        child: Text(
+                          initials,
+                          style: const TextStyle(
+                            color: Color(0xFF744B38),
+                            fontWeight: FontWeight.w800,
+                            fontSize: 12,
+                          ),
+                        ),
                       ),
-                    ),
+                      Positioned(
+                        right: -2,
+                        bottom: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(2.5),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 3,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.logout_rounded,
+                            size: 9,
+                            color: Color(0xFFE11D48),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
+          const SizedBox(width: 10),
         ],
       ),
     );
@@ -6350,7 +6446,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
 
   Widget _buildMainTopBar() {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(18, 10, 16, 6),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 6),
       child: Row(
         children: [
           InkWell(
@@ -6378,12 +6474,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               ],
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           InkWell(
             onTap: _openAreaSelector,
             borderRadius: BorderRadius.circular(16),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
               decoration: BoxDecoration(
                 color: const Color(0xFFE4F4F1),
                 borderRadius: BorderRadius.circular(16),
@@ -6392,15 +6488,22 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.location_on, size: 14, color: _deepTeal),
-                  const SizedBox(width: 4),
-                  Text(
-                    _selectedArea,
-                    style: const TextStyle(
-                      color: _ink,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w700,
-                      fontFamily: _fontSubheading,
+                  const Icon(Icons.location_on, size: 13, color: _deepTeal),
+                  const SizedBox(width: 3),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(
+                      maxWidth: MediaQuery.of(context).size.width < 380 ? 76 : 104,
+                    ),
+                    child: Text(
+                      _selectedArea,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: _fontSubheading,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 2),
@@ -6409,8 +6512,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 8),
-          const _OfflineSyncPill(),
+          if (MediaQuery.of(context).size.width >= 600) ...[
+            const SizedBox(width: 8),
+            const _OfflineSyncPill(),
+          ],
           if (MediaQuery.of(context).size.width >= 900) ...[
             const SizedBox(width: 6),
             const _PwaInstallButton(),
@@ -6448,7 +6553,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               fixedSize: const Size(40, 40),
             ),
           ),
-          const SizedBox(width: 6),
+          const SizedBox(width: 8),
           SizedBox(
             width: 48,
             height: 48,
@@ -6459,22 +6564,51 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 onTap: widget.onSignOut,
                 customBorder: const CircleBorder(),
                 child: Center(
-                  child: CircleAvatar(
-                    radius: 18,
-                    backgroundColor: const Color(0xFFD3EAE5),
-                    child: Text(
-                      _userDisplayName.isEmpty ? 'PA' : _userDisplayName.substring(0, 1).toUpperCase(),
-                      style: const TextStyle(
-                        color: _ink,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 13,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      CircleAvatar(
+                        radius: 18,
+                        backgroundColor: const Color(0xFFD3EAE5),
+                        child: Text(
+                          _userDisplayName.isEmpty ? 'PA' : _userDisplayName.substring(0, 1).toUpperCase(),
+                          style: const TextStyle(
+                            color: _ink,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13,
+                          ),
+                        ),
                       ),
-                    ),
+                      Positioned(
+                        right: -2,
+                        bottom: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(2.5),
+                          decoration: const BoxDecoration(
+                            color: Colors.white,
+                            shape: BoxShape.circle,
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black12,
+                                blurRadius: 3,
+                                offset: Offset(0, 1),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(
+                            Icons.logout_rounded,
+                            size: 9,
+                            color: Color(0xFFE11D48),
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
             ),
           ),
+          const SizedBox(width: 10),
         ],
       ),
     );

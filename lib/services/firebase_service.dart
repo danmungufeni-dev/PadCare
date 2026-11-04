@@ -243,13 +243,15 @@ class AuthService {
           errorCode: e.code,
           errorMessage: e.code == 'unauthorized-domain'
               ? 'This domain is not authorized in Firebase. Use http://localhost:8080 or add your domain under Firebase Auth > Settings > Authorized Domains.'
-              : (e.message ?? 'Google Sign-In failed (${e.code}).'),
+              : (e.code == 'popup-closed-by-user'
+                  ? 'Sign-in window closed or blocked by browser storage partitioning.'
+                  : (e.message ?? 'Google Sign-In failed (${e.code}).')),
         );
       } catch (e) {
         return AuthResult(
           isSuccess: false,
-          errorCode: 'unknown',
-          errorMessage: 'Google Sign-In error: $e',
+          errorCode: 'storage-partitioned',
+          errorMessage: 'Browser storage partitioning blocked Google Sign-In ($e).',
         );
       }
     }

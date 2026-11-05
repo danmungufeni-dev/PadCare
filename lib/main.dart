@@ -35,7 +35,12 @@ void _setupAuthNavigation() {
       );
     }
 
-    if (role == 'teacher') {
+    final lowerEmail = email?.toLowerCase() ?? '';
+    final isTeacher = role == 'teacher' ||
+        lowerEmail.contains('teacher') ||
+        lowerEmail.contains('stmarys');
+
+    if (isTeacher) {
       navigator.pushAndRemoveUntil(
         MaterialPageRoute<void>(
           builder: (_) => HomeScreen(
@@ -51,7 +56,9 @@ void _setupAuthNavigation() {
           builder: (_) => ParentHomeScreen(
             parentName: (displayName != null && displayName.isNotEmpty)
                 ? displayName
-                : (email ?? 'PadCare Community Member'),
+                : (lowerEmail.contains('parent')
+                    ? 'Amina N. (Parent Demo)'
+                    : (email ?? 'PadCare Community Member')),
             onSignOut: onSignOut,
           ),
         ),

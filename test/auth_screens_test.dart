@@ -176,6 +176,86 @@ void main() {
       expect(unlocked, isTrue);
     });
 
+    testWidgets('PinCreate and PinConfirm share identical enter-your-pin styling and validate matching PIN', (
+      tester,
+    ) async {
+      String? confirmedPinResult;
+      await tester.pumpWidget(
+        testWrapper(
+          PinCreate(
+            onPinCreated: (pin) => confirmedPinResult = pin,
+          ),
+        ),
+      );
+
+      // Verify same style on PinCreate
+      expect(find.text('Create your PIN'), findsOneWidget);
+      expect(find.text('Choose a 4-digit PIN for quick access'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+
+      // Tap 5, 6, 7, 8 on PinCreate
+      await tester.tap(find.text('5'));
+      await tester.pump();
+      await tester.tap(find.text('6'));
+      await tester.pump();
+      await tester.tap(find.text('7'));
+      await tester.pump();
+      await tester.tap(find.text('8'));
+      await tester.pump();
+
+      // Completes creation and auto-navigates to PinConfirm
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pumpAndSettle();
+
+      // Verify same style on PinConfirm
+      expect(find.text('Confirm your PIN'), findsOneWidget);
+      expect(find.text('Re-enter your 4-digit PIN to confirm'), findsOneWidget);
+      expect(find.text('Start over'), findsOneWidget);
+
+      // Enter matching PIN: 5, 6, 7, 8
+      await tester.tap(find.text('5'));
+      await tester.pump();
+      await tester.tap(find.text('6'));
+      await tester.pump();
+      await tester.tap(find.text('7'));
+      await tester.pump();
+      await tester.tap(find.text('8'));
+      await tester.pump();
+
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(confirmedPinResult, equals('5678'));
+    });
+
+    testWidgets('PinConfirm displays error message on mismatch', (
+      tester,
+    ) async {
+      bool mismatchFired = false;
+      await tester.pumpWidget(
+        testWrapper(
+          PinConfirm(
+            initialPin: '1234',
+            onMismatch: () => mismatchFired = true,
+          ),
+        ),
+      );
+
+      expect(find.text('Confirm your PIN'), findsOneWidget);
+
+      // Enter mismatched PIN: 9, 9, 9, 9
+      await tester.tap(find.text('9'));
+      await tester.pump();
+      await tester.tap(find.text('9'));
+      await tester.pump();
+      await tester.tap(find.text('9'));
+      await tester.pump();
+      await tester.tap(find.text('9'));
+      await tester.pump();
+
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(mismatchFired, isTrue);
+      expect(find.text("PINs don't match, try again"), findsOneWidget);
+    });
+
     testWidgets('EmailVerification renders email and actions', (
       tester,
     ) async {

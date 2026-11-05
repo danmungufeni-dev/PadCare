@@ -779,16 +779,33 @@ class _PinLockState extends State<PinLock> {
             const Spacer(),
             _Keypad(onTap: _tap, onBackspace: _back),
             const SizedBox(height: 12),
-            TextButton.icon(
-              onPressed: () {
-                Navigator.of(context).pushReplacement(
-                  MaterialPageRoute<void>(
-                    builder: (_) => BiometricUnlock(onUnlocked: widget.onUnlocked),
-                  ),
-                );
-              },
-              icon: const Icon(Icons.fingerprint),
-              label: const Text('Use biometrics'),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).pushReplacement(
+                      MaterialPageRoute<void>(
+                        builder: (_) => BiometricUnlock(onUnlocked: widget.onUnlocked),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.fingerprint),
+                  label: const Text('Use biometrics'),
+                ),
+                const SizedBox(width: 8),
+                TextButton.icon(
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute<void>(
+                        builder: (_) => const PinCreate(),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.pin_outlined),
+                  label: const Text('Set new PIN'),
+                ),
+              ],
             ),
             const SizedBox(height: 12),
           ],
@@ -831,6 +848,259 @@ class _Keypad extends StatelessWidget {
             ),
           );
         }).toList(),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4b. PinCreate
+// ---------------------------------------------------------------------------
+class PinCreate extends StatefulWidget {
+  final void Function(String pin)? onPinCreated;
+  final VoidCallback? onCancel;
+
+  const PinCreate({super.key, this.onPinCreated, this.onCancel});
+
+  @override
+  State<PinCreate> createState() => _PinCreateState();
+}
+
+class _PinCreateState extends State<PinCreate> {
+  String _pin = '';
+
+  void _tap(String d) {
+    if (_pin.length >= 4) return;
+    setState(() => _pin += d);
+    if (_pin.length == 4) {
+      Future.delayed(const Duration(milliseconds: 250), () {
+        if (!mounted) return;
+        Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (_) => PinConfirm(
+              initialPin: _pin,
+              onPinConfirmed: (confirmedPin) {
+                if (widget.onPinCreated != null) {
+                  widget.onPinCreated!(confirmedPin);
+                } else {
+                  Navigator.of(context).pop(); // pop confirm
+                  Navigator.of(context).pop(); // pop create
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('PIN successfully created and saved!'),
+                      backgroundColor: Color(0xFF166534),
+                    ),
+                  );
+                }
+              },
+            ),
+          ),
+        );
+      });
+    }
+  }
+
+  void _back() {
+    if (_pin.isNotEmpty) {
+      setState(() => _pin = _pin.substring(0, _pin.length - 1));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Create PIN'),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 40),
+            CircleAvatar(
+              radius: 34,
+              backgroundColor: scheme.primaryContainer,
+              child: Icon(
+                Icons.pin_outlined,
+                size: 34,
+                color: scheme.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Create your PIN',
+              style: theme.textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Choose a 4-digit PIN for quick access',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 28),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(4, (i) {
+                final filled = i < _pin.length;
+                return Container(
+                  width: 18,
+                  height: 18,
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: filled ? scheme.primary : Colors.transparent,
+                    border: Border.all(color: scheme.primary, width: 2),
+                  ),
+                );
+              }),
+            ),
+            const Spacer(),
+            _Keypad(onTap: _tap, onBackspace: _back),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () {
+                if (widget.onCancel != null) {
+                  widget.onCancel!();
+                } else {
+                  Navigator.of(context).pop();
+                }
+              },
+              child: const Text('Cancel'),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// 4c. PinConfirm
+// ---------------------------------------------------------------------------
+class PinConfirm extends StatefulWidget {
+  final String initialPin;
+  final void Function(String pin)? onPinConfirmed;
+  final VoidCallback? onMismatch;
+
+  const PinConfirm({
+    super.key,
+    required this.initialPin,
+    this.onPinConfirmed,
+    this.onMismatch,
+  });
+
+  @override
+  State<PinConfirm> createState() => _PinConfirmState();
+}
+
+class _PinConfirmState extends State<PinConfirm> {
+  String _pin = '';
+  bool _error = false;
+
+  void _tap(String d) {
+    if (_pin.length >= 4) return;
+    setState(() {
+      _error = false;
+      _pin += d;
+    });
+    if (_pin.length == 4) {
+      Future.delayed(const Duration(milliseconds: 250), () {
+        if (!mounted) return;
+        if (_pin == widget.initialPin) {
+          if (widget.onPinConfirmed != null) {
+            widget.onPinConfirmed!(_pin);
+          } else {
+            Navigator.of(context).pop(_pin);
+          }
+        } else {
+          setState(() {
+            _error = true;
+            _pin = '';
+          });
+          if (widget.onMismatch != null) widget.onMismatch!();
+        }
+      });
+    }
+  }
+
+  void _back() {
+    if (_pin.isNotEmpty) {
+      setState(() => _pin = _pin.substring(0, _pin.length - 1));
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final scheme = theme.colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Confirm PIN'),
+      ),
+      body: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 40),
+            CircleAvatar(
+              radius: 34,
+              backgroundColor: _error ? scheme.errorContainer : scheme.primaryContainer,
+              child: Icon(
+                _error ? Icons.lock_clock_outlined : Icons.lock_outline,
+                size: 34,
+                color: _error ? scheme.onErrorContainer : scheme.onPrimaryContainer,
+              ),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              'Confirm your PIN',
+              style: theme.textTheme.titleLarge
+                  ?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              _error ? "PINs don't match, try again" : 'Re-enter your 4-digit PIN to confirm',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                color: _error ? scheme.error : scheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: 28),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(4, (i) {
+                final filled = i < _pin.length;
+                return Container(
+                  width: 18,
+                  height: 18,
+                  margin: const EdgeInsets.symmetric(horizontal: 10),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: filled
+                        ? (_error ? scheme.error : scheme.primary)
+                        : Colors.transparent,
+                    border: Border.all(
+                      color: _error ? scheme.error : scheme.primary,
+                      width: 2,
+                    ),
+                  ),
+                );
+              }),
+            ),
+            const Spacer(),
+            _Keypad(onTap: _tap, onBackspace: _back),
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Start over'),
+            ),
+            const SizedBox(height: 12),
+          ],
+        ),
       ),
     );
   }

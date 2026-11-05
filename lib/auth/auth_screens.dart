@@ -392,7 +392,70 @@ class _LoginHeroState extends State<LoginHero> {
                 ),
               ],
             ),
-            const Divider(height: 32),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: scheme.outlineVariant.withValues(alpha: 0.5),
+                ),
+              ),
+              child: Column(
+                children: [
+                  Text(
+                    'Quick Demo Sign In',
+                    style: TextStyle(
+                      color: scheme.onSurfaceVariant,
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            PadCareAuthNavigator.openApp(
+                              context,
+                              email: 'teacher@stmarys.org',
+                              role: 'teacher',
+                              displayName: 'Senior Woman Teacher',
+                            );
+                          },
+                          icon: const Icon(Icons.school_outlined, size: 16),
+                          label: const Text('Teacher', style: TextStyle(fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            PadCareAuthNavigator.openApp(
+                              context,
+                              email: 'amina@padcare.org',
+                              role: 'parent',
+                              displayName: 'Amina N.',
+                            );
+                          },
+                          icon: const Icon(Icons.family_restroom_outlined, size: 16),
+                          label: const Text('Parent', style: TextStyle(fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+            const Divider(height: 28),
             Wrap(
               alignment: WrapAlignment.center,
               spacing: 8,
@@ -890,6 +953,17 @@ class _SignupTermsState extends State<SignupTerms> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   String _password = '';
+  String _role = 'parent';
+  String _school = "St. Mary's Secondary";
+  static const _schools = [
+    "St. Mary's Secondary",
+    "Ediofe Girls School",
+    "Arua Public Primary",
+    "Mvara Secondary",
+    "Muni Girls Secondary",
+    "Logiri Girls Secondary",
+    "Offaka Secondary",
+  ];
   bool _agreed = false;
   bool _loading = false;
   String? _errorMessage;
@@ -932,7 +1006,8 @@ class _SignupTermsState extends State<SignupTerms> {
       email: email,
       password: password,
       displayName: name.isNotEmpty ? name : 'PadCare User',
-      role: 'parent',
+      role: _role,
+      school: _role == 'teacher' ? _school : null,
     );
 
     if (!mounted) return;
@@ -950,6 +1025,7 @@ class _SignupTermsState extends State<SignupTerms> {
                 PadCareAuthNavigator.openApp(
                   context,
                   email: email,
+                  role: _role,
                   displayName: name,
                 );
               }
@@ -1064,6 +1140,49 @@ class _SignupTermsState extends State<SignupTerms> {
             style: theme.textTheme.bodySmall
                 ?.copyWith(color: scheme.onSurfaceVariant),
           ),
+          const SizedBox(height: 16),
+          Text(
+            'Register as',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          SegmentedButton<String>(
+            segments: const [
+              ButtonSegment(
+                value: 'parent',
+                label: Text('Community Member'),
+                icon: Icon(Icons.family_restroom_outlined),
+              ),
+              ButtonSegment(
+                value: 'teacher',
+                label: Text('Teacher'),
+                icon: Icon(Icons.school_outlined),
+              ),
+            ],
+            selected: {_role},
+            onSelectionChanged: (set) {
+              setState(() => _role = set.first);
+            },
+          ),
+          if (_role == 'teacher') ...[
+            const SizedBox(height: 14),
+            DropdownButtonFormField<String>(
+              value: _school,
+              decoration: const InputDecoration(
+                labelText: 'Select your school',
+                prefixIcon: Icon(Icons.location_city_outlined),
+                border: OutlineInputBorder(),
+              ),
+              items: _schools
+                  .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                  .toList(),
+              onChanged: (v) {
+                if (v != null) setState(() => _school = v);
+              },
+            ),
+          ],
           const SizedBox(height: 12),
           CheckboxListTile(
             value: _agreed,
@@ -1484,7 +1603,7 @@ class Welcome extends StatelessWidget {
                       } else {
                         Navigator.of(context).push(
                           MaterialPageRoute<void>(
-                            builder: (_) => const SocialLogin(),
+                            builder: (_) => const SignupTerms(),
                           ),
                         );
                       }
@@ -1497,7 +1616,7 @@ class Welcome extends StatelessWidget {
                     child: const Text('Get started'),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 TextButton(
                   onPressed: () {
                     Navigator.of(context).push(
@@ -1511,7 +1630,72 @@ class Welcome extends StatelessWidget {
                     style: TextStyle(color: scheme.onPrimary),
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 10),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: scheme.onPrimary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        'Instant Demo Access',
+                        style: TextStyle(
+                          color: scheme.onPrimary.withValues(alpha: 0.9),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                PadCareAuthNavigator.openApp(
+                                  context,
+                                  email: 'teacher@stmarys.org',
+                                  role: 'teacher',
+                                  displayName: 'Senior Woman Teacher',
+                                );
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: scheme.onPrimary,
+                                side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Teacher Demo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                PadCareAuthNavigator.openApp(
+                                  context,
+                                  email: 'amina@padcare.org',
+                                  role: 'parent',
+                                  displayName: 'Amina N.',
+                                );
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: scheme.onPrimary,
+                                side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Parent Demo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
                 Wrap(
                   alignment: WrapAlignment.center,
                   spacing: 4,

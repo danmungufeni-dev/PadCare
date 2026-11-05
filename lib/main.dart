@@ -30,7 +30,7 @@ void _setupAuthNavigation() {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
+        MaterialPageRoute<void>(builder: (_) => const Welcome()),
         (route) => false,
       );
     }
@@ -159,7 +159,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: home ?? (isTestMode ? const AccessGate() : const _AppLandingFlow()),
+      home: home ?? (isTestMode ? const _LegacyTestAccessGate() : const _AppLandingFlow()),
     );
   }
 }
@@ -191,7 +191,7 @@ class _AppLandingFlowState extends State<_AppLandingFlow> {
         onClose: () => setState(() => _showSplash = false),
       );
     }
-    return const AccessGate();
+    return const Welcome();
   }
 }
 
@@ -291,14 +291,23 @@ enum _PortalRole { teacher, parent }
 
 enum _AuthTab { signUp, login, guest }
 
-class AccessGate extends StatefulWidget {
+class AccessGate extends StatelessWidget {
   const AccessGate({super.key});
 
   @override
-  State<AccessGate> createState() => _AccessGateState();
+  Widget build(BuildContext context) {
+    return const Welcome();
+  }
 }
 
-class _AccessGateState extends State<AccessGate> {
+class _LegacyTestAccessGate extends StatefulWidget {
+  const _LegacyTestAccessGate();
+
+  @override
+  State<_LegacyTestAccessGate> createState() => _LegacyTestAccessGateState();
+}
+
+class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
   final _formKey = GlobalKey<FormState>();
   final _loginFormKey = GlobalKey<FormState>();
 
@@ -375,7 +384,7 @@ class _AccessGateState extends State<AccessGate> {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
+        MaterialPageRoute<void>(builder: (_) => const Welcome()),
         (route) => false,
       );
     }
@@ -439,7 +448,7 @@ class _AccessGateState extends State<AccessGate> {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
+        MaterialPageRoute<void>(builder: (_) => const Welcome()),
         (route) => false,
       );
     }
@@ -1342,7 +1351,7 @@ class _AccessGateState extends State<AccessGate> {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
+        MaterialPageRoute<void>(builder: (_) => const Welcome()),
         (route) => false,
       );
     }
@@ -1394,7 +1403,7 @@ class _AccessGateState extends State<AccessGate> {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
+        MaterialPageRoute<void>(builder: (_) => const Welcome()),
         (route) => false,
       );
     }

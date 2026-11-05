@@ -26,6 +26,7 @@ void _setupAuthNavigation() {
     String? email,
     String? role,
     String? displayName,
+    String? photoUrl,
   }) {
     final navigator = Navigator.of(context);
     void onSignOut() {
@@ -46,6 +47,7 @@ void _setupAuthNavigation() {
           builder: (_) => HomeScreen(
             facility: 'St. Mary\'s Secondary',
             onSignOut: onSignOut,
+            photoUrl: photoUrl,
           ),
         ),
         (route) => false,
@@ -60,6 +62,7 @@ void _setupAuthNavigation() {
                     ? 'Amina N. (Parent Demo)'
                     : (email ?? 'PadCare Community Member')),
             onSignOut: onSignOut,
+            photoUrl: photoUrl,
           ),
         ),
         (route) => false,
@@ -3131,10 +3134,12 @@ class HomeScreen extends StatefulWidget {
     super.key,
     this.facility = 'St. Mary\'s Secondary',
     this.onSignOut,
+    this.photoUrl,
   });
 
   final String facility;
   final VoidCallback? onSignOut;
+  final String? photoUrl;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -3433,6 +3438,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _TopBar(
               initials: 'SM',
+              photoUrl: widget.photoUrl,
               onLogoTap: () {
                 if (Navigator.of(context).canPop()) {
                   Navigator.of(context).pop();
@@ -4918,12 +4924,14 @@ class _TopBar extends StatelessWidget {
     this.onLogoTap,
     this.onSignOut,
     this.initials = 'SM',
+    this.photoUrl,
   });
 
   final VoidCallback onNotificationTap;
   final VoidCallback? onLogoTap;
   final VoidCallback? onSignOut;
   final String initials;
+  final String? photoUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -4990,14 +4998,23 @@ class _TopBar extends StatelessWidget {
                       CircleAvatar(
                         radius: 18,
                         backgroundColor: const Color(0xFFE6D5C9),
-                        child: Text(
-                          initials,
-                          style: const TextStyle(
-                            color: Color(0xFF744B38),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
-                          ),
-                        ),
+                        backgroundImage: (photoUrl != null &&
+                                (photoUrl!.startsWith('http://') ||
+                                    photoUrl!.startsWith('https://')))
+                            ? NetworkImage(photoUrl!)
+                            : null,
+                        child: (photoUrl != null &&
+                                (photoUrl!.startsWith('http://') ||
+                                    photoUrl!.startsWith('https://')))
+                            ? null
+                            : Text(
+                                initials,
+                                style: const TextStyle(
+                                  color: Color(0xFF744B38),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                ),
+                              ),
                       ),
                       Positioned(
                         right: -2,
@@ -5040,10 +5057,12 @@ class ParentHomeScreen extends StatefulWidget {
     super.key,
     required this.parentName,
     required this.onSignOut,
+    this.photoUrl,
   });
 
   final String parentName;
   final VoidCallback onSignOut;
+  final String? photoUrl;
 
   @override
   State<ParentHomeScreen> createState() => _ParentHomeScreenState();
@@ -6684,14 +6703,25 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       CircleAvatar(
                         radius: 18,
                         backgroundColor: const Color(0xFFD3EAE5),
-                        child: Text(
-                          _userDisplayName.isEmpty ? 'PA' : _userDisplayName.substring(0, 1).toUpperCase(),
-                          style: const TextStyle(
-                            color: _ink,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                          ),
-                        ),
+                        backgroundImage: (widget.photoUrl != null &&
+                                (widget.photoUrl!.startsWith('http://') ||
+                                    widget.photoUrl!.startsWith('https://')))
+                            ? NetworkImage(widget.photoUrl!)
+                            : null,
+                        child: (widget.photoUrl != null &&
+                                (widget.photoUrl!.startsWith('http://') ||
+                                    widget.photoUrl!.startsWith('https://')))
+                            ? null
+                            : Text(
+                                _userDisplayName.isEmpty
+                                    ? 'PA'
+                                    : _userDisplayName.substring(0, 1).toUpperCase(),
+                                style: const TextStyle(
+                                  color: _ink,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                ),
+                              ),
                       ),
                       Positioned(
                         right: -2,
@@ -8210,10 +8240,24 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               CircleAvatar(
                 radius: 28,
                 backgroundColor: const Color(0xFFE0F2EF),
-                child: Text(
-                  _userDisplayName.isEmpty ? 'PA' : _userDisplayName.substring(0, 1).toUpperCase(),
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _deepTeal),
-                ),
+                backgroundImage: (widget.photoUrl != null &&
+                        (widget.photoUrl!.startsWith('http://') ||
+                            widget.photoUrl!.startsWith('https://')))
+                    ? NetworkImage(widget.photoUrl!)
+                    : null,
+                child: (widget.photoUrl != null &&
+                        (widget.photoUrl!.startsWith('http://') ||
+                            widget.photoUrl!.startsWith('https://')))
+                    ? null
+                    : Text(
+                        _userDisplayName.isEmpty
+                            ? 'PA'
+                            : _userDisplayName.substring(0, 1).toUpperCase(),
+                        style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: _deepTeal),
+                      ),
               ),
               const SizedBox(width: 14),
               Expanded(

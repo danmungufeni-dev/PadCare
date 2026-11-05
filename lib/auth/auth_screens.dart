@@ -12,6 +12,7 @@ class PadCareAuthNavigator {
     String? email,
     String? role,
     String? displayName,
+    String? photoUrl,
   })? onNavigateToApp;
 
   static void openApp(
@@ -19,6 +20,7 @@ class PadCareAuthNavigator {
     String? email,
     String? role,
     String? displayName,
+    String? photoUrl,
   }) {
     if (onNavigateToApp != null) {
       onNavigateToApp!(
@@ -26,6 +28,7 @@ class PadCareAuthNavigator {
         email: email,
         role: role,
         displayName: displayName,
+        photoUrl: photoUrl,
       );
     } else {
       Navigator.of(context).popUntil((route) => route.isFirst);
@@ -239,7 +242,9 @@ class _LoginHeroState extends State<LoginHero> {
         PadCareAuthNavigator.openApp(
           context,
           email: email,
-          displayName: result.user?.displayName,
+          role: result.profile?.role ?? (email.toLowerCase().contains('teacher') ? 'teacher' : 'parent'),
+          displayName: result.profile?.displayName ?? result.user?.displayName,
+          photoUrl: result.photoUrl ?? result.profile?.photoUrl,
         );
       }
     } else {
@@ -266,13 +271,57 @@ class _LoginHeroState extends State<LoginHero> {
                 height: 160,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: scheme.primaryContainer,
+                  gradient: LinearGradient(
+                    colors: [
+                      scheme.primaryContainer,
+                      scheme.secondaryContainer.withValues(alpha: 0.6),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                   borderRadius: BorderRadius.circular(24),
                 ),
-                child: Icon(
-                  Icons.lock_person_rounded,
-                  size: 72,
-                  color: scheme.onPrimaryContainer,
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Icon(
+                      Icons.lock_person_rounded,
+                      size: 68,
+                      color: scheme.onPrimaryContainer,
+                    ),
+                    Positioned(
+                      bottom: 12,
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: scheme.surface.withValues(alpha: 0.9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: scheme.outlineVariant.withValues(alpha: 0.5),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.cloud_done_rounded,
+                              size: 14,
+                              color: Color(0xFF10B981),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              'Firebase Auth & Storage Connected',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: scheme.onSurface,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -423,6 +472,7 @@ class _LoginHeroState extends State<LoginHero> {
                               email: 'devgtnation@gmail.com',
                               role: 'teacher',
                               displayName: 'Dan Mungufeni (Lead Dev)',
+                              photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
                             );
                           },
                           icon: const Icon(Icons.school_outlined, size: 15),
@@ -441,6 +491,7 @@ class _LoginHeroState extends State<LoginHero> {
                               email: 'abetinichlas@gmail.com',
                               role: 'parent',
                               displayName: 'Abeti Acadri Nicholas',
+                              photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
                             );
                           },
                           icon: const Icon(Icons.family_restroom_outlined, size: 15),
@@ -1254,6 +1305,13 @@ class _SignupTermsState extends State<SignupTerms> {
   String _password = '';
   String _role = 'parent';
   String _school = "St. Mary's Secondary";
+  int _selectedAvatarIndex = 0;
+  static const _presetAvatars = [
+    'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+  ];
   static const _schools = [
     "St. Mary's Secondary",
     "Ediofe Girls School",
@@ -1301,12 +1359,14 @@ class _SignupTermsState extends State<SignupTerms> {
       _errorMessage = null;
     });
 
+    final selectedPhotoUrl = _presetAvatars[_selectedAvatarIndex];
     final result = await AuthService.register(
       email: email,
       password: password,
       displayName: name.isNotEmpty ? name : 'PadCare User',
       role: _role,
       school: _role == 'teacher' ? _school : null,
+      photoUrl: selectedPhotoUrl,
     );
 
     if (!mounted) return;
@@ -1326,6 +1386,7 @@ class _SignupTermsState extends State<SignupTerms> {
                   email: email,
                   role: _role,
                   displayName: name,
+                  photoUrl: result.photoUrl ?? selectedPhotoUrl,
                 );
               }
             },
@@ -1482,6 +1543,48 @@ class _SignupTermsState extends State<SignupTerms> {
               },
             ),
           ],
+          const SizedBox(height: 16),
+          Text(
+            'Profile Avatar (Synced with Firebase Storage)',
+            style: theme.textTheme.labelMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(_presetAvatars.length, (i) {
+              final isSelected = _selectedAvatarIndex == i;
+              return GestureDetector(
+                onTap: () => setState(() => _selectedAvatarIndex = i),
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 6),
+                  padding: const EdgeInsets.all(2),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(
+                      color: isSelected ? scheme.primary : Colors.transparent,
+                      width: 2.5,
+                    ),
+                  ),
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundColor: scheme.surfaceContainerHighest,
+                    backgroundImage: NetworkImage(_presetAvatars[i]),
+                    child: isSelected
+                        ? Container(
+                            decoration: BoxDecoration(
+                              color: scheme.primary.withValues(alpha: 0.35),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(Icons.check, color: Colors.white, size: 18),
+                          )
+                        : null,
+                  ),
+                ),
+              );
+            }),
+          ),
           const SizedBox(height: 12),
           CheckboxListTile(
             value: _agreed,

@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import '../firebase_options.dart';
 
@@ -11,6 +12,8 @@ class AuthResult {
   final String? errorCode;
   final User? user;
   final String? fallbackEmail;
+  final String? photoUrl;
+  final UserProfile? profile;
 
   const AuthResult({
     required this.isSuccess,
@@ -18,6 +21,8 @@ class AuthResult {
     this.errorCode,
     this.user,
     this.fallbackEmail,
+    this.photoUrl,
+    this.profile,
   });
 }
 
@@ -29,6 +34,8 @@ class UserProfile {
   final String? school;
   final bool authorized;
   final String status; // 'pending' | 'approved' | 'rejected'
+  final String? photoUrl;
+  final String? phoneNumber;
 
   const UserProfile({
     required this.uid,
@@ -38,7 +45,33 @@ class UserProfile {
     this.school,
     required this.authorized,
     required this.status,
+    this.photoUrl,
+    this.phoneNumber,
   });
+
+  UserProfile copyWith({
+    String? uid,
+    String? email,
+    String? displayName,
+    String? role,
+    String? school,
+    bool? authorized,
+    String? status,
+    String? photoUrl,
+    String? phoneNumber,
+  }) {
+    return UserProfile(
+      uid: uid ?? this.uid,
+      email: email ?? this.email,
+      displayName: displayName ?? this.displayName,
+      role: role ?? this.role,
+      school: school ?? this.school,
+      authorized: authorized ?? this.authorized,
+      status: status ?? this.status,
+      photoUrl: photoUrl ?? this.photoUrl,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     'uid': uid,
@@ -48,6 +81,8 @@ class UserProfile {
     'school': school,
     'authorized': authorized,
     'status': status,
+    if (photoUrl != null) 'photoUrl': photoUrl,
+    if (phoneNumber != null) 'phoneNumber': phoneNumber,
   };
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
@@ -58,6 +93,8 @@ class UserProfile {
     school: json['school'] as String?,
     authorized: json['authorized'] as bool? ?? (json['role'] == 'parent'),
     status: json['status'] as String? ?? ((json['role'] == 'parent') ? 'approved' : 'pending'),
+    photoUrl: json['photoUrl'] as String?,
+    phoneNumber: json['phoneNumber'] as String?,
   );
 }
 
@@ -86,7 +123,7 @@ class FirebaseService {
         options: DefaultFirebaseOptions.currentPlatform,
       );
       _firebaseAvailable = true;
-      debugPrint('✅ PadCare: Firebase initialized successfully.');
+      debugPrint('✅ PadCare: Firebase initialized successfully with Auth, Firestore & Storage.');
     } catch (e, stack) {
       _firebaseAvailable = false;
       debugPrint('⚠️ PadCare: Firebase initialization fallback: $e');
@@ -95,9 +132,174 @@ class FirebaseService {
   }
 }
 
+/// Firebase Storage Service for user avatars, verification documents, and receipt images.
+/// Includes graceful offline caching and resilience for low-connectivity deployments in Uganda.
+class StorageService {
+  static FirebaseStorage? get _storage =>
+      FirebaseService.isFirebaseAvailable ? FirebaseStorage.instance : null;
+
+  static final Map<String, String> _offlinePhotoUrls = {
+    'devgtnation@gmail.com':
+        'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+    'abetinichlas@gmail.com':
+        'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+  };
+
+  static final Map<String, Uint8List> _offlineFileBytes = {};
+
+  /// True if Firebase Storage is active and accessible
+  static bool get isStorageAvailable =>
+      FirebaseService.isFirebaseAvailable && _storage != null;
+
+  /// Uploads user profile photo to Firebase Storage under `users/{uid}/{fileName}`.
+  /// Automatically updates FirebaseAuth photoURL and Firestore UserProfile.
+  static Future<String?> uploadProfileAvatar({
+    required String uid,
+    required Uint8List bytes,
+    String fileName = 'avatar.jpg',
+    String contentType = 'image/jpeg',
+  }) async {
+    final storagePath = 'users/$uid/$fileName';
+
+    if (isStorageAvailable) {
+      try {
+        final ref = _storage!.ref().child(storagePath);
+        final metadata = SettableMetadata(
+          contentType: contentType,
+          customMetadata: {
+            'uploadedAt': DateTime.now().toIso8601String(),
+            'uid': uid,
+          },
+        );
+
+        final uploadTask = ref.putData(bytes, metadata);
+        final snapshot = await uploadTask;
+        final downloadUrl = await snapshot.ref.getDownloadURL();
+
+        _offlinePhotoUrls[uid] = downloadUrl;
+
+        // Update FirebaseAuth currentUser photoURL
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null && user.uid == uid) {
+          await user.updatePhotoURL(downloadUrl);
+        }
+
+        // Update Firestore profile
+        final profile = await FirestoreService.getUserProfile(uid);
+        if (profile != null) {
+          await FirestoreService.saveUserProfile(
+            profile.copyWith(photoUrl: downloadUrl),
+          );
+        }
+
+        debugPrint('✅ StorageService: Uploaded avatar for $uid -> $downloadUrl');
+        return downloadUrl;
+      } catch (e) {
+        debugPrint('⚠️ StorageService: Cloud upload fallback for $uid: $e');
+      }
+    }
+
+    // Graceful offline mock / local storage cache
+    _offlineFileBytes[storagePath] = bytes;
+    final fallbackUrl = 'offline://storage/$storagePath';
+    _offlinePhotoUrls[uid] = fallbackUrl;
+
+    final existing = await FirestoreService.getUserProfile(uid);
+    if (existing != null) {
+      await FirestoreService.saveUserProfile(
+        existing.copyWith(photoUrl: fallbackUrl),
+      );
+    }
+
+    return fallbackUrl;
+  }
+
+  /// Retrieves profile avatar download URL for the given user ID.
+  static Future<String?> getProfileAvatarUrl(String uid) async {
+    if (_offlinePhotoUrls.containsKey(uid)) {
+      return _offlinePhotoUrls[uid];
+    }
+
+    if (isStorageAvailable) {
+      try {
+        final ref = _storage!.ref().child('users/$uid/avatar.jpg');
+        final url = await ref.getDownloadURL();
+        _offlinePhotoUrls[uid] = url;
+        return url;
+      } catch (_) {
+        try {
+          final refPng = _storage!.ref().child('users/$uid/avatar.png');
+          final url = await refPng.getDownloadURL();
+          _offlinePhotoUrls[uid] = url;
+          return url;
+        } catch (_) {}
+      }
+    }
+
+    return _offlinePhotoUrls[uid];
+  }
+
+  /// Uploads school verification documents or receipt images to Firebase Storage.
+  static Future<String?> uploadDocument({
+    required String path,
+    required Uint8List bytes,
+    String contentType = 'application/pdf',
+  }) async {
+    if (isStorageAvailable) {
+      try {
+        final ref = _storage!.ref().child(path);
+        final metadata = SettableMetadata(contentType: contentType);
+        final uploadTask = ref.putData(bytes, metadata);
+        final snapshot = await uploadTask;
+        return await snapshot.ref.getDownloadURL();
+      } catch (e) {
+        debugPrint('StorageService uploadDocument error: $e');
+      }
+    }
+    _offlineFileBytes[path] = bytes;
+    return 'offline://storage/$path';
+  }
+
+  /// Deletes user avatar from Firebase Storage
+  static Future<bool> deleteProfileAvatar(String uid) async {
+    _offlinePhotoUrls.remove(uid);
+    if (isStorageAvailable) {
+      try {
+        await _storage!.ref().child('users/$uid/avatar.jpg').delete();
+        final user = FirebaseAuth.instance.currentUser;
+        if (user != null && user.uid == uid) {
+          await user.updatePhotoURL(null);
+        }
+        return true;
+      } catch (e) {
+        debugPrint('StorageService delete avatar error: $e');
+      }
+    }
+    return false;
+  }
+
+  /// Sets or seeds a cached profile avatar (useful for demo accounts and instant previews)
+  static void setCachedAvatar(String identifier, String url) {
+    _offlinePhotoUrls[identifier] = url;
+  }
+
+  /// Gets cached avatar URL synchronously if available
+  static String? getCachedAvatar(String identifier) {
+    return _offlinePhotoUrls[identifier];
+  }
+}
+
 class AuthService {
   static FirebaseAuth? get _auth =>
       FirebaseService.isFirebaseAvailable ? FirebaseAuth.instance : null;
+
+  /// Stream of user authentication state changes
+  static Stream<User?> get authStateChanges {
+    if (FirebaseService.isFirebaseAvailable && _auth != null) {
+      return _auth!.authStateChanges();
+    }
+    return const Stream.empty();
+  }
 
   /// Signs in using Firebase Auth, or graceful local mock if offline/not configured.
   static Future<AuthResult> signIn({
@@ -120,15 +322,54 @@ class AuthService {
 
     // Demo account bypass for evaluations, tests, and offline field demos
     final lowerEmail = cleanEmail.toLowerCase();
-    if (lowerEmail == 'devgtnation@gmail.com' ||
-        lowerEmail == 'abetinichlas@gmail.com' ||
-        lowerEmail == 'teacher@padcare.org' ||
-        lowerEmail == 'teacher@stmarys.org' ||
-        lowerEmail == 'parent@padcare.org' ||
+    String? demoPhotoUrl;
+    String? demoDisplayName;
+    String demoRole = 'parent';
+    String? demoSchool;
+
+    if (lowerEmail == 'devgtnation@gmail.com') {
+      demoPhotoUrl =
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80';
+      demoDisplayName = 'Dan Mungufeni (Lead Dev)';
+      demoRole = 'teacher';
+      demoSchool = 'St. Mary\'s Secondary';
+    } else if (lowerEmail == 'abetinichlas@gmail.com') {
+      demoPhotoUrl =
+          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80';
+      demoDisplayName = 'Abeti Acadri Nicholas';
+      demoRole = 'parent';
+    } else if (lowerEmail == 'teacher@padcare.org' ||
+        lowerEmail == 'teacher@stmarys.org') {
+      demoDisplayName = 'Sister Agnes (Head Teacher)';
+      demoRole = 'teacher';
+      demoSchool = 'St. Mary\'s Secondary';
+    } else if (lowerEmail == 'parent@padcare.org' ||
         lowerEmail == 'demo@padcare.org') {
+      demoDisplayName = 'Amina N. (Parent Demo)';
+      demoRole = 'parent';
+    }
+
+    if (demoDisplayName != null) {
+      final demoProfile = UserProfile(
+        uid: 'demo-$cleanEmail',
+        email: cleanEmail,
+        displayName: demoDisplayName,
+        role: demoRole,
+        school: demoSchool,
+        authorized: true,
+        status: 'approved',
+        photoUrl: demoPhotoUrl,
+      );
+      await FirestoreService.saveUserProfile(demoProfile);
+      if (demoPhotoUrl != null) {
+        StorageService.setCachedAvatar(cleanEmail, demoPhotoUrl);
+        StorageService.setCachedAvatar('demo-$cleanEmail', demoPhotoUrl);
+      }
       return AuthResult(
         isSuccess: true,
         fallbackEmail: cleanEmail,
+        photoUrl: demoPhotoUrl,
+        profile: demoProfile,
       );
     }
 
@@ -138,7 +379,25 @@ class AuthService {
           email: cleanEmail,
           password: password.trim(),
         );
-        return AuthResult(isSuccess: true, user: credential.user);
+        final user = credential.user;
+        UserProfile? profile;
+        String? photoUrl = user?.photoURL;
+
+        if (user != null) {
+          profile = await FirestoreService.getUserProfile(user.uid) ??
+              await FirestoreService.getUserProfile(cleanEmail);
+          photoUrl ??= profile?.photoUrl;
+          if (photoUrl == null) {
+            photoUrl = await StorageService.getProfileAvatarUrl(user.uid);
+          }
+        }
+
+        return AuthResult(
+          isSuccess: true,
+          user: user,
+          photoUrl: photoUrl,
+          profile: profile,
+        );
       } on FirebaseAuthException catch (e) {
         String msg = 'Invalid email or password. Please verify your credentials.';
         if (e.code == 'too-many-requests') {
@@ -159,9 +418,15 @@ class AuthService {
     }
 
     // Local / Offline fallback mode
+    final offlineProfile = await FirestoreService.getUserProfile(cleanEmail);
+    final offlinePhotoUrl = offlineProfile?.photoUrl ??
+        StorageService.getCachedAvatar(cleanEmail);
+
     return AuthResult(
       isSuccess: true,
       fallbackEmail: cleanEmail,
+      photoUrl: offlinePhotoUrl,
+      profile: offlineProfile,
     );
   }
 
@@ -172,6 +437,9 @@ class AuthService {
     String? displayName,
     String role = 'parent',
     String? school,
+    String? phoneNumber,
+    Uint8List? avatarBytes,
+    String? photoUrl,
   }) async {
     final cleanEmail = email.trim();
     if (cleanEmail.isEmpty) {
@@ -195,11 +463,23 @@ class AuthService {
           email: cleanEmail,
           password: password.trim(),
         );
+        final uid = credential.user?.uid ?? cleanEmail;
+        String? finalPhotoUrl = photoUrl;
+
+        if (avatarBytes != null) {
+          finalPhotoUrl = await StorageService.uploadProfileAvatar(
+            uid: uid,
+            bytes: avatarBytes,
+          );
+        }
+
         if (displayName != null && displayName.trim().isNotEmpty) {
           await credential.user?.updateDisplayName(displayName.trim());
         }
+        if (finalPhotoUrl != null) {
+          await credential.user?.updatePhotoURL(finalPhotoUrl);
+        }
 
-        final uid = credential.user?.uid ?? cleanEmail;
         final profile = UserProfile(
           uid: uid,
           email: cleanEmail,
@@ -208,10 +488,17 @@ class AuthService {
           school: school,
           authorized: isParent, // Teachers require backend authorization in Firebase
           status: isParent ? 'approved' : 'pending_approval',
+          photoUrl: finalPhotoUrl,
+          phoneNumber: phoneNumber,
         );
         await FirestoreService.saveUserProfile(profile);
 
-        return AuthResult(isSuccess: true, user: credential.user);
+        return AuthResult(
+          isSuccess: true,
+          user: credential.user,
+          photoUrl: finalPhotoUrl,
+          profile: profile,
+        );
       } on FirebaseAuthException catch (e) {
         return AuthResult(
           isSuccess: false,
@@ -225,21 +512,62 @@ class AuthService {
       }
     }
 
+    final localUid = 'offline-$cleanEmail';
+    String? localPhotoUrl = photoUrl;
+    if (avatarBytes != null) {
+      localPhotoUrl = await StorageService.uploadProfileAvatar(
+        uid: localUid,
+        bytes: avatarBytes,
+      );
+    }
+
     final localProfile = UserProfile(
-      uid: 'offline-$cleanEmail',
+      uid: localUid,
       email: cleanEmail,
       displayName: displayName?.trim() ?? '',
       role: role,
       school: school,
       authorized: isParent,
       status: isParent ? 'approved' : 'pending_approval',
+      photoUrl: localPhotoUrl,
+      phoneNumber: phoneNumber,
     );
     await FirestoreService.saveUserProfile(localProfile);
 
     return AuthResult(
       isSuccess: true,
       fallbackEmail: cleanEmail,
+      photoUrl: localPhotoUrl,
+      profile: localProfile,
     );
+  }
+
+  /// Sends a password reset email using Firebase Auth with offline simulation fallback.
+  static Future<AuthResult> sendPasswordResetEmail(String email) async {
+    final cleanEmail = email.trim();
+    if (cleanEmail.isEmpty) {
+      return const AuthResult(
+        isSuccess: false,
+        errorMessage: 'Please enter your email address.',
+      );
+    }
+    if (FirebaseService.isFirebaseAvailable && _auth != null) {
+      try {
+        await _auth!.sendPasswordResetEmail(email: cleanEmail);
+        return const AuthResult(isSuccess: true);
+      } on FirebaseAuthException catch (e) {
+        return AuthResult(
+          isSuccess: false,
+          errorMessage: e.message ?? 'Password reset failed (${e.code}).',
+        );
+      } catch (e) {
+        return AuthResult(
+          isSuccess: false,
+          errorMessage: 'Password reset error: $e',
+        );
+      }
+    }
+    return const AuthResult(isSuccess: true);
   }
 
   /// Signs in or registers with Google Auth, incorporating Google account details.
@@ -250,7 +578,32 @@ class AuthService {
         googleProvider.addScope('email');
         googleProvider.addScope('profile');
         final UserCredential credential = await _auth!.signInWithPopup(googleProvider);
-        return AuthResult(isSuccess: true, user: credential.user);
+        final user = credential.user;
+        if (user != null) {
+          final profile = UserProfile(
+            uid: user.uid,
+            email: user.email ?? 'google-user@padcare.org',
+            displayName: user.displayName ?? 'PadCare User',
+            role: 'parent',
+            authorized: true,
+            status: 'approved',
+            photoUrl: user.photoURL,
+          );
+          await FirestoreService.saveUserProfile(profile);
+          if (user.photoURL != null) {
+            StorageService.setCachedAvatar(user.uid, user.photoURL!);
+            if (user.email != null) {
+              StorageService.setCachedAvatar(user.email!, user.photoURL!);
+            }
+          }
+          return AuthResult(
+            isSuccess: true,
+            user: user,
+            photoUrl: user.photoURL,
+            profile: profile,
+          );
+        }
+        return AuthResult(isSuccess: true, user: user);
       } on FirebaseAuthException catch (e) {
         return AuthResult(
           isSuccess: false,

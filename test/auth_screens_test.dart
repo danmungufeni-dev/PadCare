@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:padcare/auth/auth_screens.dart';
+import 'package:padcare/services/firebase_service.dart';
 
 void main() {
   Widget testWrapper(Widget child) {
@@ -353,6 +355,79 @@ void main() {
       await tester.tap(find.text('5'));
       await tester.pump();
       expect(find.text('5'), findsOneWidget);
+    });
+
+    testWidgets('LoginHero displays Firebase Connected badge and demo buttons', (
+      tester,
+    ) async {
+      await tester.pumpWidget(testWrapper(const LoginHero()));
+
+      expect(find.text('Firebase Auth & Storage Connected'), findsOneWidget);
+      expect(find.text('Dan Mungufeni'), findsOneWidget);
+      expect(find.text('Abeti Nicholas'), findsOneWidget);
+    });
+
+    testWidgets('SignupTerms displays avatar selector and saves profile with photo', (
+      tester,
+    ) async {
+      await tester.pumpWidget(testWrapper(const SignupTerms()));
+
+      expect(find.text('Profile Avatar (Synced with Firebase Storage)'), findsOneWidget);
+    });
+
+    test('AuthService demo sign in returns UserProfile and photoUrl', () async {
+      final resultDan = await AuthService.signIn(
+        email: 'devgtnation@gmail.com',
+        password: 'any',
+      );
+      expect(resultDan.isSuccess, isTrue);
+      expect(resultDan.photoUrl, isNotNull);
+      expect(resultDan.profile?.role, equals('teacher'));
+      expect(resultDan.profile?.displayName, contains('Dan Mungufeni'));
+
+      final resultNicholas = await AuthService.signIn(
+        email: 'abetinichlas@gmail.com',
+        password: 'any',
+      );
+      expect(resultNicholas.isSuccess, isTrue);
+      expect(resultNicholas.photoUrl, isNotNull);
+      expect(resultNicholas.profile?.role, equals('parent'));
+      expect(resultNicholas.profile?.displayName, contains('Nicholas'));
+    });
+
+    test('StorageService handles avatar upload and caching safely', () async {
+      final fakeBytes = Uint8List.fromList([1, 2, 3, 4, 5]);
+      final url = await StorageService.uploadProfileAvatar(
+        uid: 'test-user-123',
+        bytes: fakeBytes,
+      );
+      expect(url, isNotNull);
+
+      final retrievedUrl = await StorageService.getProfileAvatarUrl('test-user-123');
+      expect(retrievedUrl, equals(url));
+    });
+
+    test('UserProfile JSON serialization preserves photoUrl and phoneNumber', () {
+      final profile = UserProfile(
+        uid: 'uid-abc',
+        email: 'nurse@padcare.org',
+        displayName: 'Arua Nurse',
+        role: 'teacher',
+        school: "St. Mary's Secondary",
+        authorized: true,
+        status: 'approved',
+        photoUrl: 'https://padcare.org/avatar.jpg',
+        phoneNumber: '+256778123456',
+      );
+
+      final json = profile.toJson();
+      expect(json['photoUrl'], equals('https://padcare.org/avatar.jpg'));
+      expect(json['phoneNumber'], equals('+256778123456'));
+
+      final reconstructed = UserProfile.fromJson(json);
+      expect(reconstructed.photoUrl, equals(profile.photoUrl));
+      expect(reconstructed.phoneNumber, equals(profile.phoneNumber));
+      expect(reconstructed.displayName, equals('Arua Nurse'));
     });
   });
 }

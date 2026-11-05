@@ -405,11 +405,11 @@ class _LoginHeroState extends State<LoginHero> {
               child: Column(
                 children: [
                   Text(
-                    'Quick Demo Sign In',
+                    'Creator & Demo Access',
                     style: TextStyle(
                       color: scheme.onSurfaceVariant,
                       fontSize: 11.5,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 8),
@@ -420,13 +420,13 @@ class _LoginHeroState extends State<LoginHero> {
                           onPressed: () {
                             PadCareAuthNavigator.openApp(
                               context,
-                              email: 'teacher@stmarys.org',
+                              email: 'devgtnation@gmail.com',
                               role: 'teacher',
-                              displayName: 'Senior Woman Teacher',
+                              displayName: 'Dan Mungufeni (Lead Dev)',
                             );
                           },
-                          icon: const Icon(Icons.school_outlined, size: 16),
-                          label: const Text('Teacher', style: TextStyle(fontSize: 12)),
+                          icon: const Icon(Icons.school_outlined, size: 15),
+                          label: const Text('Dan Mungufeni', style: TextStyle(fontSize: 11.5)),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                           ),
@@ -438,17 +438,46 @@ class _LoginHeroState extends State<LoginHero> {
                           onPressed: () {
                             PadCareAuthNavigator.openApp(
                               context,
-                              email: 'amina@padcare.org',
+                              email: 'abetinichlas@gmail.com',
                               role: 'parent',
-                              displayName: 'Amina N.',
+                              displayName: 'Abeti Acadri Nicholas',
                             );
                           },
-                          icon: const Icon(Icons.family_restroom_outlined, size: 16),
-                          label: const Text('Parent', style: TextStyle(fontSize: 12)),
+                          icon: const Icon(Icons.family_restroom_outlined, size: 15),
+                          label: const Text('Abeti Nicholas', style: TextStyle(fontSize: 11.5)),
                           style: OutlinedButton.styleFrom(
                             padding: const EdgeInsets.symmetric(vertical: 8),
                           ),
                         ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    spacing: 6,
+                    children: [
+                      ActionChip(
+                        label: const Text('Fill Dan (devgtnation)', style: TextStyle(fontSize: 10.5)),
+                        avatar: const Icon(Icons.edit_note, size: 14),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () {
+                          setState(() {
+                            _emailController.text = 'devgtnation@gmail.com';
+                            _passwordController.text = 'padcare2026';
+                          });
+                        },
+                      ),
+                      ActionChip(
+                        label: const Text('Fill Nicholas (abeti)', style: TextStyle(fontSize: 10.5)),
+                        avatar: const Icon(Icons.edit_note, size: 14),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: () {
+                          setState(() {
+                            _emailController.text = 'abetinichlas@gmail.com';
+                            _passwordController.text = 'padcare2026';
+                          });
+                        },
                       ),
                     ],
                   ),
@@ -1640,7 +1669,7 @@ class Welcome extends StatelessWidget {
                   child: Column(
                     children: [
                       Text(
-                        'Instant Demo Access',
+                        'Creator & Demo Access',
                         style: TextStyle(
                           color: scheme.onPrimary.withValues(alpha: 0.9),
                           fontSize: 11.5,
@@ -1656,9 +1685,9 @@ class Welcome extends StatelessWidget {
                               onPressed: () {
                                 PadCareAuthNavigator.openApp(
                                   context,
-                                  email: 'teacher@stmarys.org',
+                                  email: 'devgtnation@gmail.com',
                                   role: 'teacher',
-                                  displayName: 'Senior Woman Teacher',
+                                  displayName: 'Dan Mungufeni (Lead Dev)',
                                 );
                               },
                               style: OutlinedButton.styleFrom(
@@ -1667,7 +1696,7 @@ class Welcome extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(vertical: 8),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
-                              child: const Text('Teacher Demo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              child: const Text('Dan M. (Teacher)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -1676,9 +1705,9 @@ class Welcome extends StatelessWidget {
                               onPressed: () {
                                 PadCareAuthNavigator.openApp(
                                   context,
-                                  email: 'amina@padcare.org',
+                                  email: 'abetinichlas@gmail.com',
                                   role: 'parent',
-                                  displayName: 'Amina N.',
+                                  displayName: 'Abeti Acadri Nicholas',
                                 );
                               },
                               style: OutlinedButton.styleFrom(
@@ -1687,7 +1716,7 @@ class Welcome extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(vertical: 8),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
-                              child: const Text('Parent Demo', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              child: const Text('Nicholas A. (Parent)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
                             ),
                           ),
                         ],

@@ -120,7 +120,9 @@ class AuthService {
 
     // Demo account bypass for evaluations, tests, and offline field demos
     final lowerEmail = cleanEmail.toLowerCase();
-    if (lowerEmail == 'teacher@padcare.org' ||
+    if (lowerEmail == 'devgtnation@gmail.com' ||
+        lowerEmail == 'abetinichlas@gmail.com' ||
+        lowerEmail == 'teacher@padcare.org' ||
         lowerEmail == 'teacher@stmarys.org' ||
         lowerEmail == 'parent@padcare.org' ||
         lowerEmail == 'demo@padcare.org') {

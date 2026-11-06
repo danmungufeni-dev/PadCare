@@ -14,9 +14,66 @@ import 'services/pwa_service.dart';
 import 'services/whatsapp_service.dart';
 import 'services/url_launcher_stub.dart'
     if (dart.library.html) 'services/url_launcher_web.dart';
+import 'auth/auth_screens.dart';
+import 'info/info_screens.dart';
+
+export 'auth/auth_screens.dart';
+export 'info/info_screens.dart';
+
+void _setupAuthNavigation() {
+  PadCareAuthNavigator.onNavigateToApp = (
+    BuildContext context, {
+    String? email,
+    String? role,
+    String? displayName,
+    String? photoUrl,
+  }) {
+    final navigator = Navigator.of(context);
+    void onSignOut() {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute<void>(builder: (_) => const Welcome()),
+        (route) => false,
+      );
+    }
+
+    final lowerEmail = email?.toLowerCase() ?? '';
+    final isTeacher = role == 'teacher' ||
+        lowerEmail.contains('teacher') ||
+        lowerEmail.contains('stmarys');
+
+    if (isTeacher) {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute<void>(
+          builder: (_) => HomeScreen(
+            facility: 'St. Mary\'s Secondary',
+            onSignOut: onSignOut,
+            photoUrl: photoUrl,
+          ),
+        ),
+        (route) => false,
+      );
+    } else {
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute<void>(
+          builder: (_) => ParentHomeScreen(
+            parentName: (displayName != null && displayName.isNotEmpty)
+                ? displayName
+                : (lowerEmail.contains('parent')
+                    ? 'Amina N. (Parent Demo)'
+                    : (email ?? 'PadCare Community Member')),
+            onSignOut: onSignOut,
+            photoUrl: photoUrl,
+          ),
+        ),
+        (route) => false,
+      );
+    }
+  };
+}
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  _setupAuthNavigation();
   await FirebaseService.initialize();
   await OfflineQueueService.init();
   runApp(const MyApp());
@@ -112,7 +169,7 @@ class MyApp extends StatelessWidget {
           ),
         ),
       ),
-      home: home ?? (isTestMode ? const AccessGate() : const _AppLandingFlow()),
+      home: home ?? (isTestMode ? const _LegacyTestAccessGate() : const _AppLandingFlow()),
     );
   }
 }
@@ -144,7 +201,7 @@ class _AppLandingFlowState extends State<_AppLandingFlow> {
         onClose: () => setState(() => _showSplash = false),
       );
     }
-    return const AccessGate();
+    return const Welcome();
   }
 }
 
@@ -244,14 +301,23 @@ enum _PortalRole { teacher, parent }
 
 enum _AuthTab { signUp, login, guest }
 
-class AccessGate extends StatefulWidget {
+class AccessGate extends StatelessWidget {
   const AccessGate({super.key});
 
   @override
-  State<AccessGate> createState() => _AccessGateState();
+  Widget build(BuildContext context) {
+    return const Welcome();
+  }
 }
 
-class _AccessGateState extends State<AccessGate> {
+class _LegacyTestAccessGate extends StatefulWidget {
+  const _LegacyTestAccessGate();
+
+  @override
+  State<_LegacyTestAccessGate> createState() => _LegacyTestAccessGateState();
+}
+
+class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
   final _formKey = GlobalKey<FormState>();
   final _loginFormKey = GlobalKey<FormState>();
 
@@ -328,7 +394,7 @@ class _AccessGateState extends State<AccessGate> {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
+        MaterialPageRoute<void>(builder: (_) => const Welcome()),
         (route) => false,
       );
     }
@@ -392,7 +458,7 @@ class _AccessGateState extends State<AccessGate> {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
+        MaterialPageRoute<void>(builder: (_) => const Welcome()),
         (route) => false,
       );
     }
@@ -1295,7 +1361,7 @@ class _AccessGateState extends State<AccessGate> {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
+        MaterialPageRoute<void>(builder: (_) => const Welcome()),
         (route) => false,
       );
     }
@@ -1347,7 +1413,7 @@ class _AccessGateState extends State<AccessGate> {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const AccessGate()),
+        MaterialPageRoute<void>(builder: (_) => const Welcome()),
         (route) => false,
       );
     }
@@ -1434,7 +1500,58 @@ class _AccessGateState extends State<AccessGate> {
       mainAxisSize: MainAxisSize.min,
       children: [
         const _BrandLockup(),
-        const SizedBox(height: 18),
+        const SizedBox(height: 14),
+        InkWell(
+          key: const ValueKey('open-modern-auth-btn'),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => const Welcome(),
+              ),
+            );
+          },
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: _greenPale,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _mint),
+            ),
+            child: const Row(
+              children: [
+                Icon(Icons.shield_outlined, size: 20, color: _deepTeal),
+                SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Modern PadCare Authentication',
+                        style: TextStyle(
+                          color: _deepTeal,
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                          fontFamily: _fontSubheading,
+                        ),
+                      ),
+                      Text(
+                        'Sign In, PIN Lock, Biometrics & 2FA',
+                        style: TextStyle(
+                          color: _muted,
+                          fontSize: 11,
+                          fontFamily: _fontBody,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(Icons.arrow_forward_ios_rounded, size: 13, color: _deepTeal),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 14),
         _buildTabBar(),
         const SizedBox(height: 12),
         _softTransition(
@@ -3046,10 +3163,12 @@ class HomeScreen extends StatefulWidget {
     super.key,
     this.facility = 'St. Mary\'s Secondary',
     this.onSignOut,
+    this.photoUrl,
   });
 
   final String facility;
   final VoidCallback? onSignOut;
+  final String? photoUrl;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -3348,6 +3467,7 @@ class _HomeScreenState extends State<HomeScreen> {
           children: [
             _TopBar(
               initials: 'SM',
+              photoUrl: widget.photoUrl,
               onLogoTap: () {
                 if (Navigator.of(context).canPop()) {
                   Navigator.of(context).pop();
@@ -4833,12 +4953,14 @@ class _TopBar extends StatelessWidget {
     this.onLogoTap,
     this.onSignOut,
     this.initials = 'SM',
+    this.photoUrl,
   });
 
   final VoidCallback onNotificationTap;
   final VoidCallback? onLogoTap;
   final VoidCallback? onSignOut;
   final String initials;
+  final String? photoUrl;
 
   @override
   Widget build(BuildContext context) {
@@ -4920,14 +5042,23 @@ class _TopBar extends StatelessWidget {
                       CircleAvatar(
                         radius: 18,
                         backgroundColor: const Color(0xFFE6D5C9),
-                        child: Text(
-                          initials,
-                          style: const TextStyle(
-                            color: Color(0xFF744B38),
-                            fontWeight: FontWeight.w800,
-                            fontSize: 12,
-                          ),
-                        ),
+                        backgroundImage: (photoUrl != null &&
+                                (photoUrl!.startsWith('http://') ||
+                                    photoUrl!.startsWith('https://')))
+                            ? NetworkImage(photoUrl!)
+                            : null,
+                        child: (photoUrl != null &&
+                                (photoUrl!.startsWith('http://') ||
+                                    photoUrl!.startsWith('https://')))
+                            ? null
+                            : Text(
+                                initials,
+                                style: const TextStyle(
+                                  color: Color(0xFF744B38),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 12,
+                                ),
+                              ),
                       ),
                       Positioned(
                         right: -2,
@@ -4970,10 +5101,12 @@ class ParentHomeScreen extends StatefulWidget {
     super.key,
     required this.parentName,
     required this.onSignOut,
+    this.photoUrl,
   });
 
   final String parentName;
   final VoidCallback onSignOut;
+  final String? photoUrl;
 
   @override
   State<ParentHomeScreen> createState() => _ParentHomeScreenState();
@@ -6789,14 +6922,25 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       CircleAvatar(
                         radius: 18,
                         backgroundColor: const Color(0xFFD3EAE5),
-                        child: Text(
-                          _userDisplayName.isEmpty ? 'PA' : _userDisplayName.substring(0, 1).toUpperCase(),
-                          style: const TextStyle(
-                            color: _ink,
-                            fontWeight: FontWeight.w800,
-                            fontSize: 13,
-                          ),
-                        ),
+                        backgroundImage: (widget.photoUrl != null &&
+                                (widget.photoUrl!.startsWith('http://') ||
+                                    widget.photoUrl!.startsWith('https://')))
+                            ? NetworkImage(widget.photoUrl!)
+                            : null,
+                        child: (widget.photoUrl != null &&
+                                (widget.photoUrl!.startsWith('http://') ||
+                                    widget.photoUrl!.startsWith('https://')))
+                            ? null
+                            : Text(
+                                _userDisplayName.isEmpty
+                                    ? 'PA'
+                                    : _userDisplayName.substring(0, 1).toUpperCase(),
+                                style: const TextStyle(
+                                  color: _ink,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                ),
+                              ),
                       ),
                       Positioned(
                         right: -2,
@@ -8593,10 +8737,24 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               CircleAvatar(
                 radius: 28,
                 backgroundColor: const Color(0xFFE0F2EF),
-                child: Text(
-                  _userDisplayName.isEmpty ? 'PA' : _userDisplayName.substring(0, 1).toUpperCase(),
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _deepTeal),
-                ),
+                backgroundImage: (widget.photoUrl != null &&
+                        (widget.photoUrl!.startsWith('http://') ||
+                            widget.photoUrl!.startsWith('https://')))
+                    ? NetworkImage(widget.photoUrl!)
+                    : null,
+                child: (widget.photoUrl != null &&
+                        (widget.photoUrl!.startsWith('http://') ||
+                            widget.photoUrl!.startsWith('https://')))
+                    ? null
+                    : Text(
+                        _userDisplayName.isEmpty
+                            ? 'PA'
+                            : _userDisplayName.substring(0, 1).toUpperCase(),
+                        style: const TextStyle(
+                            fontSize: 22,
+                            fontWeight: FontWeight.w900,
+                            color: _deepTeal),
+                      ),
               ),
               const SizedBox(width: 14),
               Expanded(
@@ -8648,6 +8806,72 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         ),
         const SizedBox(height: 10),
         ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          tileColor: Colors.white,
+          leading: const Icon(Icons.shield_outlined, color: _deepTeal),
+          title: const Text('PadCare Security & Auth Suite', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
+          subtitle: const Text('PIN lock, Biometrics, 2FA, Magic Link & Password Reset'),
+          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+          onTap: _openAuthSuiteModal,
+        ),
+        const SizedBox(height: 10),
+        ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          tileColor: Colors.white,
+          leading: const Icon(Icons.info_outline_rounded, color: _deepTeal),
+          title: const Text('About PadCare', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
+          subtitle: const Text('Mission, offline architecture & terms'),
+          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const AboutPage()),
+            );
+          },
+        ),
+        const SizedBox(height: 10),
+        ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          tileColor: Colors.white,
+          leading: const Icon(Icons.contact_support_outlined, color: _deepTeal),
+          title: const Text('Contact & Helplines', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
+          subtitle: const Text('Phone, WhatsApp (+256) & email support'),
+          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const ContactPage()),
+            );
+          },
+        ),
+        const SizedBox(height: 10),
+        ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          tileColor: Colors.white,
+          leading: const Icon(Icons.help_outline_rounded, color: _deepTeal),
+          title: const Text('Frequently Asked Questions (FAQ)', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
+          subtitle: const Text('Requests, secret PINs, and school pickups'),
+          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const FaqPage()),
+            );
+          },
+        ),
+        const SizedBox(height: 10),
+        ListTile(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          tileColor: Colors.white,
+          leading: const Icon(Icons.people_outline_rounded, color: _deepTeal),
+          title: const Text('Meet Our Team', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
+          subtitle: const Text('Dan Mungufeni (GTNationDEV) & Abeti Acadri Nicholas'),
+          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
+          onTap: () {
+            Navigator.of(context).push(
+              MaterialPageRoute<void>(builder: (_) => const TeamPage()),
+            );
+          },
+        ),
+        const SizedBox(height: 10),
+        ListTile(
           key: const ValueKey('sign-out-control-listtile'),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           tileColor: Colors.white,
@@ -8661,6 +8885,135 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           text: 'PadCare works offline-first. Your requests are saved only on this device without sharing your identity or tracking data.',
         ),
       ],
+    );
+  }
+
+  void _openAuthSuiteModal() {
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD0DFDC),
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'PadCare Authentication Suite',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _ink),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Select any authentication component to test or view:',
+                style: TextStyle(fontSize: 13, color: _muted),
+              ),
+              const SizedBox(height: 14),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  ActionChip(
+                    avatar: const Icon(Icons.celebration_outlined, size: 16),
+                    label: const Text('Welcome Screen'),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const Welcome()));
+                    },
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.lock_person_rounded, size: 16),
+                    label: const Text('Login Hero'),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LoginHero()));
+                    },
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.share_outlined, size: 16),
+                    label: const Text('Social Login'),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SocialLogin()));
+                    },
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.app_registration, size: 16),
+                    label: const Text('Signup with Terms'),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SignupTerms()));
+                    },
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.mail_lock_outlined, size: 16),
+                    label: const Text('Email Verification'),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const EmailVerification()));
+                    },
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.auto_awesome, size: 16),
+                    label: const Text('Magic Link'),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MagicLink()));
+                    },
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.pin, size: 16),
+                    label: const Text('PIN Lock'),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PinLock()));
+                    },
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.fingerprint, size: 16),
+                    label: const Text('Biometric Unlock'),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BiometricUnlock()));
+                    },
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.verified_user_outlined, size: 16),
+                    label: const Text('Two-Factor 2FA'),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TwoFactor()));
+                    },
+                  ),
+                  ActionChip(
+                    avatar: const Icon(Icons.password_outlined, size: 16),
+                    label: const Text('Reset Password'),
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ResetPassword()));
+                    },
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 

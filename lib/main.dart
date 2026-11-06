@@ -22,15 +22,15 @@ void main() async {
   runApp(const MyApp());
 }
 
-const _ink = Color(0xFF172B36);
-const _muted = Color(0xFF6B8487);
-const _paper = Color(0xFFF7FCFA);
-const _green = Color(0xFF35B9B4);
-const _deepTeal = Color(0xFF116B78);
-const _mint = Color(0xFFA5EAC5);
-const _greenPale = Color(0xFFE4F8F2);
-const _coral = Color(0xFF0D9488);
-const _line = Color(0xFFDCECEB);
+const _ink = Color(0xFF1B0B12);
+const _muted = Color(0xFF6B5861);
+const _paper = Color(0xFFFFFDFE);
+const _green = Color(0xFFE11D48);
+const _deepTeal = Color(0xFFBE123C);
+const _mint = Color(0xFFFECDD3);
+const _greenPale = Color(0xFFFFF1F2);
+const _coral = Color(0xFFF43F5E);
+const _line = Color(0xFFFCE7EB);
 
 const _fontHeading = 'SF Pro Display';
 const _fontSubheading = 'SF Pro Display';
@@ -65,7 +65,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'PadCare',
+      title: 'PadHer',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -2470,29 +2470,51 @@ class _BrandLockup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
+    return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _BrandMark(),
-        SizedBox(width: 8),
-        Text(
-          'PadCare',
-          style: TextStyle(
-            color: _ink,
-            fontSize: 22,
-            fontWeight: FontWeight.w800,
-            fontFamily: _fontHeading,
-          ),
-        ),
-        SizedBox(width: 8),
-        Text(
-          'ARUA CITY',
-          style: TextStyle(
-            color: _muted,
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            fontFamily: _fontSubheading,
-          ),
+        const _BrandMark(),
+        const SizedBox(width: 8),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: const [
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'PadHer',
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.4,
+                    fontFamily: _fontHeading,
+                  ),
+                ),
+                SizedBox(width: 6),
+                Text(
+                  'ARUA CITY',
+                  style: TextStyle(
+                    color: _deepTeal,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.5,
+                    fontFamily: _fontSubheading,
+                  ),
+                ),
+              ],
+            ),
+            Text(
+              'PadCare Network',
+              style: TextStyle(
+                color: _muted,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+                fontFamily: _fontSubheading,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -2523,7 +2545,14 @@ class _BrandMark extends StatelessWidget {
         borderRadius: BorderRadius.circular(8),
         child: CustomPaint(
           painter: const _PadCareLogoPainter(),
-          child: Image.asset('assets/icon/app_icon.png', fit: BoxFit.cover),
+          child: Image.asset(
+            'assets/padher_icon.png',
+            fit: BoxFit.cover,
+            errorBuilder: (context, error, stackTrace) => Image.asset(
+              'assets/icon/app_icon.png',
+              fit: BoxFit.cover,
+            ),
+          ),
         ),
       ),
     );
@@ -4820,18 +4849,33 @@ class _TopBar extends StatelessWidget {
           InkWell(
             onTap: onLogoTap,
             borderRadius: BorderRadius.circular(10),
-            child: const Row(
+            child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                _BrandMark(),
-                SizedBox(width: 9),
-                Text(
-                  'PadCare',
-                  style: TextStyle(
-                    color: _ink,
-                    fontSize: 21,
-                    fontWeight: FontWeight.w800,
-                  ),
+                const _BrandMark(),
+                const SizedBox(width: 9),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: const [
+                    Text(
+                      'PadHer',
+                      style: TextStyle(
+                        color: _ink,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: -0.4,
+                      ),
+                    ),
+                    Text(
+                      'PadCare',
+                      style: TextStyle(
+                        color: _muted,
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -5247,6 +5291,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   String _userDisplayName = '';
   String _selectedLearnCategory = 'All';
 
+  DateTime _cycleStartDate = DateTime.now().subtract(const Duration(days: 14));
+  final int _cycleLengthDays = 28;
+  final int _periodLengthDays = 5;
+
   StreamSubscription<List<Map<String, dynamic>>>? _parentRequestsSubscription;
 
   @override
@@ -5254,7 +5302,140 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     super.initState();
     _userDisplayName = widget.parentName;
     _loadLocalRequests();
+    _loadCycleTrackerState();
     _subscribeToCloudRequests();
+  }
+
+  Future<void> _loadCycleTrackerState() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedDate = prefs.getString('padher_cycle_start');
+      if (savedDate != null && mounted) {
+        setState(() => _cycleStartDate = DateTime.parse(savedDate));
+      }
+    } catch (_) {}
+  }
+
+  void _triggerEmergencySOS() {
+    final school = _pickupSchoolsByArea[_selectedArea] ?? 'St. Mary\'s Secondary';
+    final pin = (1000 + (DateTime.now().millisecondsSinceEpoch % 9000)).toString();
+    final emergencyReq = _LocalRequest(
+      id: 'emergency-${DateTime.now().microsecondsSinceEpoch}',
+      reference: 'PH-SOS-$pin',
+      pickupPin: pin,
+      school: school,
+      area: _selectedArea == 'Arua Central' ? 'Ediofe' : _selectedArea,
+      product: 'Disposable pads',
+      quantity: 1,
+      createdAt: DateTime.now().toIso8601String(),
+      status: 'Ready',
+    );
+    final updated = [emergencyReq, ..._localRequests];
+    setState(() => _localRequests = updated);
+    _readLocalData().then((data) {
+      _saveLocalData(_LocalData(requests: updated, stock: data.stock));
+    }).catchError((_) {});
+    unawaited(FirestoreService.saveRequest(emergencyReq.toJson()));
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(22, 18, 22, 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 44,
+              height: 4,
+              decoration: BoxDecoration(color: _line, borderRadius: BorderRadius.circular(2)),
+            ),
+            const SizedBox(height: 18),
+            const CircleAvatar(
+              radius: 30,
+              backgroundColor: Color(0xFFFFF1F2),
+              child: Icon(Icons.bolt_rounded, color: _green, size: 38),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Instant Emergency Pad SOS',
+              style: TextStyle(color: _ink, fontSize: 20, fontWeight: FontWeight.w900, fontFamily: _fontHeading),
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'You are safe. Walk directly to the Senior Woman Teacher room at school.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: _muted, fontSize: 13, height: 1.4),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFF1F2),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFECDD3), width: 1.5),
+              ),
+              child: Column(
+                children: [
+                  const Text(
+                    'YOUR 4-DIGIT SECRET PICKUP PIN',
+                    style: TextStyle(color: _deepTeal, fontSize: 11, fontWeight: FontWeight.w800, letterSpacing: 1.2),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    '#$pin',
+                    style: const TextStyle(
+                      color: _deepTeal,
+                      fontSize: 34,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 4,
+                      fontFamily: _fontHeading,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Pickup at: $school',
+                    style: const TextStyle(color: _ink, fontSize: 13, fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            FilledButton.icon(
+              onPressed: () {
+                Clipboard.setData(ClipboardData(text: '#$pin'));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('PIN copied to clipboard!')),
+                );
+              },
+              icon: const Icon(Icons.copy_rounded, size: 18),
+              label: const Text('Copy Secret PIN'),
+              style: FilledButton.styleFrom(
+                backgroundColor: _deepTeal,
+                foregroundColor: Colors.white,
+                minimumSize: const Size(double.infinity, 48),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton(
+              onPressed: () => Navigator.pop(ctx),
+              style: OutlinedButton.styleFrom(
+                side: const BorderSide(color: _line),
+                minimumSize: const Size(double.infinity, 46),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+              ),
+              child: const Text('Close & Head to Teacher Room', style: TextStyle(color: _ink, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   @override
@@ -6224,41 +6405,79 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   }
 
   void _showDonationSuccessDialog(int amount, String method) {
+    final packsFunded = (amount / 3000).ceil();
     showDialog<void>(
       context: context,
       builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(22)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const CircleAvatar(
-              radius: 30,
-              backgroundColor: Color(0xFFEAF7EE),
-              child: Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 40),
+              radius: 32,
+              backgroundColor: Color(0xFFFFF1F2),
+              child: Icon(Icons.volunteer_activism_rounded, color: _green, size: 38),
             ),
             const SizedBox(height: 16),
             const Text(
               'Thank You for Caring!',
-              style: TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 20),
+              style: TextStyle(color: _ink, fontWeight: FontWeight.w900, fontSize: 20, fontFamily: _fontHeading),
             ),
             const SizedBox(height: 8),
             Text(
-              'Your developer contribution of UGX ${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} via $method has been confirmed.',
+              'Your mobile contribution of UGX ${amount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} via $method has been confirmed.',
               textAlign: TextAlign.center,
               style: const TextStyle(color: _muted, fontSize: 13, height: 1.45),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 14),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFF7FCFA),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFD6ECE6)),
+                gradient: const LinearGradient(
+                  colors: [Color(0xFFFFF1F2), Color(0xFFFFE4E6)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFFFECDD3)),
               ),
-              child: Text(
-                'Receipt ref: PC-DON-${DateTime.now().millisecondsSinceEpoch % 100000}',
-                style: const TextStyle(color: _deepTeal, fontWeight: FontWeight.w800, fontSize: 12),
+              child: Column(
+                children: [
+                  const Text(
+                    '👑 PADHER KINDNESS CHAMPION',
+                    style: TextStyle(color: _deepTeal, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.1),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Directly funded $packsFunded pad pack${packsFunded == 1 ? '' : 's'} for schoolgirls in Arua City.',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: _ink, fontSize: 12.5, fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 10),
+                  FilledButton.icon(
+                    onPressed: () {
+                      final text = 'I just sponsored $packsFunded sanitary pad pack${packsFunded == 1 ? '' : 's'} for schoolgirls in Arua City with the PadHer app! 🩸 Keep girls in school.';
+                      Clipboard.setData(ClipboardData(text: text));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Kindness message copied! Share to your WhatsApp status.')),
+                      );
+                    },
+                    icon: const Icon(Icons.share_rounded, size: 16),
+                    label: const Text('Share to WhatsApp Status'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF25D366),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ],
               ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Receipt ref: PH-DON-${DateTime.now().millisecondsSinceEpoch % 100000}',
+              style: const TextStyle(color: _muted, fontWeight: FontWeight.w700, fontSize: 11),
             ),
           ],
         ),
@@ -6462,7 +6681,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 _BrandMark(),
                 SizedBox(width: 8),
                 Text(
-                  'PadCare',
+                  'PadHer',
                   style: TextStyle(
                     color: _ink,
                     fontSize: 21,
@@ -6749,14 +6968,14 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF2EA8B6), Color(0xFF48C3AF)],
+              colors: [Color(0xFFBE123C), Color(0xFFE11D48)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(22),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x332EA8B6),
+                color: Color(0x33BE123C),
                 blurRadius: 16,
                 offset: Offset(0, 6),
               ),
@@ -6770,7 +6989,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 child: Opacity(
                   opacity: 0.22,
                   child: Image.asset(
-                    'assets/padcare_icon.png',
+                    'assets/padher_icon.png',
                     width: 125,
                     height: 125,
                     errorBuilder: (context, error, stackTrace) => Image.asset(
@@ -6796,7 +7015,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   ),
                   const SizedBox(height: 7),
                   const Text(
-                    'Discover nearby places offering support.',
+                    'Empowering menstrual dignity and freedom in Arua City.',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 13,
@@ -6809,7 +7028,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     onPressed: () => setState(() => _selectedIndex = 1),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.white,
-                      foregroundColor: _ink,
+                      foregroundColor: _deepTeal,
                       elevation: 0,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
                       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
@@ -6831,6 +7050,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 14),
+        _buildEmergencySOSCard(),
+        const SizedBox(height: 14),
+        _buildCyclePredictorCard(),
         const SizedBox(height: 22),
         const Text(
           'Explore Categories',
@@ -6936,6 +7159,280 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         ),
         const SizedBox(height: 16),
       ],
+    );
+  }
+
+  Widget _buildEmergencySOSCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFF1F2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFFECDD3), width: 1.5),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x12E11D48),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: const Color(0xFFE11D48),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: const Icon(
+              Icons.bolt_rounded,
+              color: Colors.white,
+              size: 24,
+            ),
+          ),
+          const SizedBox(width: 14),
+          const Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Urgent Pad SOS',
+                  style: TextStyle(
+                    color: Color(0xFF9F1239),
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    fontFamily: _fontHeading,
+                  ),
+                ),
+                SizedBox(height: 3),
+                Text(
+                  'Bleeding at school? Get 1-tap instant secret pickup code.',
+                  style: TextStyle(
+                    color: Color(0xFFBE123C),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 8),
+          FilledButton(
+            onPressed: _triggerEmergencySOS,
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFFBE123C),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+            ),
+            child: const Text(
+              'Get Now',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCyclePredictorCard() {
+    final now = DateTime.now();
+    final daysSinceStart = now.difference(_cycleStartDate).inDays % _cycleLengthDays;
+    final cycleDay = daysSinceStart + 1;
+    final daysLeft = _cycleLengthDays - daysSinceStart;
+
+    String phase;
+    Color phaseColor;
+    String phaseAdvice;
+    if (cycleDay <= _periodLengthDays) {
+      phase = 'Menstrual Phase 🩸';
+      phaseColor = const Color(0xFFE11D48);
+      phaseAdvice = 'Stay hydrated, rest, and use clean pads. Change every 4-6 hours.';
+    } else if (cycleDay <= 13) {
+      phase = 'Follicular Phase 🌱';
+      phaseColor = const Color(0xFF059669);
+      phaseAdvice = 'Natural estrogen rising. High mental focus and energy for studies!';
+    } else if (cycleDay <= 16) {
+      phase = 'Ovulation Phase 🌟';
+      phaseColor = const Color(0xFFD97706);
+      phaseAdvice = 'Peak creativity and confidence across your school day.';
+    } else {
+      phase = 'Luteal Phase 🌙';
+      phaseColor = const Color(0xFF7C3AED);
+      phaseAdvice = 'Pre-period phase. Carry 2 packs in your bag so you are never surprised.';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: _line),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 12,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF1F2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.favorite_rounded, color: _green, size: 18),
+              ),
+              const SizedBox(width: 9),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PadHer Cycle Dignity Tracker',
+                      style: TextStyle(
+                        color: _ink,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w800,
+                        fontFamily: _fontHeading,
+                      ),
+                    ),
+                    Text(
+                      'Confidential & 100% Offline on your device',
+                      style: TextStyle(color: _muted, fontSize: 11),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: phaseColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  phase,
+                  style: TextStyle(
+                    color: phaseColor,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFFFDFE),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _line),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Day $cycleDay of $_cycleLengthDays',
+                      style: const TextStyle(
+                        color: _ink,
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        fontFamily: _fontHeading,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      daysLeft <= 3 ? '⚠️ Period expected in $daysLeft day${daysLeft == 1 ? '' : 's'}!' : 'Next period in ~$daysLeft days',
+                      style: TextStyle(
+                        color: daysLeft <= 3 ? _green : _muted,
+                        fontSize: 12,
+                        fontWeight: daysLeft <= 3 ? FontWeight.w800 : FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: SizedBox(
+                    width: 70,
+                    height: 10,
+                    child: LinearProgressIndicator(
+                      value: (cycleDay / _cycleLengthDays).clamp(0.0, 1.0),
+                      backgroundColor: _greenPale,
+                      valueColor: AlwaysStoppedAnimation<Color>(phaseColor),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Text(
+            phaseAdvice,
+            style: const TextStyle(color: _muted, fontSize: 12, height: 1.4),
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _cycleStartDate,
+                      firstDate: DateTime.now().subtract(const Duration(days: 90)),
+                      lastDate: DateTime.now(),
+                    );
+                    if (picked != null) {
+                      setState(() => _cycleStartDate = picked);
+                      final prefs = await SharedPreferences.getInstance();
+                      await prefs.setString('padher_cycle_start', picked.toIso8601String());
+                    }
+                  },
+                  icon: const Icon(Icons.edit_calendar_rounded, size: 15),
+                  label: const Text('Log Period Start'),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _deepTeal,
+                    side: const BorderSide(color: _line),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: FilledButton.icon(
+                  onPressed: () => setState(() {
+                    _selectedIndex = 3;
+                    _supportSubTab = _SupportSubTab.requestForm;
+                  }),
+                  icon: const Icon(Icons.add_shopping_cart_rounded, size: 15),
+                  label: const Text('Pre-order Pads'),
+                  style: FilledButton.styleFrom(
+                    backgroundColor: _green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 
@@ -8833,7 +9330,7 @@ class _PadCareSplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE4F8F2),
+      backgroundColor: const Color(0xFFFFF1F2),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -8841,7 +9338,7 @@ class _PadCareSplashScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFE4F8F2), Color(0xFFD6F2EA)],
+            colors: [Color(0xFFFFF1F2), Color(0xFFFFE4E6)],
           ),
         ),
         child: SafeArea(
@@ -8868,7 +9365,7 @@ class _PadCareSplashScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(32),
                         boxShadow: const [
                           BoxShadow(
-                            color: Color(0x281B434D),
+                            color: Color(0x33BE123C),
                             blurRadius: 28,
                             offset: Offset(0, 14),
                           ),
@@ -8877,18 +9374,22 @@ class _PadCareSplashScreen extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(32),
                         child: Image.asset(
-                          'assets/icon/app_icon.png',
+                          'assets/padher_icon.png',
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Image.asset(
-                            'assets/padcare_icon.png',
+                            'assets/icon/app_icon.png',
                             fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => Image.asset(
+                              'assets/padcare_icon.png',
+                              fit: BoxFit.cover,
+                            ),
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(height: 30),
+                    const SizedBox(height: 26),
                     const Text(
-                      'PadCare',
+                      'PadHer',
                       style: TextStyle(
                         color: _ink,
                         fontSize: 34,
@@ -8897,18 +9398,28 @@ class _PadCareSplashScreen extends StatelessWidget {
                         fontFamily: _fontHeading,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 4),
                     const Text(
-                      'Care within reach.',
+                      'PadCare Network • Menstrual Health & Dignity',
                       style: TextStyle(
-                        color: Color(0xFF5A7E82),
-                        fontSize: 17,
+                        color: _deepTeal,
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w700,
+                        fontFamily: _fontSubheading,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    const Text(
+                      'Dignity, Freedom & Care within reach.',
+                      style: TextStyle(
+                        color: Color(0xFF881337),
+                        fontSize: 15,
                         fontWeight: FontWeight.w500,
                         letterSpacing: 0.1,
                         fontFamily: _fontSubheading,
                       ),
                     ),
-                    const SizedBox(height: 36),
+                    const SizedBox(height: 32),
                     SizedBox(
                       width: 90,
                       height: 90,

@@ -351,4 +351,45 @@ void main() {
     // Verify we are back on Home tab
     expect(find.text('Hello, there!'), findsOneWidget);
   });
+
+  testWidgets('PadHer cycle tracker and emergency pad SOS workflow', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    await tester.pumpWidget(const MyApp());
+
+    // Enter Parent portal
+    await tester.tap(find.text('Parent or guardian'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey('submit-access')));
+    await tester.pumpAndSettle();
+
+    // Verify PadHer branding and new elevated features on Home
+    expect(find.text('PadHer'), findsWidgets);
+    expect(find.text('Urgent Pad SOS'), findsOneWidget);
+    expect(find.text('PadHer Cycle Dignity Tracker'), findsOneWidget);
+
+    // Tap Emergency SOS "Get Now"
+    final getNowBtn = find.text('Get Now');
+    await tester.ensureVisible(getNowBtn);
+    await tester.tap(getNowBtn);
+    await tester.pumpAndSettle();
+
+    // Verify Emergency modal opens with secret pickup PIN
+    expect(find.text('Instant Emergency Pad SOS'), findsOneWidget);
+    expect(find.text('YOUR 4-DIGIT SECRET PICKUP PIN'), findsOneWidget);
+    expect(find.text('Copy Secret PIN'), findsOneWidget);
+
+    // Close emergency modal
+    await tester.tap(find.text('Close & Head to Teacher Room'));
+    await tester.pumpAndSettle();
+
+    // Navigate to Activity and verify the SOS request was logged locally
+    final activityBtn = find.text('Activity');
+    await tester.ensureVisible(activityBtn);
+    await tester.tap(activityBtn);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('Request PH-SOS-'), findsOneWidget);
+    expect(find.text('Ready'), findsOneWidget);
+  });
 }

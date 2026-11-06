@@ -58,7 +58,7 @@ dev_dependencies:
 flutter_launcher_icons:
   image_path: "assets/icon/app_icon.png"
   android: true
-  adaptive_icon_background: "#2EA8B6"
+  adaptive_icon_background: "#BE123C"
   adaptive_icon_foreground: "assets/icon/app_icon.png"
   ios: true
   remove_alpha_ios: true
@@ -81,6 +81,8 @@ flutter:
   assets:
     - assets/icon/app_icon.png
     - assets/padcare_icon.png
+    - assets/padher_icon.png
+    - assets/padher_banner.png
     - assets/loading-transparent.json
 
   fonts:

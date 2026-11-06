@@ -25,3 +25,8 @@ doc/api/
 
 .flutter-plugins
 .flutter-plugins-dependencies
+
+# APK outputs and archive downloads
+apk_output/
+*.apk
+*.zip

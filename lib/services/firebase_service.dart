@@ -387,9 +387,7 @@ class AuthService {
           profile = await FirestoreService.getUserProfile(user.uid) ??
               await FirestoreService.getUserProfile(cleanEmail);
           photoUrl ??= profile?.photoUrl;
-          if (photoUrl == null) {
-            photoUrl = await StorageService.getProfileAvatarUrl(user.uid);
-          }
+          photoUrl ??= await StorageService.getProfileAvatarUrl(user.uid);
         }
 
         return AuthResult(

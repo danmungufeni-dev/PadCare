@@ -1,10 +1,90 @@
+import 'dart:async';
+import 'dart:io';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:padcare/auth/auth_screens.dart';
 import 'package:padcare/services/firebase_service.dart';
 
+class _TestHttpOverrides extends HttpOverrides {
+  @override
+  HttpClient createHttpClient(SecurityContext? context) => _MockHttpClient();
+}
+
+class _MockHttpClient extends Fake implements HttpClient {
+  @override
+  bool autoUncompress = true;
+
+  @override
+  Duration idleTimeout = const Duration(seconds: 15);
+
+  @override
+  Future<HttpClientRequest> getUrl(Uri url) async => _MockHttpClientRequest();
+}
+
+class _MockHttpClientRequest extends Fake implements HttpClientRequest {
+  @override
+  final HttpHeaders headers = _MockHttpHeaders();
+  @override
+  Future<HttpClientResponse> close() async => _MockHttpClientResponse();
+}
+
+class _MockHttpHeaders extends Fake implements HttpHeaders {
+  @override
+  void set(String name, Object value, {bool preserveHeaderCase = false}) {}
+}
+
+class _MockHttpClientResponse extends Fake implements HttpClientResponse {
+  @override
+  int get statusCode => 200;
+  @override
+  int get contentLength => _kTransparentPng.length;
+  @override
+  HttpClientResponseCompressionState get compressionState =>
+      HttpClientResponseCompressionState.notCompressed;
+
+  @override
+  StreamSubscription<List<int>> listen(
+    void Function(List<int> event)? onData, {
+    Function? onError,
+    void Function()? onDone,
+    bool? cancelOnError,
+  }) {
+    return Stream<List<int>>.value(_kTransparentPng).listen(
+      onData,
+      onError: onError,
+      onDone: onDone,
+      cancelOnError: cancelOnError,
+    );
+  }
+}
+
+final List<int> _kTransparentPng = <int>[
+  0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49,
+  0x48, 0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06,
+  0x00, 0x00, 0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44,
+  0x41, 0x54, 0x78, 0x9C, 0x63, 0x00, 0x01, 0x00, 0x00, 0x05, 0x00, 0x01, 0x0D,
+  0x0A, 0x2D, 0xB4, 0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42,
+  0x60, 0x82,
+];
+
 void main() {
+  setUpAll(() {
+    HttpOverrides.global = _TestHttpOverrides();
+  });
+
+  setUp(() {
+    TestWidgetsFlutterBinding.instance.platformDispatcher.views.first.physicalSize =
+        const Size(800, 1400);
+    TestWidgetsFlutterBinding.instance.platformDispatcher.views.first.devicePixelRatio =
+        1.0;
+  });
+
+  tearDown(() {
+    TestWidgetsFlutterBinding.instance.platformDispatcher.views.first.resetPhysicalSize();
+    TestWidgetsFlutterBinding.instance.platformDispatcher.views.first.resetDevicePixelRatio();
+  });
+
   Widget testWrapper(Widget child) {
     return MaterialApp(
       theme: ThemeData(
@@ -31,7 +111,6 @@ void main() {
         ),
       );
 
-      // Verify PadCare brand presence and no Nimbus
       expect(find.text('Welcome to PadCare'), findsOneWidget);
       expect(find.textContaining('Nimbus'), findsNothing);
       expect(
@@ -39,7 +118,6 @@ void main() {
         findsOneWidget,
       );
 
-      // Tap get started
       await tester.tap(find.text('Get started'));
       await tester.pump();
       expect(getStartedTapped, isTrue);
@@ -79,12 +157,10 @@ void main() {
       expect(find.text('Tap to unlock with Face ID or Touch ID'), findsOneWidget);
       expect(find.text('Use passcode instead'), findsOneWidget);
 
-      // Tap fingerprint to trigger simulated scan
-      await tester.tap(find.byType(GestureDetector));
+      await tester.tap(find.byIcon(Icons.fingerprint));
       await tester.pump();
       expect(find.text('Scanning…'), findsOneWidget);
 
-      // Advance time to complete simulated scan
       await tester.pump(const Duration(milliseconds: 1300));
       expect(find.text('Unlocked'), findsOneWidget);
 
@@ -106,7 +182,6 @@ void main() {
       expect(find.text('Sign in'), findsOneWidget);
       expect(find.text('Sign up'), findsOneWidget);
 
-      // Verify obscure text toggle
       final obscureToggle = find.byIcon(Icons.visibility_off);
       expect(obscureToggle, findsOneWidget);
       await tester.tap(obscureToggle);
@@ -125,19 +200,16 @@ void main() {
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Strength: Too weak'), findsOneWidget);
 
-      // Enter stronger password
       final passwordField = find.widgetWithText(TextField, 'Password');
       await tester.enterText(passwordField, 'P@ssw0rd123');
       await tester.pump();
       expect(find.text('Strength: Strong'), findsOneWidget);
 
-      // The create account button is disabled before checking terms
       final submitButton = tester.widget<FilledButton>(
         find.widgetWithText(FilledButton, 'Create account'),
       );
       expect(submitButton.onPressed, isNull);
 
-      // Check terms checkbox
       await tester.tap(find.byType(CheckboxListTile));
       await tester.pump();
 
@@ -164,7 +236,6 @@ void main() {
       expect(find.text('Hint: 1234'), findsOneWidget);
       expect(find.text('Use biometrics'), findsOneWidget);
 
-      // Tap 1, 2, 3, 4
       await tester.tap(find.text('1'));
       await tester.pump();
       await tester.tap(find.text('2'));
@@ -190,12 +261,10 @@ void main() {
         ),
       );
 
-      // Verify same style on PinCreate
       expect(find.text('Create your PIN'), findsOneWidget);
       expect(find.text('Choose a 4-digit PIN for quick access'), findsOneWidget);
       expect(find.text('Cancel'), findsOneWidget);
 
-      // Tap 5, 6, 7, 8 on PinCreate
       await tester.tap(find.text('5'));
       await tester.pump();
       await tester.tap(find.text('6'));
@@ -205,23 +274,20 @@ void main() {
       await tester.tap(find.text('8'));
       await tester.pump();
 
-      // Completes creation and auto-navigates to PinConfirm
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pumpAndSettle();
 
-      // Verify same style on PinConfirm
       expect(find.text('Confirm your PIN'), findsOneWidget);
       expect(find.text('Re-enter your 4-digit PIN to confirm'), findsOneWidget);
       expect(find.text('Start over'), findsOneWidget);
 
-      // Enter matching PIN: 5, 6, 7, 8
-      await tester.tap(find.text('5'));
+      await tester.tap(find.text('5').last);
       await tester.pump();
-      await tester.tap(find.text('6'));
+      await tester.tap(find.text('6').last);
       await tester.pump();
-      await tester.tap(find.text('7'));
+      await tester.tap(find.text('7').last);
       await tester.pump();
-      await tester.tap(find.text('8'));
+      await tester.tap(find.text('8').last);
       await tester.pump();
 
       await tester.pump(const Duration(milliseconds: 300));
@@ -243,7 +309,6 @@ void main() {
 
       expect(find.text('Confirm your PIN'), findsOneWidget);
 
-      // Enter mismatched PIN: 9, 9, 9, 9
       await tester.tap(find.text('9'));
       await tester.pump();
       await tester.tap(find.text('9'));
@@ -351,10 +416,9 @@ void main() {
       expect(find.textContaining('•••• 7721'), findsOneWidget);
       expect(find.textContaining('Resend code in 0:'), findsOneWidget);
 
-      // Enter digits using the keypad
-      await tester.tap(find.text('5'));
+      await tester.tap(find.text('5').last);
       await tester.pump();
-      expect(find.text('5'), findsOneWidget);
+      expect(find.text('5'), findsNWidgets(2));
     });
 
     testWidgets('LoginHero displays Firebase Connected badge and demo buttons', (

@@ -3,6 +3,18 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:padcare/info/info_screens.dart';
 
 void main() {
+  setUp(() {
+    TestWidgetsFlutterBinding.instance.platformDispatcher.views.first.physicalSize =
+        const Size(800, 1400);
+    TestWidgetsFlutterBinding.instance.platformDispatcher.views.first.devicePixelRatio =
+        1.0;
+  });
+
+  tearDown(() {
+    TestWidgetsFlutterBinding.instance.platformDispatcher.views.first.resetPhysicalSize();
+    TestWidgetsFlutterBinding.instance.platformDispatcher.views.first.resetDevicePixelRatio();
+  });
+
   Widget testWrapper(Widget child) {
     return MaterialApp(
       theme: ThemeData(
@@ -35,7 +47,9 @@ void main() {
       );
 
       // Verify Terms of Service dialog
-      await tester.tap(find.text('Terms of Service'));
+      final termsBtn = find.text('Terms of Service');
+      await tester.ensureVisible(termsBtn);
+      await tester.tap(termsBtn);
       await tester.pumpAndSettle();
       expect(find.text('Terms of Service'), findsWidgets);
       expect(find.textContaining('free, community-centered humanitarian platform'), findsOneWidget);
@@ -43,7 +57,9 @@ void main() {
       await tester.pumpAndSettle();
 
       // Verify Privacy Policy dialog
-      await tester.tap(find.text('Privacy Policy'));
+      final privacyBtn = find.text('Privacy Policy');
+      await tester.ensureVisible(privacyBtn);
+      await tester.tap(privacyBtn);
       await tester.pumpAndSettle();
       expect(find.text('Privacy Policy'), findsWidgets);
       expect(find.textContaining('We never ask for a girl\'s name'), findsOneWidget);
@@ -70,7 +86,9 @@ void main() {
       expect(find.text('+256 783 669 967'), findsOneWidget);
 
       // Test validation on empty send
-      await tester.tap(find.text('Send Message'));
+      final sendBtn = find.text('Send Message');
+      await tester.ensureVisible(sendBtn);
+      await tester.tap(sendBtn);
       await tester.pump();
       expect(find.text('Please fill in your name, email, and message.'), findsOneWidget);
 
@@ -78,9 +96,11 @@ void main() {
       await tester.enterText(find.widgetWithText(TextField, 'Name'), 'Amina');
       await tester.enterText(find.widgetWithText(TextField, 'Email'), 'amina@example.com');
       await tester.enterText(find.widgetWithText(TextField, 'Message'), 'Inquiry about distribution.');
-      await tester.tap(find.text('Send Message'));
+      await tester.ensureVisible(sendBtn);
+      await tester.tap(sendBtn);
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 800));
+      await tester.pump(const Duration(milliseconds: 1000));
+      await tester.pumpAndSettle();
 
       expect(
         find.text('Thank you! Your message has been sent to the PadCare team.'),
@@ -98,7 +118,9 @@ void main() {
       expect(find.text('Is my pad request completely confidential?'), findsOneWidget);
 
       // Tap to expand first FAQ
-      await tester.tap(find.text('What is PadCare and who can use it?'));
+      final faqFinder = find.text('What is PadCare and who can use it?');
+      await tester.ensureVisible(faqFinder);
+      await tester.tap(faqFinder);
       await tester.pumpAndSettle();
 
       expect(

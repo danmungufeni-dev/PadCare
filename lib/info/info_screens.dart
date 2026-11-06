@@ -217,7 +217,9 @@ class _ContactPageState extends State<ContactPage> {
     final message = _messageController.text.trim();
 
     if (name.isEmpty || email.isEmpty || message.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
         const SnackBar(
           content: Text('Please fill in your name, email, and message.'),
         ),
@@ -235,7 +237,9 @@ class _ContactPageState extends State<ContactPage> {
         _subjectController.clear();
         _messageController.clear();
       });
-      ScaffoldMessenger.of(context).showSnackBar(
+      ScaffoldMessenger.of(context)
+        ..clearSnackBars()
+        ..showSnackBar(
         const SnackBar(
           backgroundColor: Color(0xFF116B78),
           content: Text('Thank you! Your message has been sent to the PadCare team.'),

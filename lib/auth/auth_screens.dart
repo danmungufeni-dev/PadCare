@@ -1529,7 +1529,7 @@ class _SignupTermsState extends State<SignupTerms> {
           if (_role == 'teacher') ...[
             const SizedBox(height: 14),
             DropdownButtonFormField<String>(
-              value: _school,
+              initialValue: _school,
               decoration: const InputDecoration(
                 labelText: 'Select your school',
                 prefixIcon: Icon(Icons.location_city_outlined),

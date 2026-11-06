@@ -31,7 +31,9 @@ void _setupAuthNavigation() {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const Welcome()),
+        MaterialPageRoute<void>(
+          builder: (_) => MyApp.isTestMode ? const _LegacyTestAccessGate() : const Welcome(),
+        ),
         (route) => false,
       );
     }
@@ -394,7 +396,9 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const Welcome()),
+        MaterialPageRoute<void>(
+          builder: (_) => MyApp.isTestMode ? const _LegacyTestAccessGate() : const Welcome(),
+        ),
         (route) => false,
       );
     }
@@ -458,7 +462,9 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const Welcome()),
+        MaterialPageRoute<void>(
+          builder: (_) => MyApp.isTestMode ? const _LegacyTestAccessGate() : const Welcome(),
+        ),
         (route) => false,
       );
     }
@@ -1361,7 +1367,9 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const Welcome()),
+        MaterialPageRoute<void>(
+          builder: (_) => MyApp.isTestMode ? const _LegacyTestAccessGate() : const Welcome(),
+        ),
         (route) => false,
       );
     }
@@ -1413,7 +1421,9 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(builder: (_) => const Welcome()),
+        MaterialPageRoute<void>(
+          builder: (_) => MyApp.isTestMode ? const _LegacyTestAccessGate() : const Welcome(),
+        ),
         (route) => false,
       );
     }

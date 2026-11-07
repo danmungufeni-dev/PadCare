@@ -12,13 +12,14 @@ service cloud.firestore {
     function approvedStaff() {
       return signedIn()
         && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && myProfile().role == 'teacher'
+        && myProfile().role in ['teacher', 'admin']
         && myProfile().authorized == true
         && myProfile().status == 'approved';
     }
 
     function approvedStaffForSchool(schoolId) {
-      return approvedStaff() && myProfile().school == schoolId;
+      return approvedStaff()
+        && (myProfile().role == 'admin' || myProfile().school == schoolId);
     }
 
     match /users/{userId} {
@@ -63,7 +64,7 @@ service cloud.firestore {
     match /requests/{requestId} {
       // Requests can contain personal information: only the owner and approved staff may read.
       allow read: if signedIn()
-        && (resource.data.ownerUid == request.auth.uid || approvedStaff());
+        && (resource.data.ownerUid == request.auth.uid || approvedStaffForSchool(resource.data.school));
 
       allow create: if signedIn()
         && request.resource.data.ownerUid == request.auth.uid;
@@ -78,7 +79,7 @@ service cloud.firestore {
         )
         ||
         (
-          approvedStaff()
+          approvedStaffForSchool(resource.data.school)
           && request.resource.data.ownerUid == resource.data.ownerUid
           && request.resource.data.diff(resource.data).affectedKeys()
             .hasOnly(['status', 'updatedAt', 'reviewedByUid'])

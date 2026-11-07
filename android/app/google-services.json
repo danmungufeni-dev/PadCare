@@ -1,0 +1,82 @@
+{
+  "project_info": {
+    "project_number": "527730536648",
+    "project_id": "padcare-73556",
+    "storage_bucket": "padcare-73556.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:527730536648:android:a9c986fa6f150ba3bf35fd",
+        "android_client_info": {
+          "package_name": "Pad.Care.Pad"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "527730536648-hmujv86jrqhvnci04gk7q0k5nuqhe7o8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBI3lppWXvnIU68AoqIh0XllfpVfjvDbPQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "527730536648-hmujv86jrqhvnci04gk7q0k5nuqhe7o8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "527730536648-uh1nrmi5ovttb7pu4egijirjl703m0l4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "Pad.Care.Pad"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:527730536648:android:840ebf1041f617b5bf35fd",
+        "android_client_info": {
+          "package_name": "com.padcare.padcare"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "527730536648-hmujv86jrqhvnci04gk7q0k5nuqhe7o8.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBI3lppWXvnIU68AoqIh0XllfpVfjvDbPQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "527730536648-hmujv86jrqhvnci04gk7q0k5nuqhe7o8.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "527730536648-uh1nrmi5ovttb7pu4egijirjl703m0l4.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "Pad.Care.Pad"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

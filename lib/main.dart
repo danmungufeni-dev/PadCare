@@ -4924,7 +4924,7 @@ void _showGlobalImpactSheet(BuildContext context) {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                '🎉 Thank you! Sponsored UGX ${selectedAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} for Arua schoolgirls!',
+                                'Thank you! Your sponsorship pledge is pending verification; payment is not processed in-app yet. Requested UGX ${selectedAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} for Arua schoolgirls!',
                                 style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
                             ),

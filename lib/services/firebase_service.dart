@@ -349,7 +349,9 @@ class AuthService {
       demoRole = 'parent';
     }
 
-    if (demoDisplayName != null) {
+    // Demo identities are for offline previews only. Never bypass real Firebase
+    // credentials when a live Firebase project is configured.
+    if (demoDisplayName != null && !FirebaseService.isFirebaseAvailable) {
       final demoProfile = UserProfile(
         uid: 'demo-$cleanEmail',
         email: cleanEmail,
@@ -867,6 +869,7 @@ class FirestoreService {
       }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Firestore saveUserProfile error: $e');
+      rethrow;
     }
   }
 
@@ -900,11 +903,17 @@ class FirestoreService {
     if (!FirebaseService.isFirebaseAvailable || _db == null) return;
 
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('Firestore saveRequest skipped: sign-in is required.');
+        return;
+      }
       final id = requestData['id']?.toString() ??
           DateTime.now().millisecondsSinceEpoch.toString();
       await _db!.collection('requests').doc(id).set(
         {
           ...requestData,
+          'ownerUid': user.uid,
           'updatedAt': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
@@ -919,8 +928,11 @@ class FirestoreService {
     if (!FirebaseService.isFirebaseAvailable || _db == null) return;
 
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
       await _db!.collection('requests').doc(requestId).update({
         'status': status,
+        'reviewedByUid': user.uid,
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
@@ -999,10 +1011,16 @@ class FirestoreService {
   static Future<void> saveRestockRequest(Map<String, dynamic> data) async {
     if (!FirebaseService.isFirebaseAvailable || _db == null) return;
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('Firestore saveRestockRequest skipped: sign-in is required.');
+        return;
+      }
       final id = data['id']?.toString() ??
           'RESTOCK-${DateTime.now().millisecondsSinceEpoch}';
       await _db!.collection('restock_requests').doc(id).set({
         ...data,
+        'createdByUid': user.uid,
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (e) {

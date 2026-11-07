@@ -604,15 +604,23 @@ class AuthService {
 
         final user = credential.user;
         if (user != null) {
-          final profile = UserProfile(
-            uid: user.uid,
-            email: user.email ?? 'google-user@padcare.org',
-            displayName: user.displayName ?? 'PadCare User',
-            role: 'parent',
-            authorized: true,
-            status: 'approved',
-            photoUrl: user.photoURL,
-          );
+          // Preserve existing staff approval/role fields; Google sign-in must not
+          // demote a staff account or try to promote a pending one.
+          final existingProfile = await FirestoreService.getUserProfile(user.uid);
+          final profile = existingProfile?.copyWith(
+                email: user.email ?? existingProfile.email,
+                displayName: user.displayName ?? existingProfile.displayName,
+                photoUrl: user.photoURL ?? existingProfile.photoUrl,
+              ) ??
+              UserProfile(
+                uid: user.uid,
+                email: user.email ?? 'google-user@padcare.org',
+                displayName: user.displayName ?? 'PadCare User',
+                role: 'parent',
+                authorized: true,
+                status: 'approved',
+                photoUrl: user.photoURL,
+              );
           await FirestoreService.saveUserProfile(profile);
           if (user.photoURL != null) {
             StorageService.setCachedAvatar(user.uid, user.photoURL!);

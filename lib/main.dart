@@ -4910,7 +4910,7 @@ void _showGlobalImpactSheet(BuildContext context) {
                     return;
                   }
                   Navigator.pop(context);
-                  await MoMoService.processDonation(
+                  final pledgeSaved = await MoMoService.processDonation(
                     phone: phone,
                     amountUgx: selectedAmount,
                     provider: selectedProvider,
@@ -4925,7 +4925,9 @@ void _showGlobalImpactSheet(BuildContext context) {
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                'Thank you! Your sponsorship pledge is pending verification; payment is not processed in-app yet. Requested UGX ${selectedAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} for Arua schoolgirls!',
+                                pledgeSaved
+                                    ? 'Thank you! Your sponsorship pledge is pending verification; payment is not processed in-app yet. Requested UGX ${selectedAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} for Arua schoolgirls!'
+                                    : 'Could not save your sponsorship pledge. Please try again later.',
                                 style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
                             ),

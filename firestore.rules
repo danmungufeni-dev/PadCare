@@ -104,10 +104,11 @@ service cloud.firestore {
     }
 
     match /donations/{donationId} {
-      // Only non-identifying pledge fields may be stored in this public collection.
+      // Client pledges contain no personal details. Existing legacy records may contain
+      // donor contact details, so only approved staff can read this collection.
       // Client-created pledges always remain pending until a trusted payment verifier
       // marks them completed using the Admin SDK / a server-side integration.
-      allow read: if true;
+      allow read: if approvedStaff();
       allow create: if request.resource.data.keys().hasOnly([
           'id', 'amountUgx', 'provider', 'sponsoredKits', 'status',
           'createdAt', 'updatedAt'

@@ -4921,7 +4921,7 @@ void _showGlobalImpactSheet(BuildContext context) {
                       SnackBar(
                         content: Row(
                           children: [
-                            const Icon(Icons.favorite_rounded, color: Colors.white, size: 20),
+                            Icon(pledgeSaved ? Icons.favorite_rounded : Icons.error_outline_rounded, color: Colors.white, size: 20),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
@@ -4933,7 +4933,7 @@ void _showGlobalImpactSheet(BuildContext context) {
                             ),
                           ],
                         ),
-                        backgroundColor: const Color(0xFF15803D),
+                        backgroundColor: pledgeSaved ? const Color(0xFF15803D) : const Color(0xFFB91C1C),
                         duration: const Duration(seconds: 4),
                       ),
                     );

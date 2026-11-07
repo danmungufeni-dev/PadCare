@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 import '../firebase_options.dart';
 
@@ -293,6 +294,8 @@ class AuthService {
   static FirebaseAuth? get _auth =>
       FirebaseService.isFirebaseAvailable ? FirebaseAuth.instance : null;
 
+  static Future<void>? _googleSignInInitialization;
+
   /// Stream of user authentication state changes
   static Stream<User?> get authStateChanges {
     if (FirebaseService.isFirebaseAvailable && _auth != null) {
@@ -570,14 +573,35 @@ class AuthService {
     return const AuthResult(isSuccess: true);
   }
 
-  /// Signs in or registers with Google Auth, incorporating Google account details.
+  /// Signs in with Google using the web popup on web and the native
+  /// Google Sign-In flow on Android/iOS, then exchanges the ID token with Firebase.
   static Future<AuthResult> signInWithGoogle() async {
     if (FirebaseService.isFirebaseAvailable && _auth != null) {
       try {
-        final GoogleAuthProvider googleProvider = GoogleAuthProvider();
-        googleProvider.addScope('email');
-        googleProvider.addScope('profile');
-        final UserCredential credential = await _auth!.signInWithPopup(googleProvider);
+        late final UserCredential credential;
+        if (kIsWeb) {
+          final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+          googleProvider.addScope('email');
+          googleProvider.addScope('profile');
+          credential = await _auth!.signInWithPopup(googleProvider);
+        } else {
+          final googleSignIn = GoogleSignIn.instance;
+          _googleSignInInitialization ??= googleSignIn.initialize();
+          await _googleSignInInitialization;
+          final googleUser = await googleSignIn.authenticate();
+          final googleAuthentication = googleUser.authentication;
+          final idToken = googleAuthentication.idToken;
+          if (idToken == null || idToken.isEmpty) {
+            return const AuthResult(
+              isSuccess: false,
+              errorCode: 'missing-google-id-token',
+              errorMessage: 'Google sign-in did not return an ID token. Check the Android Firebase app and SHA certificate fingerprints.',
+            );
+          }
+          final oauthCredential = GoogleAuthProvider.credential(idToken: idToken);
+          credential = await _auth!.signInWithCredential(oauthCredential);
+        }
+
         final user = credential.user;
         if (user != null) {
           final profile = UserProfile(
@@ -609,16 +633,14 @@ class AuthService {
           isSuccess: false,
           errorCode: e.code,
           errorMessage: e.code == 'unauthorized-domain'
-              ? 'This domain is not authorized in Firebase. Use http://localhost:8080 or add your domain under Firebase Auth > Settings > Authorized Domains.'
-              : (e.code == 'popup-closed-by-user'
-                  ? 'Sign-in window closed or blocked by browser storage partitioning.'
-                  : (e.message ?? 'Google Sign-In failed (${e.code}).')),
+              ? 'This domain is not authorized in Firebase. Add it under Authentication settings.'
+              : (e.message ?? 'Google Sign-In failed (${e.code}).'),
         );
       } catch (e) {
         return AuthResult(
           isSuccess: false,
-          errorCode: 'storage-partitioned',
-          errorMessage: 'Browser storage partitioning blocked Google Sign-In ($e).',
+          errorCode: 'google-sign-in-failed',
+          errorMessage: 'Google Sign-In failed. Check the Google provider, Android package name, SHA-1/SHA-256 fingerprints, and google-services.json. ($e)',
         );
       }
     }

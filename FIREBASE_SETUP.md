@@ -29,7 +29,10 @@ In Firebase Console → Build → Authentication → Sign-in method, enable only
 
 - **Email/Password** for email registration and sign-in.
 - **Phone** if using SMS verification.
+- **Google** if the Google sign-in button is shown.
 - **Anonymous** only if the app's WhatsApp verification flow needs its anonymous-auth fallback.
+
+For Google sign-in on Android, add the SHA-1 and SHA-256 fingerprints for your debug/release signing certificates in Project settings → Your apps → Android app. Then download a fresh `google-services.json` containing the OAuth client configuration. The app uses the native Google Sign-In flow on Android and the popup flow on web.
 
 For production, remove demo account bypasses from live authentication. The service has been changed so hard-coded demo identities are only accepted when Firebase is unavailable; when Firebase is active, real Firebase credentials are required.
 
@@ -45,7 +48,7 @@ firebase use padcare-73556
 firebase deploy --only firestore:rules,storage --project padcare-73556
 ```
 
-The rules restrict user profiles, requests, inventory, restock requests, and public pledge records. Teachers must be explicitly approved in the user profile before they can manage inventory. Do not approve a user by letting that user edit their own `authorized` or `status` fields; use a trusted administrative workflow.
+The rules restrict user profiles, requests, inventory, restock requests, and donation records. Donation documents are readable only by approved staff because legacy records may contain contact details. Teachers must be explicitly approved in the user profile before they can manage inventory. Do not approve a user by letting that user edit their own `authorized` or `status` fields; use a trusted administrative workflow.
 
 ## 4. Storage
 

@@ -40,6 +40,7 @@ void _setupAuthNavigation() {
 
     final lowerEmail = email?.toLowerCase() ?? '';
     final isTeacher = role == 'teacher' ||
+        role == 'admin' ||
         lowerEmail.contains('teacher') ||
         lowerEmail.contains('stmarys');
 

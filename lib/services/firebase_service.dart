@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter/foundation.dart';
 import '../firebase_options.dart';
 
@@ -293,6 +294,8 @@ class AuthService {
   static FirebaseAuth? get _auth =>
       FirebaseService.isFirebaseAvailable ? FirebaseAuth.instance : null;
 
+  static Future<void>? _googleSignInInitialization;
+
   /// Stream of user authentication state changes
   static Stream<User?> get authStateChanges {
     if (FirebaseService.isFirebaseAvailable && _auth != null) {
@@ -349,7 +352,9 @@ class AuthService {
       demoRole = 'parent';
     }
 
-    if (demoDisplayName != null) {
+    // Demo identities are for offline previews only. Never bypass real Firebase
+    // credentials when a live Firebase project is configured.
+    if (demoDisplayName != null && !FirebaseService.isFirebaseAvailable) {
       final demoProfile = UserProfile(
         uid: 'demo-$cleanEmail',
         email: cleanEmail,
@@ -568,25 +573,54 @@ class AuthService {
     return const AuthResult(isSuccess: true);
   }
 
-  /// Signs in or registers with Google Auth, incorporating Google account details.
+  /// Signs in with Google using the web popup on web and the native
+  /// Google Sign-In flow on Android/iOS, then exchanges the ID token with Firebase.
   static Future<AuthResult> signInWithGoogle() async {
     if (FirebaseService.isFirebaseAvailable && _auth != null) {
       try {
-        final GoogleAuthProvider googleProvider = GoogleAuthProvider();
-        googleProvider.addScope('email');
-        googleProvider.addScope('profile');
-        final UserCredential credential = await _auth!.signInWithPopup(googleProvider);
+        late final UserCredential credential;
+        if (kIsWeb) {
+          final GoogleAuthProvider googleProvider = GoogleAuthProvider();
+          googleProvider.addScope('email');
+          googleProvider.addScope('profile');
+          credential = await _auth!.signInWithPopup(googleProvider);
+        } else {
+          final googleSignIn = GoogleSignIn.instance;
+          _googleSignInInitialization ??= googleSignIn.initialize();
+          await _googleSignInInitialization;
+          final googleUser = await googleSignIn.authenticate();
+          final googleAuthentication = googleUser.authentication;
+          final idToken = googleAuthentication.idToken;
+          if (idToken == null || idToken.isEmpty) {
+            return const AuthResult(
+              isSuccess: false,
+              errorCode: 'missing-google-id-token',
+              errorMessage: 'Google sign-in did not return an ID token. Check the Android Firebase app and SHA certificate fingerprints.',
+            );
+          }
+          final oauthCredential = GoogleAuthProvider.credential(idToken: idToken);
+          credential = await _auth!.signInWithCredential(oauthCredential);
+        }
+
         final user = credential.user;
         if (user != null) {
-          final profile = UserProfile(
-            uid: user.uid,
-            email: user.email ?? 'google-user@padcare.org',
-            displayName: user.displayName ?? 'PadCare User',
-            role: 'parent',
-            authorized: true,
-            status: 'approved',
-            photoUrl: user.photoURL,
-          );
+          // Preserve existing staff approval/role fields; Google sign-in must not
+          // demote a staff account or try to promote a pending one.
+          final existingProfile = await FirestoreService.getUserProfile(user.uid);
+          final profile = existingProfile?.copyWith(
+                email: user.email ?? existingProfile.email,
+                displayName: user.displayName ?? existingProfile.displayName,
+                photoUrl: user.photoURL ?? existingProfile.photoUrl,
+              ) ??
+              UserProfile(
+                uid: user.uid,
+                email: user.email ?? 'google-user@padcare.org',
+                displayName: user.displayName ?? 'PadCare User',
+                role: 'parent',
+                authorized: true,
+                status: 'approved',
+                photoUrl: user.photoURL,
+              );
           await FirestoreService.saveUserProfile(profile);
           if (user.photoURL != null) {
             StorageService.setCachedAvatar(user.uid, user.photoURL!);
@@ -607,16 +641,14 @@ class AuthService {
           isSuccess: false,
           errorCode: e.code,
           errorMessage: e.code == 'unauthorized-domain'
-              ? 'This domain is not authorized in Firebase. Use http://localhost:8080 or add your domain under Firebase Auth > Settings > Authorized Domains.'
-              : (e.code == 'popup-closed-by-user'
-                  ? 'Sign-in window closed or blocked by browser storage partitioning.'
-                  : (e.message ?? 'Google Sign-In failed (${e.code}).')),
+              ? 'This domain is not authorized in Firebase. Add it under Authentication settings.'
+              : (e.message ?? 'Google Sign-In failed (${e.code}).'),
         );
       } catch (e) {
         return AuthResult(
           isSuccess: false,
-          errorCode: 'storage-partitioned',
-          errorMessage: 'Browser storage partitioning blocked Google Sign-In ($e).',
+          errorCode: 'google-sign-in-failed',
+          errorMessage: 'Google Sign-In failed. Check the Google provider, Android package name, SHA-1/SHA-256 fingerprints, and google-services.json. ($e)',
         );
       }
     }
@@ -867,6 +899,7 @@ class FirestoreService {
       }, SetOptions(merge: true));
     } catch (e) {
       debugPrint('Firestore saveUserProfile error: $e');
+      rethrow;
     }
   }
 
@@ -900,11 +933,17 @@ class FirestoreService {
     if (!FirebaseService.isFirebaseAvailable || _db == null) return;
 
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('Firestore saveRequest skipped: sign-in is required.');
+        return;
+      }
       final id = requestData['id']?.toString() ??
           DateTime.now().millisecondsSinceEpoch.toString();
       await _db!.collection('requests').doc(id).set(
         {
           ...requestData,
+          'ownerUid': user.uid,
           'updatedAt': FieldValue.serverTimestamp(),
         },
         SetOptions(merge: true),
@@ -919,8 +958,11 @@ class FirestoreService {
     if (!FirebaseService.isFirebaseAvailable || _db == null) return;
 
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return;
       await _db!.collection('requests').doc(requestId).update({
         'status': status,
+        'reviewedByUid': user.uid,
         'updatedAt': FieldValue.serverTimestamp(),
       });
     } catch (e) {
@@ -999,10 +1041,16 @@ class FirestoreService {
   static Future<void> saveRestockRequest(Map<String, dynamic> data) async {
     if (!FirebaseService.isFirebaseAvailable || _db == null) return;
     try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        debugPrint('Firestore saveRestockRequest skipped: sign-in is required.');
+        return;
+      }
       final id = data['id']?.toString() ??
           'RESTOCK-${DateTime.now().millisecondsSinceEpoch}';
       await _db!.collection('restock_requests').doc(id).set({
         ...data,
+        'createdByUid': user.uid,
         'createdAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
     } catch (e) {

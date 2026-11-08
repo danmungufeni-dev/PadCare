@@ -40,6 +40,7 @@ void _setupAuthNavigation() {
 
     final lowerEmail = email?.toLowerCase() ?? '';
     final isTeacher = role == 'teacher' ||
+        role == 'admin' ||
         lowerEmail.contains('teacher') ||
         lowerEmail.contains('stmarys');
 
@@ -4909,7 +4910,7 @@ void _showGlobalImpactSheet(BuildContext context) {
                     return;
                   }
                   Navigator.pop(context);
-                  await MoMoService.processDonation(
+                  final pledgeSaved = await MoMoService.processDonation(
                     phone: phone,
                     amountUgx: selectedAmount,
                     provider: selectedProvider,
@@ -4920,17 +4921,19 @@ void _showGlobalImpactSheet(BuildContext context) {
                       SnackBar(
                         content: Row(
                           children: [
-                            const Icon(Icons.favorite_rounded, color: Colors.white, size: 20),
+                            Icon(pledgeSaved ? Icons.favorite_rounded : Icons.error_outline_rounded, color: Colors.white, size: 20),
                             const SizedBox(width: 8),
                             Expanded(
                               child: Text(
-                                '🎉 Thank you! Sponsored UGX ${selectedAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} for Arua schoolgirls!',
+                                pledgeSaved
+                                    ? 'Thank you! Your sponsorship pledge is pending verification; payment is not processed in-app yet. Requested UGX ${selectedAmount.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (Match m) => '${m[1]},')} for Arua schoolgirls!'
+                                    : 'Could not save your sponsorship pledge. Please try again later.',
                                 style: const TextStyle(fontWeight: FontWeight.bold),
                               ),
                             ),
                           ],
                         ),
-                        backgroundColor: const Color(0xFF15803D),
+                        backgroundColor: pledgeSaved ? const Color(0xFF15803D) : const Color(0xFFB91C1C),
                         duration: const Duration(seconds: 4),
                       ),
                     );

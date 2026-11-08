@@ -104,7 +104,9 @@ class MoMoService {
     return (amountUgx / 3000).floor();
   }
 
-  /// Processes and records a Mobile Money pad sponsorship in Cloud Firestore
+  /// Records a sponsorship pledge. This client does not initiate or verify a
+  /// Mobile Money payment; cloud pledges remain pending until a trusted server
+  /// confirms payment.
   static Future<bool> processDonation({
     required String phone,
     required int amountUgx,
@@ -124,7 +126,7 @@ class MoMoService {
       amountUgx: amountUgx,
       provider: provider,
       sponsoredKits: kits,
-      status: 'completed',
+      status: 'pending_verification',
       createdAt: DateTime.now(),
     );
 
@@ -132,17 +134,26 @@ class MoMoService {
 
     if (FirebaseService.isFirebaseAvailable && _db != null) {
       try {
+        // Never upload donor names or phone numbers to this publicly readable
+        // collection. A client can create only a pending pledge; a trusted
+        // payment-verification backend must mark it completed.
         await _db!.collection('donations').doc(donationId).set({
-          ...donation.toJson(),
+          'id': donationId,
+          'amountUgx': amountUgx,
+          'provider': provider,
+          'sponsoredKits': kits,
+          'status': 'pending_verification',
+          'createdAt': donation.createdAt.toIso8601String(),
           'updatedAt': FieldValue.serverTimestamp(),
         });
         return true;
       } catch (e) {
-        debugPrint('MoMoService donation error: $e');
+        debugPrint('MoMoService donation pledge error: $e');
+        return false;
       }
     }
 
-    return true; // Graceful success in offline mode
+    return true; // Offline demo only; no payment is processed.
   }
 
   /// Real-time stream of total sponsored pads funded by the community
@@ -156,8 +167,11 @@ class MoMoService {
         .map((snapshot) {
           int total = 142; // Base milestone count
           for (final doc in snapshot.docs) {
-            final kits = (doc.data()['sponsoredKits'] as num?)?.toInt() ?? 0;
-            total += kits;
+            final data = doc.data();
+            if (data['status'] == 'completed') {
+              final kits = (data['sponsoredKits'] as num?)?.toInt() ?? 0;
+              total += kits;
+            }
           }
           return total;
         })
@@ -189,8 +203,11 @@ class MoMoService {
             final data = doc.data();
             final d = MoMoDonation.fromJson(data);
             donations.add(d);
-            totalUgx += d.amountUgx;
-            totalKits += d.sponsoredKits;
+            // Pending pledges are not counted as money received or kits funded.
+            if (data['status'] == 'completed') {
+              totalUgx += d.amountUgx;
+              totalKits += d.sponsoredKits;
+            }
           }
 
           if (donations.isEmpty) {

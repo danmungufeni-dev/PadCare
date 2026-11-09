@@ -343,12 +343,102 @@ class _LoginHeroState extends State<LoginHero> {
                       letterSpacing: -0.4,
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Sign in to continue to your PadCare account',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: const Color(0xFF6B8487),
+                  const SizedBox(height: 14),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE4F8F2),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: const Color(0xFFA5EAC5)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(
+                          children: [
+                            Icon(Icons.touch_app_rounded, size: 14, color: Color(0xFF116B78)),
+                            SizedBox(width: 5),
+                            Text(
+                              '1-Tap Quick Demo Logins',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w800,
+                                color: Color(0xFF116B78),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: () {
+                                  _emailController.text = 'teacher@stmarys.org';
+                                  _passwordController.text = 'PadCare2026!';
+                                  _handleSignIn();
+                                },
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFDCECEB)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.school_outlined, size: 13, color: Color(0xFF116B78)),
+                                      SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          'Teacher (St. Mary\'s)',
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF172B36)),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () {
+                                  _emailController.text = 'parent@padcare.org';
+                                  _passwordController.text = 'PadCare2026!';
+                                  _handleSignIn();
+                                },
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFDCECEB)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.person_outline_rounded, size: 13, color: Color(0xFF116B78)),
+                                      SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          'Parent (Amina N.)',
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF172B36)),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
                   ),
                   if (_errorMessage != null) ...[
@@ -1285,73 +1375,117 @@ class _ResetPasswordState extends State<ResetPassword> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Reset password')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          Text(
-            'Set a new password',
-            style: theme.textTheme.titleLarge
-                ?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Your new password must be different from previously used passwords on PadCare.',
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: theme.colorScheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 24),
-          TextField(
-            obscureText: _obscure,
-            onChanged: (v) => setState(() => _password = v),
-            decoration: InputDecoration(
-              labelText: 'New password',
-              prefixIcon: const Icon(Icons.lock_outline),
-              border: const OutlineInputBorder(),
-              suffixIcon: IconButton(
-                icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
-                onPressed: () => setState(() => _obscure = !_obscure),
-              ),
+      backgroundColor: const Color(0xFFF7FCFA),
+      appBar: AppBar(
+        title: const Text('Reset password'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              children: [
+                Text(
+                  'Set a new password',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.w900,
+                    color: const Color(0xFF172B36),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Your new password must be different from previously used passwords on PadCare.',
+                  style: theme.textTheme.bodyMedium?.copyWith(color: const Color(0xFF6B8487)),
+                ),
+                const SizedBox(height: 24),
+                TextField(
+                  obscureText: _obscure,
+                  onChanged: (v) => setState(() => _password = v),
+                  decoration: InputDecoration(
+                    labelText: 'New password',
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF116B78)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFF116B78), width: 1.8),
+                    ),
+                    suffixIcon: IconButton(
+                      icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: const Color(0xFF6B8487)),
+                      onPressed: () => setState(() => _obscure = !_obscure),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  obscureText: _obscure,
+                  onChanged: (v) => setState(() => _confirm = v),
+                  decoration: InputDecoration(
+                    labelText: 'Confirm password',
+                    filled: true,
+                    fillColor: Colors.white,
+                    prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF116B78)),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFF116B78), width: 1.8),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                _Rule(label: 'At least 8 characters', met: _hasLength),
+                _Rule(label: 'Contains a number', met: _hasNumber),
+                _Rule(label: 'Passwords match', met: _matches),
+                const SizedBox(height: 20),
+                SizedBox(
+                  height: 50,
+                  child: FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF116B78),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: _valid
+                        ? () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text(
+                                  'Password updated successfully! You can now log in to PadCare.',
+                                ),
+                              ),
+                            );
+                            if (widget.onPasswordReset != null) {
+                              widget.onPasswordReset!();
+                            } else {
+                              Navigator.of(context).pop();
+                            }
+                          }
+                        : null,
+                    child: const Text('Reset password', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 15)),
+                  ),
+                ),
+              ],
             ),
           ),
-          const SizedBox(height: 16),
-          TextField(
-            obscureText: _obscure,
-            onChanged: (v) => setState(() => _confirm = v),
-            decoration: const InputDecoration(
-              labelText: 'Confirm password',
-              prefixIcon: Icon(Icons.lock_outline),
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 20),
-          _Rule(label: 'At least 8 characters', met: _hasLength),
-          _Rule(label: 'Contains a number', met: _hasNumber),
-          _Rule(label: 'Passwords match', met: _matches),
-          const SizedBox(height: 20),
-          SizedBox(
-            height: 52,
-            child: FilledButton(
-              onPressed: _valid
-                  ? () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Password updated successfully! You can now log in to PadCare.',
-                          ),
-                        ),
-                      );
-                      if (widget.onPasswordReset != null) {
-                        widget.onPasswordReset!();
-                      } else {
-                        Navigator.of(context).pop();
-                      }
-                    }
-                  : null,
-              child: const Text('Reset password'),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }

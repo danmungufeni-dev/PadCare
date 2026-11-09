@@ -1,6 +1,8 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
@@ -78,6 +80,7 @@ void main() async {
   _setupAuthNavigation();
   await FirebaseService.initialize();
   await OfflineQueueService.init();
+  await OfflineCacheService.init();
   runApp(const MyApp());
 }
 
@@ -2590,6 +2593,9 @@ const _pickupSchoolsByArea = <String, String>{
   'Oli': 'Oli Primary School',
   'Ediofe': 'Ediofe Girls School',
   'Arua Hill': 'St. Mary\'s Secondary',
+  'St. Mary\'s Secondary': 'St. Mary\'s Secondary',
+  'Oli Primary School': 'Oli Primary School',
+  'Ediofe Girls School': 'Ediofe Girls School',
 };
 
 class _BrandLockup extends StatelessWidget {
@@ -3150,11 +3156,13 @@ class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     this.facility = 'St. Mary\'s Secondary',
+    this.teacherName = 'Authorized Teacher',
     this.onSignOut,
     this.photoUrl,
   });
 
   final String facility;
+  final String teacherName;
   final VoidCallback? onSignOut;
   final String? photoUrl;
 
@@ -3222,14 +3230,26 @@ class _HomeScreenState extends State<HomeScreen> {
     final Map<String, _LocalRequest> byId = {
       for (final req in _requests) req.id: req,
     };
+    final Map<String, String> idByPin = {
+      for (final req in _requests) '${req.school}_${req.pickupPin}': req.id,
+    };
 
     for (final doc in cloudDocs) {
       try {
         final req = _LocalRequest.fromJson(doc);
         if (req.id.isNotEmpty) {
+          final pinKey = '${req.school}_${req.pickupPin}';
+          final existingId = idByPin[pinKey];
+          if (existingId != null && existingId != req.id) {
+            // Replace the local temporary request with the synced cloud record to prevent duplicates
+            byId.remove(existingId);
+          }
           byId[req.id] = req;
+          idByPin[pinKey] = req.id;
         }
-      } catch (_) {}
+      } catch (e) {
+        debugPrint('Error syncing cloud request: $e');
+      }
     }
 
     final merged = byId.values.toList()
@@ -3386,7 +3406,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     try {
       final data = await _readLocalData();
-      final updatedRequests = data.requests
+      final baseRequests = _requests.isNotEmpty ? _requests : data.requests;
+      final updatedRequests = baseRequests
           .map((item) => item.id == request.id ? item.withStatus(status) : item)
           .toList();
       final stock = Map<String, int>.from(data.stock);
@@ -3404,6 +3425,21 @@ class _HomeScreenState extends State<HomeScreen> {
           payload: {'id': request.id, 'status': status},
         ),
       );
+      if (status == 'Collected') {
+        final dispRecord = {
+          'dispensationId': 'DISP-${request.id}-${DateTime.now().millisecondsSinceEpoch}',
+          'requestId': request.id,
+          'pickupPin': request.pickupPin,
+          'school': widget.facility,
+          'product': request.product,
+          'quantity': request.quantity,
+          'dispensedBy': widget.teacherName.isNotEmpty ? widget.teacherName : 'Authorized Staff',
+          'dispensedAt': DateTime.now().toIso8601String(),
+          'status': 'completed',
+        };
+        unawaited(FirestoreService.recordDispensation(dispRecord));
+        unawaited(OfflineQueueService.enqueue(type: 'record_dispensation', payload: dispRecord));
+      }
       if (!mounted) return;
       setState(() {
         _requests = updatedRequests;
@@ -3570,27 +3606,92 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _verifyAndDispenseByPin() {
-    final rawCode = _pinVerifyController.text.trim().replaceAll('#', '');
-    if (rawCode.isEmpty) {
+  Future<void> _verifyAndDispenseByPin() async {
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    final rawInput = _pinVerifyController.text.trim();
+    final cleanInput = rawInput.replaceAll('#', '').trim();
+    final cleanPin = cleanInput.replaceFirst(RegExp(r'^(PH-|REQ-)', caseSensitive: false), '').trim();
+    if (cleanPin.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter the student\'s 4-digit pickup PIN.')),
       );
       return;
     }
 
-    final match = _facilityRequests.where((r) => r.pickupPin == rawCode || r.reference.endsWith(rawCode)).firstOrNull;
+    // 1. Search requests associated with this facility
+    _LocalRequest? match = _facilityRequests
+        .where((r) =>
+            r.pickupPin == cleanPin ||
+            r.reference.endsWith(cleanPin) ||
+            r.reference.toLowerCase() == cleanInput.toLowerCase() ||
+            r.reference.toLowerCase() == 'ph-$cleanPin'.toLowerCase() ||
+            r.reference.toLowerCase() == 'req-$cleanPin'.toLowerCase())
+        .firstOrNull;
 
+    // 2. If not found in this facility, check if request exists for another school
+    if (match == null) {
+      final otherSchoolMatch = _requests
+          .where((r) =>
+              r.pickupPin == cleanPin ||
+              r.reference.endsWith(cleanPin) ||
+              r.reference.toLowerCase() == cleanInput.toLowerCase() ||
+              r.reference.toLowerCase() == 'ph-$cleanPin'.toLowerCase() ||
+              r.reference.toLowerCase() == 'req-$cleanPin'.toLowerCase())
+          .firstOrNull;
+      if (otherSchoolMatch != null && otherSchoolMatch.school != widget.facility) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'PIN #$cleanPin is registered for pickup at ${otherSchoolMatch.school}, not ${widget.facility}. Please direct the student to ${otherSchoolMatch.school}.',
+            ),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+    }
+
+    // 3. Fallback to cloud lookup if not found locally and not in test mode
+    if (match == null && !MyApp.isTestMode) {
+      try {
+        final cloudDoc = await FirestoreService.findRequestByPin(cleanPin);
+        if (cloudDoc != null) {
+          final cloudReq = _LocalRequest.fromJson(cloudDoc);
+          if (cloudReq.school != widget.facility) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'PIN #$cleanPin is registered for pickup at ${cloudReq.school}, not ${widget.facility}. Please direct the student to ${cloudReq.school}.',
+                ),
+                backgroundColor: Colors.redAccent,
+                duration: const Duration(seconds: 4),
+              ),
+            );
+            return;
+          }
+          match = cloudReq;
+          if (!_requests.any((r) => r.id == match!.id)) {
+            setState(() => _requests = [match!, ..._requests]);
+          }
+        }
+      } catch (e) {
+        debugPrint('Error searching cloud request by pin: $e');
+      }
+    }
+
+    // 4. If still not found, show explicit failure
     if (match == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('No active request found matching PIN #$rawCode at ${widget.facility}.'),
+          content: Text('No active request found matching PIN #$cleanPin at ${widget.facility}.'),
           backgroundColor: Colors.redAccent,
         ),
       );
       return;
     }
 
+    // 5. Check if already collected
     if (match.status == 'Collected') {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -3601,8 +3702,82 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    _setRequestStatus(match, 'Collected');
+    // 6. Check if declined
+    if (match.status == 'Declined') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Request ${match.reference} was declined and cannot be dispensed.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    // 7. Verify stock availability before showing dialog
+    final supply = _supplies.firstWhere(
+      (item) => item.name == match!.product,
+      orElse: () => _Supply(
+        name: match!.product,
+        onHand: 0,
+        lowAt: 0,
+        unit: match!.product.toLowerCase().contains('kit') ? 'kits' : 'packs',
+      ),
+    );
+
+    if (supply.onHand < match.quantity) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Insufficient stock: only ${supply.onHand} ${supply.unit} available at ${widget.facility}, but ${match.quantity} requested.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    // 8. Dispense Confirmation Dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => _DispenseConfirmationDialog(
+        request: match!,
+        availableStock: supply.onHand,
+        stockUnit: supply.unit,
+        school: widget.facility,
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    // 9. Atomic cloud transaction if connected
+    if (!MyApp.isTestMode && FirebaseService.isFirebaseAvailable) {
+      final staffEmail = widget.teacherName.isNotEmpty ? widget.teacherName : 'Authorized Staff';
+      final atomicResult = await FirestoreService.dispenseRequestAtomic(
+        requestId: match.id,
+        school: widget.facility,
+        product: match.product,
+        quantity: match.quantity,
+        dispensedBy: staffEmail,
+        pin: match.pickupPin,
+      );
+
+      if (atomicResult['success'] != true) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Dispensing transaction failed: ${atomicResult['error'] ?? 'Aborted.'}'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+    }
+
+    // 10. Update local state and notify user
+    await _setRequestStatus(match, 'Collected');
     _pinVerifyController.clear();
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Row(
@@ -3611,7 +3786,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: Text(
-                '✅ Verified PIN #$rawCode! Dispensed ${match.quantity} ${match.product}.',
+                '✅ Verified PIN #${match.pickupPin}! Dispensed ${match.quantity} ${match.product} at ${widget.facility}. Stock updated.',
                 style: const TextStyle(fontWeight: FontWeight.bold),
               ),
             ),
@@ -3619,6 +3794,277 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         backgroundColor: const Color(0xFF15803D),
         duration: const Duration(seconds: 4),
+      ),
+    );
+  }
+
+  void _showCreateStudentRequestDialog() {
+    String selectedProduct = 'Disposable pads';
+    int selectedQty = 1;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          return Padding(
+            padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Issue Student Request',
+                      style: TextStyle(color: _ink, fontSize: 17, fontWeight: FontWeight.w800),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, color: _muted),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Facility: ${widget.facility}',
+                  style: const TextStyle(color: _deepTeal, fontWeight: FontWeight.w600, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                const Text('Select Supply', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _ink)),
+                const SizedBox(height: 8),
+                DropdownButtonFormField<String>(
+                  value: selectedProduct,
+                  decoration: InputDecoration(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  items: const [
+                    DropdownMenuItem(value: 'Disposable pads', child: Text('Disposable pads (packs)')),
+                    DropdownMenuItem(value: 'Reusable pads', child: Text('Reusable pads (kits)')),
+                  ],
+                  onChanged: (val) {
+                    if (val != null) setModalState(() => selectedProduct = val);
+                  },
+                ),
+                const SizedBox(height: 14),
+                const Text('Quantity', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _ink)),
+                const SizedBox(height: 8),
+                Row(
+                  children: [1, 2, 4].map((q) {
+                    final isSel = selectedQty == q;
+                    return Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: ChoiceChip(
+                        label: Text('$q'),
+                        selected: isSel,
+                        selectedColor: const Color(0xFFCCFBF1),
+                        labelStyle: TextStyle(
+                          color: isSel ? _deepTeal : _ink,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        onSelected: (_) => setModalState(() => selectedQty = q),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 20),
+                ElevatedButton.icon(
+                  key: const ValueKey('save-teacher-request-btn'),
+                  onPressed: () async {
+                    Navigator.pop(ctx);
+                    await _createAndSaveStudentRequest(selectedProduct, selectedQty);
+                  },
+                  icon: const Icon(Icons.check_circle_outline, size: 18),
+                  label: const Text('Generate PIN & Save Request', style: TextStyle(fontWeight: FontWeight.w800)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _deepTeal,
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size.fromHeight(46),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _createAndSaveStudentRequest(String product, int quantity) async {
+    final now = DateTime.now();
+    final pin = PinService.generateUniquePin(_requests);
+    final req = _LocalRequest(
+      id: now.microsecondsSinceEpoch.toString(),
+      reference: 'PH-$pin',
+      pickupPin: pin,
+      school: widget.facility,
+      area: widget.facility.contains('Mary') ? 'Arua Hill' : (widget.facility.contains('Oli') ? 'Oli' : 'Ediofe'),
+      product: product,
+      quantity: quantity,
+      createdAt: now.toIso8601String(),
+      status: 'Approved',
+    );
+
+    final updated = [req, ..._requests];
+    setState(() {
+      _requests = updated;
+      for (final s in _supplies) {
+        s.reserved = _reservedFor(s.name, requests: updated);
+      }
+    });
+
+    try {
+      final localData = await _readLocalData();
+      await _saveLocalData(_LocalData(requests: updated, stock: localData.stock));
+      unawaited(FirestoreService.saveRequest(req.toJson()));
+      unawaited(OfflineQueueService.enqueue(type: 'save_request', payload: req.toJson()));
+    } catch (e) {
+      debugPrint('Error saving teacher student request: $e');
+    }
+
+    if (!mounted) return;
+    _showPinGeneratedDialog(req);
+  }
+
+  void _showPinGeneratedDialog(_LocalRequest req) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: const Color(0xFFCCFBF1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.pin_rounded, color: _deepTeal, size: 20),
+            ),
+            const SizedBox(width: 10),
+            const Text('PIN Generated', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Give this PIN to the student for confidential pickup:',
+              style: TextStyle(fontSize: 13, color: _ink),
+            ),
+            const SizedBox(height: 14),
+            Center(
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF9),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF99F6E4), width: 1.5),
+                ),
+                child: Text(
+                  '#${req.pickupPin}',
+                  style: const TextStyle(
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    color: _deepTeal,
+                    letterSpacing: 4,
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 14),
+            _dialogDetailRow('Request ID', req.reference),
+            _dialogDetailRow('School', req.school),
+            _dialogDetailRow('Product', req.product),
+            _dialogDetailRow('Quantity', '${req.quantity}'),
+            _dialogDetailRow('Status', req.status),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Clipboard.setData(ClipboardData(text: req.pickupPin));
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(content: Text('Copied PIN #${req.pickupPin} to clipboard')),
+              );
+              Navigator.pop(ctx);
+            },
+            child: const Text('Copy PIN', style: TextStyle(fontWeight: FontWeight.w700, color: _deepTeal)),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx),
+            style: FilledButton.styleFrom(
+              backgroundColor: _deepTeal,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _dialogDetailRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(fontSize: 12, color: _muted)),
+          Text(value, style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ink)),
+        ],
+      ),
+    );
+  }
+
+  void _exportDistributionCsv() {
+    final reqs = _facilityRequests;
+    final buffer = StringBuffer();
+    buffer.writeln('Reference,Pickup PIN,Facility/School,Area,Product,Quantity,Status,Date Created');
+    for (final r in reqs) {
+      final safeRef = r.reference.replaceAll('"', '""');
+      final safeSchool = r.school.replaceAll('"', '""');
+      final safeArea = r.area.replaceAll('"', '""');
+      final safeProduct = r.product.replaceAll('"', '""');
+      buffer.writeln('"$safeRef","${r.pickupPin}","$safeSchool","$safeArea","$safeProduct",${r.quantity},"${r.status}","${r.createdAt}"');
+    }
+
+    final csvContent = buffer.toString();
+    final cleanFacility = widget.facility.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+    final filename = 'PadCare_Distribution_${cleanFacility}_${DateTime.now().year}.csv';
+
+    downloadCsvFile(filename, csvContent);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.download_done_rounded, color: Colors.white, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Exported ${reqs.length} distribution records to $filename',
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+        backgroundColor: const Color(0xFF116B78),
+        action: SnackBarAction(
+          label: 'Copy CSV',
+          textColor: const Color(0xFFA5EAC5),
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: csvContent));
+          },
+        ),
       ),
     );
   }
@@ -3732,6 +4178,19 @@ class _HomeScreenState extends State<HomeScreen> {
           text: 'Preview only: staff identity is not verified. This inbox is only visible on this device.',
         ),
         const SizedBox(height: 14),
+        ElevatedButton.icon(
+          key: const ValueKey('teacher-new-request-btn'),
+          onPressed: _showCreateStudentRequestDialog,
+          icon: const Icon(Icons.add_circle_outline, size: 18),
+          label: const Text('New Student Request / Generate PIN', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: _deepTeal,
+            foregroundColor: Colors.white,
+            minimumSize: const Size.fromHeight(44),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
+        const SizedBox(height: 14),
         if (_loadingLocalData)
           const Center(child: CircularProgressIndicator())
         else if (_localDataFailed)
@@ -3759,6 +4218,19 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         const SizedBox(height: 14),
         _buildPinVerificationCard(),
+        const SizedBox(height: 10),
+        OutlinedButton.icon(
+          key: const ValueKey('export-distribution-report-btn'),
+          onPressed: _exportDistributionCsv,
+          icon: const Icon(Icons.file_download_outlined, color: _deepTeal, size: 18),
+          label: const Text('Export Distribution Report (CSV)', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: _deepTeal)),
+          style: OutlinedButton.styleFrom(
+            minimumSize: const Size.fromHeight(46),
+            side: const BorderSide(color: Color(0xFFDCECEB)),
+            backgroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          ),
+        ),
       ],
     );
   }
@@ -3772,19 +4244,42 @@ class _HomeScreenState extends State<HomeScreen> {
           subtitle: '${widget.facility}  ·  Sample starting stock',
         ),
         const SizedBox(height: 12),
-        ElevatedButton.icon(
-          key: const ValueKey('request-restock-hub-btn'),
-          onPressed: _openRestockRequisitionDialog,
-          icon: const Icon(Icons.local_shipping_rounded),
-          label: const Text('Request Restock from Arua Central Hub'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: _deepTeal,
-            foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(48),
-            elevation: 0,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
-          ),
+        Row(
+          children: [
+            Expanded(
+              flex: 3,
+              child: ElevatedButton.icon(
+                key: const ValueKey('request-restock-hub-btn'),
+                onPressed: _openRestockRequisitionDialog,
+                icon: const Icon(Icons.local_shipping_rounded, size: 18),
+                label: const Text('Request Hub Restock'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _deepTeal,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(46),
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  textStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 2,
+              child: OutlinedButton.icon(
+                key: const ValueKey('export-stock-csv-btn'),
+                onPressed: _exportDistributionCsv,
+                icon: const Icon(Icons.file_download_outlined, size: 17, color: _deepTeal),
+                label: const Text('Export CSV', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: _deepTeal)),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFFDCECEB)),
+                  backgroundColor: Colors.white,
+                  minimumSize: const Size.fromHeight(46),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+          ],
         ),
         const SizedBox(height: 12),
         const _PrivacyNote(
@@ -3796,7 +4291,11 @@ class _HomeScreenState extends State<HomeScreen> {
         else if (_localDataFailed)
           const _PrivacyNote(text: 'Stock data could not be loaded from this device.')
         else if (_lowStockCount > 0)
-          _LowStockBanner(count: _lowStockCount)
+          _LowStockBanner(
+            count: _lowStockCount,
+            lowItems: _supplies.where((s) => s.onHand <= s.lowAt).toList(),
+            onRestockPressed: _openRestockRequisitionDialog,
+          )
         else
           const _InStockBanner(),
         const SizedBox(height: 18),
@@ -4282,7 +4781,9 @@ class _Supply {
 }
 
 class _OfflineSyncPill extends StatelessWidget {
-  const _OfflineSyncPill();
+  const _OfflineSyncPill({this.compact = false});
+
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
@@ -4297,7 +4798,7 @@ class _OfflineSyncPill extends StatelessWidget {
               onTap: () => _showOfflineQueueModal(context),
               borderRadius: BorderRadius.circular(12),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: EdgeInsets.symmetric(horizontal: compact ? 6 : 8, vertical: 4),
                 decoration: BoxDecoration(
                   color: isOffline ? const Color(0xFFFFFBEB) : const Color(0xFFF0FDF4),
                   borderRadius: BorderRadius.circular(12),
@@ -4320,19 +4821,31 @@ class _OfflineSyncPill extends StatelessWidget {
                         color: isOffline ? const Color(0xFFD97706) : const Color(0xFF16A34A),
                         size: 13,
                       ),
-                    const SizedBox(width: 4),
-                    Text(
-                      syncing
-                          ? 'Syncing...'
-                          : isOffline
-                              ? '$count offline'
-                              : 'Synced',
-                      style: TextStyle(
-                        color: isOffline ? const Color(0xFFB45309) : const Color(0xFF16A34A),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
+                    if (!compact) ...[
+                      const SizedBox(width: 4),
+                      Text(
+                        syncing
+                            ? 'Syncing...'
+                            : isOffline
+                                ? '$count offline'
+                                : 'Synced',
+                        style: TextStyle(
+                          color: isOffline ? const Color(0xFFB45309) : const Color(0xFF16A34A),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
-                    ),
+                    ] else if (isOffline) ...[
+                      const SizedBox(width: 3),
+                      Text(
+                        '$count',
+                        style: const TextStyle(
+                          color: Color(0xFFB45309),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -4622,43 +5135,151 @@ class _OfflineQueueSheetState extends State<_OfflineQueueSheet> {
   }
 }
 
-class _ApkDownloadButton extends StatelessWidget {
-  const _ApkDownloadButton();
+class _CombinedAppInstallButton extends StatelessWidget {
+  const _CombinedAppInstallButton();
 
-  void _showApkDialog(BuildContext context) {
+  void _showInstallOptionsDialog(BuildContext context) {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Row(
           children: [
-            Icon(Icons.android_rounded, color: Color(0xFF10B981), size: 28),
+            Icon(Icons.install_mobile_rounded, color: Color(0xFF116B78), size: 26),
             SizedBox(width: 10),
-            Text('PadCare for Android', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+            Text('Get PadCare App', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
           ],
         ),
-        content: const Column(
+        content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Download the official PadCare Android release APK to test on physical phones or distribute to field educators in Uganda.',
-              style: TextStyle(fontSize: 13.5, color: Color(0xFF4B5563), height: 1.4),
+            const Text(
+              'Install PadCare on your device for instant access, offline field support, and full confidentiality.',
+              style: TextStyle(fontSize: 13, color: Color(0xFF4B5563), height: 1.4),
             ),
-            SizedBox(height: 14),
-            ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.check_circle_outline, color: Color(0xFF10B981), size: 20),
-              title: Text('Release APK (~60 MB)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-              subtitle: Text('Pre-compiled standalone package', style: TextStyle(fontSize: 11.5)),
+            const SizedBox(height: 16),
+            // Option 1: Web App (PWA)
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF4),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFBBF7D0)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFDCFCE7),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.devices_rounded, color: Color(0xFF15803D), size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Web App (PWA)',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: Color(0xFF172B36)),
+                        ),
+                        Text(
+                          PwaService.isStandalone
+                              ? 'PadCare is already running as an installed app'
+                              : 'Add to home screen or desktop (fast & lightweight)',
+                          style: const TextStyle(fontSize: 11.5, color: Color(0xFF4B5563)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton.tonal(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF16A34A),
+                      foregroundColor: Colors.white,
+                      visualDensity: VisualDensity.compact,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () async {
+                      Navigator.of(ctx).pop();
+                      if (PwaService.isStandalone) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('PadCare is already running in installed app mode!'),
+                            backgroundColor: Color(0xFF116B78),
+                          ),
+                        );
+                        return;
+                      }
+                      final installed = await PwaService.promptInstall();
+                      if (context.mounted && installed) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('🎉 PadCare installed to your home screen!'),
+                            backgroundColor: Color(0xFF116B78),
+                          ),
+                        );
+                      }
+                    },
+                    child: Text(PwaService.isStandalone ? 'Active' : 'Install', style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                  ),
+                ],
+              ),
             ),
-            ListTile(
-              dense: true,
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.offline_bolt_outlined, color: Color(0xFF116B78), size: 20),
-              title: Text('Full Offline Support', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-              subtitle: Text('Local SQLite & SharedPreferences caching', style: TextStyle(fontSize: 11.5)),
+            const SizedBox(height: 12),
+            // Option 2: Android APK Download
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFE4F8F2),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFFA5EAC5)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFCCFBF1),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Icon(Icons.android_rounded, color: Color(0xFF116B78), size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Android APK (60 MB)',
+                          style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: Color(0xFF172B36)),
+                        ),
+                        Text(
+                          'Standalone release package for phones & tablets',
+                          style: TextStyle(fontSize: 11.5, color: Color(0xFF4B5563)),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: const Color(0xFF116B78),
+                      foregroundColor: Colors.white,
+                      visualDensity: VisualDensity.compact,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                    onPressed: () {
+                      Navigator.of(ctx).pop();
+                      openExternalUrl('padcare.apk');
+                    },
+                    child: const Text('Download', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -4666,18 +5287,6 @@ class _ApkDownloadButton extends StatelessWidget {
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(),
             child: const Text('Close'),
-          ),
-          FilledButton.icon(
-            style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFF116B78),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
-            onPressed: () {
-              Navigator.of(ctx).pop();
-              openExternalUrl('padcare.apk');
-            },
-            icon: const Icon(Icons.download_rounded, size: 18),
-            label: const Text('Download APK (60 MB)', style: TextStyle(fontWeight: FontWeight.w800)),
           ),
         ],
       ),
@@ -4687,10 +5296,11 @@ class _ApkDownloadButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () => _showApkDialog(context),
+      key: const ValueKey('install-apk-combined-btn'),
+      onTap: () => _showInstallOptionsDialog(context),
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
         decoration: BoxDecoration(
           color: const Color(0xFFE4F8F2),
           borderRadius: BorderRadius.circular(12),
@@ -4699,11 +5309,11 @@ class _ApkDownloadButton extends StatelessWidget {
         child: const Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.android_rounded, color: Color(0xFF116B78), size: 13),
+            Icon(Icons.get_app_rounded, color: Color(0xFF116B78), size: 14),
             SizedBox(width: 4),
             Text(
-              'Android APK',
-              style: TextStyle(color: Color(0xFF116B78), fontSize: 10, fontWeight: FontWeight.w800),
+              'Install / APK',
+              style: TextStyle(color: Color(0xFF116B78), fontSize: 10.5, fontWeight: FontWeight.w800),
             ),
           ],
         ),
@@ -4712,48 +5322,17 @@ class _ApkDownloadButton extends StatelessWidget {
   }
 }
 
+// Backward-compatibility aliases
+class _ApkDownloadButton extends StatelessWidget {
+  const _ApkDownloadButton();
+  @override
+  Widget build(BuildContext context) => const _CombinedAppInstallButton();
+}
+
 class _PwaInstallButton extends StatelessWidget {
   const _PwaInstallButton();
-
   @override
-  Widget build(BuildContext context) {
-    if (!PwaService.isPwaSupported || PwaService.isStandalone) {
-      return const SizedBox.shrink();
-    }
-    return InkWell(
-      onTap: () async {
-        final installed = await PwaService.promptInstall();
-        if (context.mounted && installed) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('🎉 PadCare installed to your home screen!'),
-              backgroundColor: _deepTeal,
-            ),
-          );
-        }
-      },
-      borderRadius: BorderRadius.circular(12),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: const Color(0xFFF0FDF4),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: const Color(0xFFBBF7D0)),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.download_for_offline_rounded, color: Color(0xFF16A34A), size: 13),
-            SizedBox(width: 4),
-            Text(
-              'Install App',
-              style: TextStyle(color: Color(0xFF15803D), fontSize: 10, fontWeight: FontWeight.w800),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  Widget build(BuildContext context) => const _CombinedAppInstallButton();
 }
 
 class _CommunityImpactPill extends StatelessWidget {
@@ -5318,12 +5897,13 @@ class _TopBar extends StatelessWidget {
           if (MediaQuery.of(context).size.width >= 600) ...[
             const SizedBox(width: 8),
             const _OfflineSyncPill(),
+          ] else ...[
+            const SizedBox(width: 6),
+            const _OfflineSyncPill(compact: true),
           ],
           if (MediaQuery.of(context).size.width >= 900) ...[
             const SizedBox(width: 6),
-            const _ApkDownloadButton(),
-            const SizedBox(width: 6),
-            const _PwaInstallButton(),
+            const _CombinedAppInstallButton(),
           ],
           const Spacer(),
           if (MediaQuery.of(context).size.width >= 960) ...[
@@ -5438,6 +6018,8 @@ class _LocalRequest {
     required this.quantity,
     required this.createdAt,
     required this.status,
+    this.collectedAt,
+    this.collectedBy,
   });
 
   final String id;
@@ -5449,6 +6031,8 @@ class _LocalRequest {
   final int quantity;
   final String createdAt;
   final String status;
+  final String? collectedAt;
+  final String? collectedBy;
 
   Map<String, Object> toJson() => {
     'id': id,
@@ -5460,27 +6044,80 @@ class _LocalRequest {
     'quantity': quantity,
     'createdAt': createdAt,
     'status': status,
+    if (collectedAt != null) 'collectedAt': collectedAt!,
+    if (collectedBy != null) 'collectedBy': collectedBy!,
   };
 
   factory _LocalRequest.fromJson(Map<String, dynamic> json) {
-    final ref = json['reference'] as String? ?? '';
-    final derivedPin = ref.contains('-')
-        ? ref.split('-').last.padLeft(4, '0')
-        : (json['id']?.toString() ?? '1000').substring(0, 4);
+    final ref = (json['reference'] ?? json['ref'] ?? '').toString();
+
+    // Robust PIN extraction: supports String, int, with or without '#', or fallback to ref
+    String pin = '';
+    if (json['pickupPin'] != null) {
+      pin = json['pickupPin'].toString().replaceAll('#', '').trim();
+    } else if (json['pin'] != null) {
+      pin = json['pin'].toString().replaceAll('#', '').trim();
+    } else if (ref.contains('-')) {
+      pin = ref.split('-').last.trim();
+    } else {
+      final rawId = (json['id'] ?? '').toString();
+      pin = rawId.length >= 4 ? rawId.substring(rawId.length - 4) : '1000';
+    }
+    if (pin.length > 4) {
+      pin = pin.substring(pin.length - 4);
+    } else if (pin.length < 4) {
+      pin = pin.padLeft(4, '0');
+    }
+
+    final rawId = (json['id'] ?? json['requestId'] ?? '').toString();
+    final id = rawId.isNotEmpty ? rawId : 'req-${DateTime.now().microsecondsSinceEpoch}';
+
+    // Quantity safe extraction
+    final dynamic qtyRaw = json['quantity'] ?? json['qty'] ?? 1;
+    final int qty = (qtyRaw is num) ? qtyRaw.toInt() : (int.tryParse(qtyRaw.toString()) ?? 1);
+
+    // School name normalization
+    String school = (json['school'] ?? json['facility'] ?? 'St. Mary\'s Secondary').toString().trim();
+    final lowerSchool = school.toLowerCase();
+    if (lowerSchool.contains('st. mary') || lowerSchool.contains('st mary') || lowerSchool.contains('secondary')) {
+      school = 'St. Mary\'s Secondary';
+    } else if (lowerSchool.contains('oli')) {
+      school = 'Oli Primary School';
+    } else if (lowerSchool.contains('ediofe')) {
+      school = 'Ediofe Girls School';
+    }
+
+    // CreatedAt parsing
+    String createdAtStr = DateTime.now().toIso8601String();
+    final rawCreatedAt = json['createdAt'];
+    if (rawCreatedAt is String && rawCreatedAt.isNotEmpty) {
+      createdAtStr = rawCreatedAt;
+    } else if (rawCreatedAt != null) {
+      try {
+        if (rawCreatedAt is Timestamp) {
+          createdAtStr = rawCreatedAt.toDate().toIso8601String();
+        } else {
+          createdAtStr = DateTime.tryParse(rawCreatedAt.toString())?.toIso8601String() ?? createdAtStr;
+        }
+      } catch (_) {}
+    }
+
     return _LocalRequest(
-      id: json['id'] as String,
-      reference: ref,
-      pickupPin: json['pickupPin'] as String? ?? derivedPin,
-      school: json['school'] as String,
-      area: json['area'] as String,
-      product: json['product'] as String,
-      quantity: json['quantity'] as int,
-      createdAt: json['createdAt'] as String,
-      status: json['status'] as String? ?? 'Pending review',
+      id: id,
+      reference: ref.isNotEmpty ? ref : 'PH-$pin',
+      pickupPin: pin,
+      school: school,
+      area: (json['area'] ?? 'Arua Hill').toString(),
+      product: (json['product'] ?? 'Disposable pads').toString(),
+      quantity: qty > 0 ? qty : 1,
+      createdAt: createdAtStr,
+      status: (json['status'] ?? 'Pending review').toString(),
+      collectedAt: json['collectedAt']?.toString(),
+      collectedBy: json['collectedBy']?.toString(),
     );
   }
 
-  _LocalRequest withStatus(String status) => _LocalRequest(
+  _LocalRequest withStatus(String status, {String? collectedBy}) => _LocalRequest(
     id: id,
     reference: reference,
     pickupPin: pickupPin,
@@ -5490,7 +6127,174 @@ class _LocalRequest {
     quantity: quantity,
     createdAt: createdAt,
     status: status,
+    collectedAt: status == 'Collected' ? DateTime.now().toIso8601String() : collectedAt,
+    collectedBy: collectedBy ?? this.collectedBy,
   );
+}
+
+class PinService {
+  /// Generates a unique 4-digit PIN (1000-9999) guaranteed not to collide
+  /// with any active (non-collected) request.
+  static String generateUniquePin(Iterable<_LocalRequest> existingRequests) {
+    final activePins = existingRequests
+        .where((r) => r.status != 'Collected' && r.status != 'Declined')
+        .map((r) => r.pickupPin.replaceAll('#', '').trim())
+        .toSet();
+
+    final rand = math.Random();
+    for (int attempts = 0; attempts < 1000; attempts++) {
+      final candidate = (1000 + rand.nextInt(9000)).toString();
+      if (!activePins.contains(candidate)) {
+        return candidate;
+      }
+    }
+    return (1000 + (DateTime.now().millisecondsSinceEpoch % 9000)).toString();
+  }
+}
+
+class _DispenseConfirmationDialog extends StatelessWidget {
+  const _DispenseConfirmationDialog({
+    required this.request,
+    required this.availableStock,
+    required this.stockUnit,
+    required this.school,
+  });
+
+  final _LocalRequest request;
+  final int availableStock;
+  final String stockUnit;
+  final String school;
+
+  @override
+  Widget build(BuildContext context) {
+    final remaining = availableStock - request.quantity;
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: const Color(0xFFCCFBF1),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: const Icon(Icons.verified_user_rounded, color: _deepTeal, size: 22),
+          ),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              'Confirm Dispense & Handout',
+              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
+            ),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF9),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFF99F6E4)),
+              ),
+              child: Row(
+                children: [
+                  const Text('Verified PIN:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: _muted)),
+                  const Spacer(),
+                  Text(
+                    '#${request.pickupPin}',
+                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: _deepTeal, letterSpacing: 1.5),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 14),
+            _infoRow('Request ID', request.reference.isNotEmpty ? request.reference : request.id),
+            _infoRow('School Facility', school),
+            _infoRow('Product Requested', request.product),
+            _infoRow('Quantity Requested', '${request.quantity} $stockUnit'),
+            _infoRow('Current Request Status', request.status),
+            const Divider(height: 24),
+            _infoRow('Stock Available', '$availableStock $stockUnit', valueColor: _deepTeal, isBold: true),
+            _infoRow('Stock Remaining After Dispense', '$remaining $stockUnit', valueColor: remaining < 10 ? const Color(0xFFD97706) : _ink, isBold: true),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.lock_clock_outlined, size: 16, color: _muted),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'This transaction will atomically mark the request as Collected, deduct school inventory, and write an immutable audit log.',
+                      style: TextStyle(fontSize: 11, color: _muted),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        OutlinedButton(
+          key: const ValueKey('cancel-dispense-dialog-btn'),
+          onPressed: () => Navigator.pop(context, false),
+          style: OutlinedButton.styleFrom(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+          child: const Text('Cancel'),
+        ),
+        FilledButton.icon(
+          key: const ValueKey('confirm-dispense-dialog-btn'),
+          onPressed: () => Navigator.pop(context, true),
+          icon: const Icon(Icons.check_rounded, size: 18),
+          label: const Text('Confirm & Dispense'),
+          style: FilledButton.styleFrom(
+            backgroundColor: _deepTeal,
+            foregroundColor: Colors.white,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _infoRow(String label, String value, {Color? valueColor, bool isBold = false}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 3.5),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Expanded(
+            flex: 4,
+            child: Text(label, style: const TextStyle(fontSize: 12, color: _muted)),
+          ),
+          Expanded(
+            flex: 5,
+            child: Text(
+              value,
+              textAlign: TextAlign.end,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
+                color: valueColor ?? _ink,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 const _localStateKey = 'padcare.localState.v1';
@@ -5766,7 +6570,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
 
   void _triggerEmergencySOS() {
     final school = _pickupSchoolsByArea[_selectedArea] ?? 'St. Mary\'s Secondary';
-    final pin = (1000 + (DateTime.now().millisecondsSinceEpoch % 9000)).toString();
+    final pin = PinService.generateUniquePin(_localRequests);
     final emergencyReq = _LocalRequest(
       id: 'emergency-${DateTime.now().microsecondsSinceEpoch}',
       reference: 'PC-SOS-$pin',
@@ -6009,7 +6813,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     setState(() => _savingRequest = true);
 
     final now = DateTime.now();
-    final pin = (1000 + now.millisecondsSinceEpoch % 9000).toString();
+    final pin = PinService.generateUniquePin(_localRequests);
     final request = _LocalRequest(
       id: now.microsecondsSinceEpoch.toString(),
       reference: 'PH-$pin',
@@ -7188,12 +7992,13 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           if (MediaQuery.of(context).size.width >= 600) ...[
             const SizedBox(width: 8),
             const _OfflineSyncPill(),
+          ] else ...[
+            const SizedBox(width: 6),
+            const _OfflineSyncPill(compact: true),
           ],
           if (MediaQuery.of(context).size.width >= 900) ...[
             const SizedBox(width: 6),
-            const _ApkDownloadButton(),
-            const SizedBox(width: 6),
-            const _PwaInstallButton(),
+            const _CombinedAppInstallButton(),
           ],
           const Spacer(),
           if (MediaQuery.of(context).size.width >= 960) ...[
@@ -8646,6 +9451,59 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           subtitle: 'Empowering guides, cycle tracking, and safe hygiene tips.',
         ),
         const SizedBox(height: 14),
+        Container(
+          margin: const EdgeInsets.only(bottom: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFDCECEB)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE4F8F2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.offline_pin_rounded, color: Color(0xFF10B981), size: 18),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Offline Field Knowledge Base Active',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12.5, color: _ink),
+                    ),
+                    Text(
+                      'All 6 guides & helpline numbers are stored locally for zero-data access.',
+                      style: TextStyle(fontSize: 11, color: _muted),
+                    ),
+                  ],
+                ),
+              ),
+              TextButton(
+                onPressed: () async {
+                  await OfflineCacheService.preCacheAllResources(
+                    guides: articles.map((a) => {'title': a.title, 'tag': a.tag, 'category': a.category, 'content': a.content}).toList(),
+                  );
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('✅ Educational guides successfully synced to offline local cache!'),
+                        backgroundColor: Color(0xFF116B78),
+                      ),
+                    );
+                  }
+                },
+                child: const Text('Sync Cache', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: _deepTeal)),
+              ),
+            ],
+          ),
+        ),
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
@@ -10846,33 +11704,112 @@ class _TeacherRequestCard extends StatelessWidget {
 }
 
 class _LowStockBanner extends StatelessWidget {
-  const _LowStockBanner({required this.count});
+  const _LowStockBanner({
+    required this.count,
+    this.lowItems = const [],
+    this.onRestockPressed,
+  });
 
   final int count;
+  final List<_Supply> lowItems;
+  final VoidCallback? onRestockPressed;
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFEEE6),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFF0D0C0)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber_rounded, color: _coral),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              '$count item${count == 1 ? '' : 's'} below the restock threshold',
-              style: const TextStyle(
-                color: Color(0xFF873E2C),
-                fontWeight: FontWeight.w700,
-                fontSize: 13,
-              ),
-            ),
+        color: const Color(0xFFFEF2F2),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: const Color(0xFFFCA5A5)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0CDC2626),
+            blurRadius: 8,
+            offset: Offset(0, 2),
           ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFEE2E2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 18),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'STOCK THRESHOLD ALERT: $count Critical Deficit${count == 1 ? '' : 's'}',
+                      style: const TextStyle(
+                        color: Color(0xFF991B1B),
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12.5,
+                        letterSpacing: 0.3,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '$count item${count == 1 ? '' : 's'} below the restock threshold',
+                      style: const TextStyle(
+                        color: Color(0xFF7F1D1D),
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (onRestockPressed != null)
+                ElevatedButton(
+                  onPressed: onRestockPressed,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFDC2626),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    minimumSize: const Size(0, 32),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
+                  child: const Text('⚡ Order Restock', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
+                ),
+            ],
+          ),
+          if (lowItems.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: lowItems.map((supply) {
+                final deficit = supply.lowAt - supply.onHand;
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFFECACA)),
+                  ),
+                  child: Text(
+                    '${supply.name}: ${supply.onHand} ${supply.unit} (Need +$deficit to buffer)',
+                    style: const TextStyle(
+                      color: Color(0xFF991B1B),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
         ],
       ),
     );

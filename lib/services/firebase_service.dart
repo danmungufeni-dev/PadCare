@@ -1025,4 +1025,219 @@ class FirestoreService {
           return <Map<String, dynamic>>[];
         });
   }
+
+  /// Searches for an emergency request across Firestore by its 4-digit PIN.
+  /// Handles PINs stored as String or int, with or without leading '#', 'PH-', or 'REQ-'.
+  static Future<Map<String, dynamic>?> findRequestByPin(String pin) async {
+    final clean = pin
+        .trim()
+        .replaceAll('#', '')
+        .replaceFirst(RegExp(r'^(PH-|REQ-)', caseSensitive: false), '')
+        .trim();
+    if (clean.isEmpty) return null;
+
+    if (!FirebaseService.isFirebaseAvailable || _db == null) {
+      return null;
+    }
+
+    try {
+      // 1. Query by pickupPin string
+      final queryStr = await _db!
+          .collection('requests')
+          .where('pickupPin', isEqualTo: clean)
+          .limit(1)
+          .get();
+      if (queryStr.docs.isNotEmpty) {
+        final data = queryStr.docs.first.data();
+        data['id'] ??= queryStr.docs.first.id;
+        return data;
+      }
+
+      // 2. Query by pickupPin as int if numeric
+      final numericPin = int.tryParse(clean);
+      if (numericPin != null) {
+        final queryInt = await _db!
+            .collection('requests')
+            .where('pickupPin', isEqualTo: numericPin)
+            .limit(1)
+            .get();
+        if (queryInt.docs.isNotEmpty) {
+          final data = queryInt.docs.first.data();
+          data['id'] ??= queryInt.docs.first.id;
+          return data;
+        }
+      }
+
+      // 3. Query by pickupPin with '#' prefix if stored that way
+      final queryHash = await _db!
+          .collection('requests')
+          .where('pickupPin', isEqualTo: '#$clean')
+          .limit(1)
+          .get();
+      if (queryHash.docs.isNotEmpty) {
+        final data = queryHash.docs.first.data();
+        data['id'] ??= queryHash.docs.first.id;
+        return data;
+      }
+
+      // 4. Query by reference matching 'PH-$clean' or 'REQ-$clean'
+      final queryRefPh = await _db!
+          .collection('requests')
+          .where('reference', isEqualTo: 'PH-$clean')
+          .limit(1)
+          .get();
+      if (queryRefPh.docs.isNotEmpty) {
+        final data = queryRefPh.docs.first.data();
+        data['id'] ??= queryRefPh.docs.first.id;
+        return data;
+      }
+
+      final queryRefReq = await _db!
+          .collection('requests')
+          .where('reference', isEqualTo: 'REQ-$clean')
+          .limit(1)
+          .get();
+      if (queryRefReq.docs.isNotEmpty) {
+        final data = queryRefReq.docs.first.data();
+        data['id'] ??= queryRefReq.docs.first.id;
+        return data;
+      }
+    } catch (e) {
+      debugPrint('Firestore findRequestByPin error: $e');
+    }
+    return null;
+  }
+
+  /// Records an audit log of a completed dispensing transaction in `dispensations`
+  static Future<void> recordDispensation(Map<String, dynamic> dispensation) async {
+    if (!FirebaseService.isFirebaseAvailable || _db == null) return;
+    try {
+      final id = dispensation['id']?.toString() ??
+          dispensation['dispensationId']?.toString() ??
+          'DISP-${DateTime.now().millisecondsSinceEpoch}';
+      await _db!.collection('dispensations').doc(id).set({
+        ...dispensation,
+        'createdAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Firestore recordDispensation error: $e');
+    }
+  }
+
+  /// Atomic transaction for 1-Tap PIN dispensing.
+  /// Validates status, verifies and decrements school inventory, marks request Collected,
+  /// and writes an immutable audit record to dispensations collection.
+  static Future<Map<String, dynamic>> dispenseRequestAtomic({
+    required String requestId,
+    required String school,
+    required String product,
+    required int quantity,
+    required String dispensedBy,
+    required String pin,
+  }) async {
+    if (!FirebaseService.isFirebaseAvailable || _db == null) {
+      return {'success': true, 'offline': true};
+    }
+
+    try {
+      return await _db!.runTransaction((transaction) async {
+        final reqRef = _db!.collection('requests').doc(requestId);
+        final reqSnap = await transaction.get(reqRef);
+
+        if (!reqSnap.exists) {
+          throw Exception('Request record not found in database.');
+        }
+
+        final reqData = reqSnap.data() ?? {};
+        final currentStatus = reqData['status']?.toString();
+        if (currentStatus == 'Collected' || currentStatus == 'collected') {
+          throw Exception('This request has already been collected/dispensed.');
+        }
+
+        final schoolRef = _db!.collection('schools').doc(school);
+        final schoolSnap = await transaction.get(schoolRef);
+
+        int currentKits = 100;
+        int currentPacks = 150;
+        if (schoolSnap.exists) {
+          final sData = schoolSnap.data() ?? {};
+          currentKits = (sData['kitsOnHand'] as num?)?.toInt() ?? 100;
+          currentPacks = (sData['packsOnHand'] as num?)?.toInt() ?? 150;
+        }
+
+        final isKit = product.toLowerCase().contains('kit');
+        if (isKit) {
+          if (currentKits < quantity) {
+            throw Exception('Insufficient stock: only $currentKits reusable kits available at $school.');
+          }
+          currentKits -= quantity;
+        } else {
+          if (currentPacks < quantity) {
+            throw Exception('Insufficient stock: only $currentPacks disposable packs available at $school.');
+          }
+          currentPacks -= quantity;
+        }
+
+        // Deduct inventory
+        transaction.set(schoolRef, {
+          'name': school,
+          'kitsOnHand': currentKits,
+          'packsOnHand': currentPacks,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+
+        // Mark request Collected
+        transaction.update(reqRef, {
+          'status': 'Collected',
+          'collectedAt': FieldValue.serverTimestamp(),
+          'collectedBy': dispensedBy,
+          'updatedAt': FieldValue.serverTimestamp(),
+        });
+
+        // Audit log
+        final dispId = 'DISP-$requestId-${DateTime.now().millisecondsSinceEpoch}';
+        final dispRef = _db!.collection('dispensations').doc(dispId);
+        transaction.set(dispRef, {
+          'dispensationId': dispId,
+          'requestId': requestId,
+          'pickupPin': pin,
+          'school': school,
+          'product': product,
+          'quantity': quantity,
+          'dispensedBy': dispensedBy,
+          'timestamp': FieldValue.serverTimestamp(),
+          'status': 'completed',
+        });
+
+        return {
+          'success': true,
+          'kitsRemaining': currentKits,
+          'packsRemaining': currentPacks,
+          'dispensationId': dispId,
+        };
+      });
+    } catch (e) {
+      debugPrint('dispenseRequestAtomic error: $e');
+      return {
+        'success': false,
+        'error': e.toString().replaceFirst('Exception: ', ''),
+      };
+    }
+  }
+
+  /// Streams completed dispensations for a school
+  static Stream<List<Map<String, dynamic>>> streamDispensationsForSchool(String schoolName) {
+    if (!FirebaseService.isFirebaseAvailable || _db == null) {
+      return const Stream.empty();
+    }
+    return _db!
+        .collection('dispensations')
+        .where('school', isEqualTo: schoolName)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList())
+        .handleError((error) {
+          debugPrint('streamDispensationsForSchool error: $error');
+          return <Map<String, dynamic>>[];
+        });
+  }
 }

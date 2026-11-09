@@ -10,6 +10,16 @@ void main() async {
   final server = await HttpServer.bind(InternetAddress.anyIPv4, 8080);
   stdout.writeln('PadCare Web Server live at http://localhost:8080');
 
+  // Ensure apk is available in web dir if present in apk_output
+  final apkSource = File('apk_output/app-release.apk');
+  final apkTarget = File('${buildDir.path}/padcare.apk');
+  if (await apkSource.exists() && (!await apkTarget.exists() || (await apkTarget.length() == 0))) {
+    try {
+      await apkSource.copy(apkTarget.path);
+      stdout.writeln('Copied padcare.apk into build/web for direct downloads');
+    } catch (_) {}
+  }
+
   await for (HttpRequest request in server) {
     try {
       var reqPath = request.uri.path;
@@ -40,6 +50,10 @@ void main() async {
         ..headers.set('Content-Type', mime)
         ..headers.set('Access-Control-Allow-Origin', '*')
         ..headers.set('Cache-Control', 'no-cache');
+
+      if (ext == 'apk') {
+        request.response.headers.set('Content-Disposition', 'attachment; filename="padcare.apk"');
+      }
 
       await request.response.addStream(file.openRead());
       await request.response.close();

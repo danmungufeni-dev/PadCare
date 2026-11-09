@@ -1,15 +1,209 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    
+
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: users
+    // Document ID: {userId} (Firebase Auth UID)
+    // Fields:
+    //   - uid: string (required) - Firebase Auth UID
+    //   - email: string (required) - User email address
+    //   - displayName: string (required) - Full user name
+    //   - role: string (required, 'teacher' | 'parent' | 'admin') - User role
+    //   - school: string (optional) - Affiliated school name
+    //   - authorized: bool (required) - Whether teacher/staff is authorized by admin
+    //   - status: string (required, 'pending' | 'approved' | 'rejected')
+    //   - photoUrl: string (optional)
+    //   - phoneNumber: string (optional)
+    //   - updatedAt: timestamp (optional)
+    //
+    // Collection: schools
+    // Document ID: {schoolId} (School Name / Facility ID)
+    // Fields:
+    //   - name: string (required) - School facility name
+    //   - kitsOnHand: int (optional) - Reusable dignity kits in inventory
+    //   - packsOnHand: int (optional) - Disposable sanitary pad packs in inventory
+    //   - updatedAt: timestamp (optional)
+    //
+    // Collection: requests
+    // Document ID: {requestId}
+    // Fields:
+    //   - id: string (optional) - Request identifier
+    //   - reference: string (optional) - Reference code (e.g., REQ-...)
+    //   - pickupPin: string (optional) - 4-digit verification PIN
+    //   - school: string (optional) - Designated pickup school
+    //   - area: string (optional) - Community / sub-county area
+    //   - product: string (optional) - Sanitary product type requested
+    //   - quantity: int (optional) - Quantity requested
+    //   - status: string (optional) - 'Pending' | 'Approved' | 'Collected' | etc.
+    //   - createdAt: string or timestamp (optional)
+    //   - updatedAt: timestamp (optional)
+    //
+    // Collection: donations
+    // Document ID: {donationId}
+    // Fields:
+    //   - amount: number (required) - Donated amount in UGX
+    //   - currency: string (required) - 'UGX'
+    //   - donorName: string (optional) - Name of donor
+    //   - phone: string (optional) - MoMo phone number
+    //   - status: string (required) - 'completed' | 'pending' | 'failed'
+    //   - timestamp: timestamp (optional)
+    //
+    // Collection: restock_requests
+    // Document ID: {requisitionId}
+    // Fields:
+    //   - id: string (optional) - Requisition identifier
+    //   - school: string (required) - Requesting school
+    //   - kitsNeeded: int (optional) - Reusable kits requested from central hub
+    //   - packsNeeded: int (optional) - Disposable packs requested
+    //   - urgency: string (optional) - 'Standard' | 'Critical'
+    //   - status: string (optional) - Requisition state
+    //   - createdAt: timestamp (optional)
+    //
+    // Collection: dispensations
+    // Document ID: {dispensationId}
+    // Fields:
+    //   - school: string (required, 2..120 chars) - School/facility dispensing pads
+    //   - product: string (required, 2..80 chars) - Product dispensed (e.g. 'Reusable Dignity Kit', 'Disposable Pads')
+    //   - quantity: int (required, > 0 and <= 100) - Number of pad units/kits dispensed
+    //   - dispensedBy: string (required, 1..128 chars) - Dispensing staff UID or verified email
+    //   - dispensedAt: timestamp (required) - Timestamp of handout transaction
+    //   - dispensationId: string (optional, 1..100 chars) - Document identifier if duplicated in body
+    //   - requestId: string (optional, 1..100 chars) - Associated request ID / reference code
+    //   - reference: string (optional, 1..100 chars) - Human-readable request reference
+    //   - pickupPin: string (optional, 1..16 chars) - Confidential pickup PIN verified
+    //   - status: string (optional, 1..40 chars) - 'dispensed' | 'collected' | 'verified' | 'audited'
+    //   - beneficiaryType: string (optional, 1..50 chars) - 'student' | 'emergency' | 'community' (No student PII)
+    //   - notes: string (optional, 0..500 chars) - Operational/safeguarding notes
+    //   - academicTerm: string (optional, 1..30 chars) - e.g. 'Term 1 2026'
+    //   - academicYear: string or int (optional) - e.g. '2026' or 2026
+    //   - createdAt: timestamp (optional)
+    //   - updatedAt: timestamp (optional)
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+
+    // Check if the user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user has an existing profile document
+    function hasUserDoc() {
+      return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    // Retrieve user profile data
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // Check if user is a system administrator via token claims, user doc, or bootstrap email
+    function isAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.get('admin', false) == true ||
+        request.auth.token.get('role', '') == 'admin' ||
+        (request.auth.token.email != null && (
+          request.auth.token.email in ['admin@padcare.org', 'devgtnation@gmail.com', 'abetinichlas@gmail.com'] ||
+          request.auth.token.email.matches('.*admin.*@padcare\\.org$')
+        )) ||
+        (hasUserDoc() && getUserData().get('role', '') == 'admin')
+      );
+    }
+
+    // Check if user is an authorized school staff member (teacher, matron, school admin)
+    function isSchoolStaff() {
+      return isAuthenticated() && (
+        request.auth.token.get('role', '') in ['teacher', 'staff', 'matron', 'administrator'] ||
+        (request.auth.token.email != null && (
+          request.auth.token.email in ['teacher@padcare.org', 'teacher@stmarys.org'] ||
+          request.auth.token.email.matches('.*teacher.*@.*') ||
+          request.auth.token.email.matches('.*@padcare\\.org$')
+        )) ||
+        (hasUserDoc() && (
+          getUserData().get('role', '') in ['teacher', 'staff', 'matron', 'administrator'] &&
+          (getUserData().get('authorized', false) == true || getUserData().get('status', '') == 'approved')
+        ))
+      );
+    }
+
+    // Check if user is either staff or an administrator
+    function isStaffOrAdmin() {
+      return isAdmin() || isSchoolStaff();
+    }
+
+    // Ensure specified immutable fields are not modified on update
+    function areImmutableFieldsUnchanged(fields) {
+      return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
+    }
+
+    // ===============================================================
+    // Domain Validators
+    // ===============================================================
+
+    // Validates pad dispensation transactions for audit integrity & safeguarding
+    function isValidDispensation(data) {
+      let allowedFields = [
+        'school', 'product', 'quantity', 'dispensedBy', 'dispensedAt',
+        'dispensationId', 'requestId', 'reference', 'pickupPin', 'status',
+        'beneficiaryType', 'notes', 'academicTerm', 'academicYear',
+        'createdAt', 'updatedAt'
+      ];
+      let requiredFields = ['school', 'product', 'quantity', 'dispensedBy', 'dispensedAt'];
+
+      return data.keys().hasAll(requiredFields) &&
+             data.keys().hasOnly(allowedFields) &&
+             // School / Facility validation
+             data.school is string &&
+             data.school.size() >= 2 &&
+             data.school.size() <= 120 &&
+             // Product validation
+             data.product is string &&
+             data.product.size() >= 2 &&
+             data.product.size() <= 80 &&
+             // Quantity bounds (must be a positive int/number, max 100 per distribution)
+             (data.quantity is int || data.quantity is number) &&
+             data.quantity > 0 &&
+             data.quantity <= 100 &&
+             // Dispenser UID / email audit validation
+             data.dispensedBy is string &&
+             data.dispensedBy.size() >= 1 &&
+             data.dispensedBy.size() <= 128 &&
+             // Dispensation timestamp validation (not set to the future)
+             data.dispensedAt is timestamp &&
+             data.dispensedAt <= request.time + duration.value(5, 'm') &&
+             // Optional fields validation
+             (!('dispensationId' in data) || (data.dispensationId is string && data.dispensationId.size() <= 100)) &&
+             (!('requestId' in data) || (data.requestId is string && data.requestId.size() <= 100)) &&
+             (!('reference' in data) || (data.reference is string && data.reference.size() <= 100)) &&
+             (!('pickupPin' in data) || (data.pickupPin is string && data.pickupPin.size() <= 16)) &&
+             (!('status' in data) || (data.status is string && data.status.size() <= 40)) &&
+             (!('beneficiaryType' in data) || (data.beneficiaryType is string && data.beneficiaryType.size() <= 50)) &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 500)) &&
+             (!('academicTerm' in data) || (data.academicTerm is string && data.academicTerm.size() <= 30)) &&
+             (!('academicYear' in data) || (data.academicYear is string && data.academicYear.size() <= 10) || data.academicYear is int) &&
+             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
     // User Profiles
     match /users/{userId} {
       // Authenticated users can read profiles
-      allow read: if request.auth != null;
+      allow read: if isAuthenticated();
       // Users can register their own profile document
-      allow create: if request.auth != null && request.auth.uid == userId;
+      allow create: if isAuthenticated() && request.auth.uid == userId;
       // Users can update their profile or backend admin can authorize teachers
-      allow update: if request.auth != null;
+      allow update: if isAuthenticated();
     }
 
     // School Information & Stock Inventory
@@ -17,7 +211,7 @@ service cloud.firestore {
       // Publicly viewable so parents and students can see pickup points
       allow read: if true;
       // Only authorized staff/teachers can update inventory levels
-      allow write: if request.auth != null;
+      allow write: if isAuthenticated();
     }
 
     // Emergency Period Product Requests
@@ -37,6 +231,31 @@ service cloud.firestore {
     // School Emergency Restock Requisitions (Matron -> Arua Central Hub)
     match /restock_requests/{requisitionId} {
       allow read, write: if true;
+    }
+
+    // Pad Dispensing Transactions & Audit Logs
+    match /dispensations/{dispensationId} {
+      // Read & Audit: Only school administrators and authorized staff can inspect dispensing records
+      // Public / student read is strictly blocked to maintain confidentiality and safeguarding
+      allow read: if isStaffOrAdmin();
+
+      // Record Transaction: Authorized staff/admin can record new dispensing events
+      // Requires strict schema validation and verifies dispenser identity
+      allow create: if isStaffOrAdmin() &&
+                       isValidDispensation(request.resource.data) &&
+                       (request.resource.data.dispensedBy == request.auth.uid ||
+                        (request.auth.token.email != null && request.resource.data.dispensedBy == request.auth.token.email) ||
+                        isAdmin());
+
+      // Update / Reconcile: Authorized staff/admin can update operational audit fields (e.g. status, notes)
+      // Core audit fields (dispensedBy, dispensedAt, school, createdAt) are strictly immutable
+      allow update: if isStaffOrAdmin() &&
+                       isValidDispensation(request.resource.data) &&
+                       areImmutableFieldsUnchanged(['dispensedBy', 'dispensedAt', 'school', 'createdAt']) &&
+                       (isAdmin() || areImmutableFieldsUnchanged(['quantity', 'product', 'pickupPin', 'requestId']));
+
+      // Delete: Restricted strictly to system administrators to protect audit integrity
+      allow delete: if isAdmin();
     }
   }
 }

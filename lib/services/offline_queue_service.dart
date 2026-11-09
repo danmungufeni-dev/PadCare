@@ -261,3 +261,101 @@ class OfflineQueueService {
     _initialized = false;
   }
 }
+
+/// Offline cache manager for storing educational guides, FAQs, and school directories locally.
+class OfflineCacheService {
+  static const String _kGuideCacheKey = 'padcare.offline.guides.v1';
+  static const String _kFaqCacheKey = 'padcare.offline.faqs.v1';
+  static const String _kFacilitiesCacheKey = 'padcare.offline.facilities.v1';
+  static const String _kCacheMetaKey = 'padcare.offline.cache.meta.v1';
+
+  static final ValueNotifier<bool> isOfflineReady = ValueNotifier<bool>(false);
+  static final ValueNotifier<String?> lastSyncTime = ValueNotifier<String?>(null);
+
+  /// Initializes cache status from storage
+  static Future<void> init() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final meta = prefs.getString(_kCacheMetaKey);
+      if (meta != null) {
+        final decoded = jsonDecode(meta);
+        if (decoded is Map) {
+          isOfflineReady.value = true;
+          lastSyncTime.value = decoded['syncedAt'] as String?;
+        }
+      }
+    } catch (_) {}
+  }
+
+  /// Caches educational guides, FAQ list, and local school facilities for 100% offline access.
+  static Future<bool> preCacheAllResources({
+    List<Map<String, dynamic>>? guides,
+    List<Map<String, dynamic>>? faqs,
+    List<Map<String, dynamic>>? facilities,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final now = DateTime.now().toIso8601String();
+
+      if (guides != null) {
+        await prefs.setString(_kGuideCacheKey, jsonEncode(guides));
+      }
+      if (faqs != null) {
+        await prefs.setString(_kFaqCacheKey, jsonEncode(faqs));
+      }
+      if (facilities != null) {
+        await prefs.setString(_kFacilitiesCacheKey, jsonEncode(facilities));
+      }
+
+      await prefs.setString(_kCacheMetaKey, jsonEncode({
+        'syncedAt': now,
+        'guidesCount': guides?.length ?? 0,
+        'faqsCount': faqs?.length ?? 0,
+        'facilitiesCount': facilities?.length ?? 0,
+      }));
+
+      isOfflineReady.value = true;
+      lastSyncTime.value = now;
+      return true;
+    } catch (e) {
+      debugPrint('Error caching offline resources: $e');
+      return false;
+    }
+  }
+
+  static Future<List<Map<String, dynamic>>?> getCachedGuides() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kGuideCacheKey);
+      if (raw != null) {
+        final list = jsonDecode(raw) as List;
+        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<List<Map<String, dynamic>>?> getCachedFaqs() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kFaqCacheKey);
+      if (raw != null) {
+        final list = jsonDecode(raw) as List;
+        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  static Future<List<Map<String, dynamic>>?> getCachedFacilities() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString(_kFacilitiesCacheKey);
+      if (raw != null) {
+        final list = jsonDecode(raw) as List;
+        return list.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+      }
+    } catch (_) {}
+    return null;
+  }
+}

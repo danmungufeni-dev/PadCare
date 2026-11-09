@@ -5,6 +5,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:padcare/auth/auth_screens.dart';
 import 'package:padcare/services/firebase_service.dart';
+import 'package:padcare/services/offline_queue_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class _TestHttpOverrides extends HttpOverrides {
   @override
@@ -174,7 +176,6 @@ void main() {
       await tester.pumpWidget(testWrapper(const LoginHero()));
 
       expect(find.text('Welcome back'), findsOneWidget);
-      expect(find.text('Sign in to continue to your PadCare account'), findsOneWidget);
       expect(find.text('Email'), findsOneWidget);
       expect(find.text('Password'), findsOneWidget);
       expect(find.text('Remember me'), findsOneWidget);
@@ -492,6 +493,38 @@ void main() {
       expect(reconstructed.photoUrl, equals(profile.photoUrl));
       expect(reconstructed.phoneNumber, equals(profile.phoneNumber));
       expect(reconstructed.displayName, equals('Arua Nurse'));
+    });
+
+    test('OfflineCacheService stores and retrieves educational guides & facilities', () async {
+      SharedPreferences.setMockInitialValues({});
+      final sampleGuides = [
+        {
+          'title': 'Period Hygiene Basics',
+          'tag': 'Hygiene',
+          'category': 'Hygiene',
+          'content': ['Wash hands thoroughly', 'Change pad every 4-6 hours'],
+        }
+      ];
+
+      final success = await OfflineCacheService.preCacheAllResources(guides: sampleGuides);
+      expect(success, isTrue);
+      expect(OfflineCacheService.isOfflineReady.value, isTrue);
+
+      final cached = await OfflineCacheService.getCachedGuides();
+      expect(cached, isNotNull);
+      expect(cached!.length, equals(1));
+      expect(cached.first['title'], equals('Period Hygiene Basics'));
+    });
+
+    testWidgets('LoginHero provides 1-Tap Quick Demo Logins chips', (tester) async {
+      await tester.pumpWidget(testWrapper(const LoginHero()));
+      expect(find.text('1-Tap Quick Demo Logins'), findsOneWidget);
+      expect(find.text("Teacher (St. Mary's)"), findsOneWidget);
+      expect(find.text('Parent (Amina N.)'), findsOneWidget);
+
+      await tester.tap(find.text("Teacher (St. Mary's)"));
+      await tester.pump();
+      expect(find.text('teacher@stmarys.org'), findsOneWidget);
     });
   });
 }

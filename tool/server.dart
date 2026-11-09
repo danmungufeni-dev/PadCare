@@ -7,9 +7,6 @@ void main() async {
     exit(1);
   }
 
-  final server = await HttpServer.bind(InternetAddress.anyIPv4, 8080);
-  stdout.writeln('PadCare Web Server live at http://localhost:8080');
-
   // Ensure apk is available in web dir if present in apk_output
   final apkSource = File('apk_output/app-release.apk');
   final apkTarget = File('${buildDir.path}/padcare.apk');
@@ -20,7 +17,7 @@ void main() async {
     } catch (_) {}
   }
 
-  await for (HttpRequest request in server) {
+  Future<void> handleRequest(HttpRequest request) async {
     try {
       var reqPath = request.uri.path;
       if (reqPath.startsWith('/PadCare')) {
@@ -35,7 +32,7 @@ void main() async {
         request.response
           ..statusCode = HttpStatus.forbidden
           ..close();
-        continue;
+        return;
       }
 
       var file = File('${buildDir.path}$reqPath');
@@ -64,6 +61,18 @@ void main() async {
           ..write('Error: $e')
           ..close();
       } catch (_) {}
+    }
+  }
+
+  // Bind to 5000 and 8080 so both ports work interchangeably
+  final ports = [5000, 8080];
+  for (final port in ports) {
+    try {
+      final s = await HttpServer.bind(InternetAddress.anyIPv4, port);
+      stdout.writeln('PadCare Web Server live at http://localhost:$port');
+      s.listen(handleRequest);
+    } catch (e) {
+      stderr.writeln('Could not bind port $port: $e');
     }
   }
 }

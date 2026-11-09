@@ -199,6 +199,62 @@ class OfflineQueueService {
     }
   }
 
+  /// Returns a snapshot of all pending offline tasks for UI inspection.
+  static Future<List<OfflineTask>> getPendingTasks() async {
+    return _loadQueue();
+  }
+
+  /// Removes a specific task from the offline queue.
+  static Future<void> removeTask(String id) async {
+    final tasks = await _loadQueue();
+    tasks.removeWhere((t) => t.id == id);
+    await _saveQueue(tasks);
+    pendingCount.value = tasks.length;
+  }
+
+  /// Clears all pending offline tasks.
+  static Future<void> clearQueue() async {
+    await _saveQueue([]);
+    pendingCount.value = 0;
+  }
+
+  /// Persists an in-progress form draft to survive interruptions and offline restarts.
+  static Future<void> saveDraft(String formKey, Map<String, dynamic> data) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('padcare.draft.$formKey', jsonEncode(data));
+    } catch (e) {
+      debugPrint('Error saving form draft: $e');
+    }
+  }
+
+  /// Retrieves an in-progress draft if one was previously saved.
+  static Future<Map<String, dynamic>?> getDraft(String formKey) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getString('padcare.draft.$formKey');
+      if (raw != null && raw.isNotEmpty) {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map) {
+          return Map<String, dynamic>.from(decoded);
+        }
+      }
+    } catch (e) {
+      debugPrint('Error reading form draft: $e');
+    }
+    return null;
+  }
+
+  /// Clears an in-progress form draft once successfully submitted.
+  static Future<void> clearDraft(String formKey) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('padcare.draft.$formKey');
+    } catch (e) {
+      debugPrint('Error clearing form draft: $e');
+    }
+  }
+
   /// Cancels background timer (e.g. on test dispose).
   static void dispose() {
     _syncTimer?.cancel();

@@ -81,15 +81,15 @@ void main() async {
   runApp(const MyApp());
 }
 
-const _ink = Color(0xFF1B0B12);
-const _muted = Color(0xFF6B5861);
-const _paper = Color(0xFFFFFDFE);
-const _green = Color(0xFFE11D48);
-const _deepTeal = Color(0xFFBE123C);
-const _mint = Color(0xFFFECDD3);
-const _greenPale = Color(0xFFFFF1F2);
-const _coral = Color(0xFFF43F5E);
-const _line = Color(0xFFFCE7EB);
+const _ink = Color(0xFF172B36);
+const _muted = Color(0xFF6B8487);
+const _paper = Color(0xFFF7FCFA);
+const _green = Color(0xFF35B9B4);
+const _deepTeal = Color(0xFF116B78);
+const _mint = Color(0xFFA5EAC5);
+const _greenPale = Color(0xFFE4F8F2);
+const _coral = Color(0xFF0D9488);
+const _line = Color(0xFFDCECEB);
 
 const _fontHeading = 'SF Pro Display';
 const _fontSubheading = 'SF Pro Display';
@@ -124,7 +124,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'PadHer',
+      title: 'PadCare',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -2597,51 +2597,29 @@ class _BrandLockup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return const Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const _BrandMark(),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: const [
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'PadHer',
-                  style: TextStyle(
-                    color: _ink,
-                    fontSize: 22,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: -0.4,
-                    fontFamily: _fontHeading,
-                  ),
-                ),
-                SizedBox(width: 6),
-                Text(
-                  'ARUA CITY',
-                  style: TextStyle(
-                    color: _deepTeal,
-                    fontSize: 9.5,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 0.5,
-                    fontFamily: _fontSubheading,
-                  ),
-                ),
-              ],
-            ),
-            Text(
-              'PadCare Network',
-              style: TextStyle(
-                color: _muted,
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                fontFamily: _fontSubheading,
-              ),
-            ),
-          ],
+        _BrandMark(),
+        SizedBox(width: 8),
+        Text(
+          'PadCare',
+          style: TextStyle(
+            color: _ink,
+            fontSize: 22,
+            fontWeight: FontWeight.w800,
+            fontFamily: _fontHeading,
+          ),
+        ),
+        SizedBox(width: 8),
+        Text(
+          'ARUA CITY',
+          style: TextStyle(
+            color: _muted,
+            fontSize: 10,
+            fontWeight: FontWeight.w800,
+            fontFamily: _fontSubheading,
+          ),
         ),
       ],
     );
@@ -2673,7 +2651,7 @@ class _BrandMark extends StatelessWidget {
         child: CustomPaint(
           painter: const _PadCareLogoPainter(),
           child: Image.asset(
-            'assets/padher_icon.png',
+            'assets/padcare_icon.png',
             fit: BoxFit.cover,
             errorBuilder: (context, error, stackTrace) => Image.asset(
               'assets/icon/app_icon.png',
@@ -3875,12 +3853,12 @@ class _HomeScreenState extends State<HomeScreen> {
                               Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFFFFF1F2),
+                                  color: _greenPale,
                                   borderRadius: BorderRadius.circular(6),
                                 ),
                                 child: const Text(
                                   'URGENT',
-                                  style: TextStyle(color: Color(0xFFE11D48), fontSize: 9, fontWeight: FontWeight.w800),
+                                  style: TextStyle(color: _coral, fontSize: 9, fontWeight: FontWeight.w800),
                                 ),
                               ),
                             ],
@@ -4314,54 +4292,18 @@ class _OfflineSyncPill extends StatelessWidget {
         return ValueListenableBuilder<bool>(
           valueListenable: OfflineQueueService.isSyncing,
           builder: (context, syncing, _) {
-            if (count == 0) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF0FDF4),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFDCFCE7)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.cloud_done_rounded, color: Color(0xFF16A34A), size: 13),
-                    SizedBox(width: 4),
-                    Text(
-                      'Synced',
-                      style: TextStyle(color: Color(0xFF16A34A), fontSize: 10, fontWeight: FontWeight.w700),
-                    ),
-                  ],
-                ),
-              );
-            }
-
+            final isOffline = count > 0;
             return InkWell(
-              onTap: syncing
-                  ? null
-                  : () async {
-                      final synced = await OfflineQueueService.flush();
-                      if (context.mounted && !MyApp.isTestMode) {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              synced > 0
-                                  ? 'Synced $synced changes with Cloud Firestore!'
-                                  : 'Attempting cloud sync...',
-                            ),
-                            backgroundColor: const Color(0xFF116B78),
-                            duration: const Duration(seconds: 2),
-                          ),
-                        );
-                      }
-                    },
+              onTap: () => _showOfflineQueueModal(context),
               borderRadius: BorderRadius.circular(12),
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFFBEB),
+                  color: isOffline ? const Color(0xFFFFFBEB) : const Color(0xFFF0FDF4),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFFFDE68A)),
+                  border: Border.all(
+                    color: isOffline ? const Color(0xFFFDE68A) : const Color(0xFFDCFCE7),
+                  ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -4373,12 +4315,20 @@ class _OfflineSyncPill extends StatelessWidget {
                         child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFD97706)),
                       )
                     else
-                      const Icon(Icons.sync_problem_rounded, color: Color(0xFFD97706), size: 13),
+                      Icon(
+                        isOffline ? Icons.sync_problem_rounded : Icons.cloud_done_rounded,
+                        color: isOffline ? const Color(0xFFD97706) : const Color(0xFF16A34A),
+                        size: 13,
+                      ),
                     const SizedBox(width: 4),
                     Text(
-                      syncing ? 'Syncing...' : '$count offline',
-                      style: const TextStyle(
-                        color: Color(0xFFB45309),
+                      syncing
+                          ? 'Syncing...'
+                          : isOffline
+                              ? '$count offline'
+                              : 'Synced',
+                      style: TextStyle(
+                        color: isOffline ? const Color(0xFFB45309) : const Color(0xFF16A34A),
                         fontSize: 10,
                         fontWeight: FontWeight.w700,
                       ),
@@ -4390,6 +4340,374 @@ class _OfflineSyncPill extends StatelessWidget {
           },
         );
       },
+    );
+  }
+}
+
+void _showOfflineQueueModal(BuildContext context) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Colors.transparent,
+    builder: (ctx) => const _OfflineQueueSheet(),
+  );
+}
+
+class _OfflineQueueSheet extends StatefulWidget {
+  const _OfflineQueueSheet();
+
+  @override
+  State<_OfflineQueueSheet> createState() => _OfflineQueueSheetState();
+}
+
+class _OfflineQueueSheetState extends State<_OfflineQueueSheet> {
+  List<OfflineTask> _tasks = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTasks();
+  }
+
+  Future<void> _loadTasks() async {
+    final tasks = await OfflineQueueService.getPendingTasks();
+    if (!mounted) return;
+    setState(() {
+      _tasks = tasks;
+      _loading = false;
+    });
+  }
+
+  String _formatTaskType(String type) {
+    switch (type) {
+      case 'save_request':
+        return 'Emergency Pad Request';
+      case 'update_school_stock':
+        return 'School Stock Update';
+      case 'restock_request':
+        return 'Hub Restock Requisition';
+      case 'update_request_status':
+        return 'Distribution Status';
+      default:
+        return 'Field Update';
+    }
+  }
+
+  IconData _formatTaskIcon(String type) {
+    switch (type) {
+      case 'save_request':
+        return Icons.volunteer_activism_rounded;
+      case 'update_school_stock':
+        return Icons.inventory_2_outlined;
+      case 'restock_request':
+        return Icons.local_shipping_outlined;
+      case 'update_request_status':
+        return Icons.checklist_rounded;
+      default:
+        return Icons.sync_rounded;
+    }
+  }
+
+  String _formatTaskDetails(OfflineTask task) {
+    final p = task.payload;
+    if (task.type == 'save_request') {
+      final school = p['school'] ?? p['pickupSchool'] ?? 'Arua Pickup';
+      final qty = p['quantity'] ?? 1;
+      return '$qty pack(s) • Pick up: $school';
+    } else if (task.type == 'update_school_stock') {
+      final school = p['school'] ?? 'School';
+      final kits = p['kitsOnHand'] ?? 0;
+      final packs = p['packsOnHand'] ?? 0;
+      return '$school: $kits reusable kits, $packs disposable packs';
+    } else if (task.type == 'restock_request') {
+      final school = p['school'] ?? 'School';
+      final urgent = p['urgent'] == true ? ' • Urgent' : '';
+      return 'Restock for $school$urgent';
+    } else if (task.type == 'update_request_status') {
+      final status = p['status'] ?? 'Updated';
+      return 'Status marked as "$status"';
+    }
+    return 'Pending cloud sync';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      padding: EdgeInsets.fromLTRB(20, 14, 20, MediaQuery.of(context).viewInsets.bottom + 24),
+      child: ValueListenableBuilder<bool>(
+        valueListenable: OfflineQueueService.isSyncing,
+        builder: (context, syncing, _) {
+          return ValueListenableBuilder<int>(
+            valueListenable: OfflineQueueService.pendingCount,
+            builder: (context, count, _) {
+              return Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 44,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFDCECEB),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: count > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFE4F8F2),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Icon(
+                          count > 0 ? Icons.wifi_off_rounded : Icons.cloud_done_rounded,
+                          color: count > 0 ? const Color(0xFFD97706) : const Color(0xFF116B78),
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Arua Field Sync Center',
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                                color: const Color(0xFF172B36),
+                              ),
+                            ),
+                            const SizedBox(height: 2),
+                            Text(
+                              count > 0
+                                  ? '$count action(s) stored locally on this device'
+                                  : 'All local changes synchronized with Cloud Firestore',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Color(0xFF6B8487),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        icon: const Icon(Icons.close_rounded, size: 20, color: Color(0xFF6B8487)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  if (count == 0) ...[
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFDCFCE7)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.check_circle_outline_rounded, color: Color(0xFF16A34A), size: 22),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'Offline-first resilience is active. If you lose connection in rural schools, PadCare preserves requests on device and uploads them when network returns.',
+                              style: TextStyle(color: Color(0xFF15803D), fontSize: 12.5, height: 1.35),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 240),
+                      child: _loading
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24),
+                                child: CircularProgressIndicator(color: Color(0xFF116B78)),
+                              ),
+                            )
+                          : ListView.separated(
+                              shrinkWrap: true,
+                              itemCount: _tasks.length,
+                              separatorBuilder: (_, _) => const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                              itemBuilder: (context, i) {
+                                final task = _tasks[i];
+                                return ListTile(
+                                  dense: true,
+                                  contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                                  leading: CircleAvatar(
+                                    radius: 18,
+                                    backgroundColor: const Color(0xFFE4F8F2),
+                                    child: Icon(_formatTaskIcon(task.type), size: 18, color: const Color(0xFF116B78)),
+                                  ),
+                                  title: Text(
+                                    _formatTaskType(task.type),
+                                    style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF172B36)),
+                                  ),
+                                  subtitle: Text(
+                                    _formatTaskDetails(task),
+                                    style: const TextStyle(fontSize: 11.5, color: Color(0xFF6B8487)),
+                                  ),
+                                  trailing: IconButton(
+                                    tooltip: 'Discard',
+                                    icon: const Icon(Icons.delete_outline, size: 18, color: Color(0xFF9CA3AF)),
+                                    onPressed: () async {
+                                      await OfflineQueueService.removeTask(task.id);
+                                      await _loadTasks();
+                                    },
+                                  ),
+                                );
+                              },
+                            ),
+                    ),
+                    const SizedBox(height: 16),
+                    FilledButton.icon(
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF116B78),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: syncing
+                          ? null
+                          : () async {
+                              final synced = await OfflineQueueService.flush();
+                              await _loadTasks();
+                              if (context.mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      synced > 0
+                                          ? 'Successfully synced $synced pending action(s) to Cloud Firestore!'
+                                          : 'Offline sync attempted. Checking connection...',
+                                    ),
+                                    backgroundColor: const Color(0xFF116B78),
+                                  ),
+                                );
+                              }
+                            },
+                      icon: syncing
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : const Icon(Icons.cloud_upload_outlined, size: 18),
+                      label: Text(
+                        syncing ? 'Syncing to Cloud...' : 'Sync Now ($count)',
+                        style: const TextStyle(fontWeight: FontWeight.w800),
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _ApkDownloadButton extends StatelessWidget {
+  const _ApkDownloadButton();
+
+  void _showApkDialog(BuildContext context) {
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.android_rounded, color: Color(0xFF10B981), size: 28),
+            SizedBox(width: 10),
+            Text('PadCare for Android', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+          ],
+        ),
+        content: const Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Download the official PadCare Android release APK to test on physical phones or distribute to field educators in Uganda.',
+              style: TextStyle(fontSize: 13.5, color: Color(0xFF4B5563), height: 1.4),
+            ),
+            SizedBox(height: 14),
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.check_circle_outline, color: Color(0xFF10B981), size: 20),
+              title: Text('Release APK (~60 MB)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              subtitle: Text('Pre-compiled standalone package', style: TextStyle(fontSize: 11.5)),
+            ),
+            ListTile(
+              dense: true,
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.offline_bolt_outlined, color: Color(0xFF116B78), size: 20),
+              title: Text('Full Offline Support', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+              subtitle: Text('Local SQLite & SharedPreferences caching', style: TextStyle(fontSize: 11.5)),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Close'),
+          ),
+          FilledButton.icon(
+            style: FilledButton.styleFrom(
+              backgroundColor: const Color(0xFF116B78),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+            onPressed: () {
+              Navigator.of(ctx).pop();
+              openExternalUrl('padcare.apk');
+            },
+            icon: const Icon(Icons.download_rounded, size: 18),
+            label: const Text('Download APK (60 MB)', style: TextStyle(fontWeight: FontWeight.w800)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () => _showApkDialog(context),
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        decoration: BoxDecoration(
+          color: const Color(0xFFE4F8F2),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFA5EAC5)),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.android_rounded, color: Color(0xFF116B78), size: 13),
+            SizedBox(width: 4),
+            Text(
+              'Android APK',
+              style: TextStyle(color: Color(0xFF116B78), fontSize: 10, fontWeight: FontWeight.w800),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -4981,33 +5299,18 @@ class _TopBar extends StatelessWidget {
           InkWell(
             onTap: onLogoTap,
             borderRadius: BorderRadius.circular(10),
-            child: Row(
+            child: const Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const _BrandMark(),
-                const SizedBox(width: 9),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: const [
-                    Text(
-                      'PadHer',
-                      style: TextStyle(
-                        color: _ink,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.4,
-                      ),
-                    ),
-                    Text(
-                      'PadCare',
-                      style: TextStyle(
-                        color: _muted,
-                        fontSize: 9.5,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                _BrandMark(),
+                SizedBox(width: 9),
+                Text(
+                  'PadCare',
+                  style: TextStyle(
+                    color: _ink,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w800,
+                  ),
                 ),
               ],
             ),
@@ -5017,6 +5320,8 @@ class _TopBar extends StatelessWidget {
             const _OfflineSyncPill(),
           ],
           if (MediaQuery.of(context).size.width >= 900) ...[
+            const SizedBox(width: 6),
+            const _ApkDownloadButton(),
             const SizedBox(width: 6),
             const _PwaInstallButton(),
           ],
@@ -5089,7 +5394,7 @@ class _TopBar extends StatelessWidget {
                           child: const Icon(
                             Icons.logout_rounded,
                             size: 9,
-                            color: Color(0xFFE11D48),
+                            color: _deepTeal,
                           ),
                         ),
                       ),
@@ -5464,7 +5769,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     final pin = (1000 + (DateTime.now().millisecondsSinceEpoch % 9000)).toString();
     final emergencyReq = _LocalRequest(
       id: 'emergency-${DateTime.now().microsecondsSinceEpoch}',
-      reference: 'PH-SOS-$pin',
+      reference: 'PC-SOS-$pin',
       pickupPin: pin,
       school: school,
       area: _selectedArea == 'Arua Central' ? 'Ediofe' : _selectedArea,
@@ -5479,6 +5784,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       _saveLocalData(_LocalData(requests: updated, stock: data.stock));
     }).catchError((_) {});
     unawaited(FirestoreService.saveRequest(emergencyReq.toJson()));
+    unawaited(
+      OfflineQueueService.enqueue(
+        type: 'save_request',
+        payload: emergencyReq.toJson(),
+      ),
+    );
 
     showModalBottomSheet<void>(
       context: context,
@@ -5500,7 +5811,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             const SizedBox(height: 18),
             const CircleAvatar(
               radius: 30,
-              backgroundColor: Color(0xFFFFF1F2),
+              backgroundColor: _greenPale,
               child: Icon(Icons.bolt_rounded, color: _green, size: 38),
             ),
             const SizedBox(height: 12),
@@ -5519,9 +5830,9 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: const Color(0xFFFFF1F2),
+                color: _greenPale,
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFFECDD3), width: 1.5),
+                border: Border.all(color: _mint, width: 1.5),
               ),
               child: Column(
                 children: [
@@ -5837,7 +6148,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     IconButton(
                       icon: Icon(
                         isFav ? Icons.favorite_rounded : Icons.favorite_border_rounded,
-                        color: isFav ? const Color(0xFFE11D48) : _muted,
+                        color: isFav ? _deepTeal : _muted,
                       ),
                       onPressed: () {
                         setState(() {
@@ -6558,7 +6869,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           children: [
             const CircleAvatar(
               radius: 32,
-              backgroundColor: Color(0xFFFFF1F2),
+              backgroundColor: _greenPale,
               child: Icon(Icons.volunteer_activism_rounded, color: _green, size: 38),
             ),
             const SizedBox(height: 16),
@@ -6578,17 +6889,17 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
-                  colors: [Color(0xFFFFF1F2), Color(0xFFFFE4E6)],
+                  colors: [_greenPale, Color(0xFFCCFBF1)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: const Color(0xFFFECDD3)),
+                border: Border.all(color: _mint),
               ),
               child: Column(
                 children: [
                   const Text(
-                    '👑 PADHER KINDNESS CHAMPION',
+                    '👑 PADCARE KINDNESS CHAMPION',
                     style: TextStyle(color: _deepTeal, fontSize: 11, fontWeight: FontWeight.w900, letterSpacing: 1.1),
                   ),
                   const SizedBox(height: 6),
@@ -6600,7 +6911,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   const SizedBox(height: 10),
                   FilledButton.icon(
                     onPressed: () {
-                      final text = 'I just sponsored $packsFunded sanitary pad pack${packsFunded == 1 ? '' : 's'} for schoolgirls in Arua City with the PadHer app! 🩸 Keep girls in school.';
+                      final text = 'I just sponsored $packsFunded sanitary pad pack${packsFunded == 1 ? '' : 's'} for schoolgirls in Arua City with the PadCare app! 🌿 Keep girls in school.';
                       Clipboard.setData(ClipboardData(text: text));
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(content: Text('Kindness message copied! Share to your WhatsApp status.')),
@@ -6824,7 +7135,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 _BrandMark(),
                 SizedBox(width: 8),
                 Text(
-                  'PadHer',
+                  'PadCare',
                   style: TextStyle(
                     color: _ink,
                     fontSize: 21,
@@ -6879,6 +7190,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             const _OfflineSyncPill(),
           ],
           if (MediaQuery.of(context).size.width >= 900) ...[
+            const SizedBox(width: 6),
+            const _ApkDownloadButton(),
             const SizedBox(width: 6),
             const _PwaInstallButton(),
           ],
@@ -6971,7 +7284,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                           child: const Icon(
                             Icons.logout_rounded,
                             size: 9,
-                            color: Color(0xFFE11D48),
+                            color: _deepTeal,
                           ),
                         ),
                       ),
@@ -7122,14 +7435,14 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           padding: const EdgeInsets.all(20),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFFBE123C), Color(0xFFE11D48)],
+              colors: [Color(0xFF116B78), Color(0xFF35B9B4)],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
             borderRadius: BorderRadius.circular(22),
             boxShadow: const [
               BoxShadow(
-                color: Color(0x33BE123C),
+                color: Color(0x33116B78),
                 blurRadius: 16,
                 offset: Offset(0, 6),
               ),
@@ -7143,7 +7456,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 child: Opacity(
                   opacity: 0.22,
                   child: Image.asset(
-                    'assets/padher_icon.png',
+                    'assets/padcare_icon.png',
                     width: 125,
                     height: 125,
                     errorBuilder: (context, error, stackTrace) => Image.asset(
@@ -7321,12 +7634,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFFFF1F2),
+        color: _greenPale,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: const Color(0xFFFECDD3), width: 1.5),
+        border: Border.all(color: _mint, width: 1.5),
         boxShadow: const [
           BoxShadow(
-            color: Color(0x12E11D48),
+            color: Color(0x12116B78),
             blurRadius: 10,
             offset: Offset(0, 3),
           ),
@@ -7337,7 +7650,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: const Color(0xFFE11D48),
+              color: _deepTeal,
               borderRadius: BorderRadius.circular(14),
             ),
             child: const Icon(
@@ -7354,7 +7667,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 Text(
                   'Urgent Pad SOS',
                   style: TextStyle(
-                    color: Color(0xFF9F1239),
+                    color: _deepTeal,
                     fontSize: 16,
                     fontWeight: FontWeight.w900,
                     fontFamily: _fontHeading,
@@ -7364,7 +7677,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 Text(
                   'Bleeding at school? Get 1-tap instant secret pickup code.',
                   style: TextStyle(
-                    color: Color(0xFFBE123C),
+                    color: _muted,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                   ),
@@ -7376,7 +7689,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           FilledButton(
             onPressed: _triggerEmergencySOS,
             style: FilledButton.styleFrom(
-              backgroundColor: const Color(0xFFBE123C),
+              backgroundColor: _deepTeal,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
@@ -7402,7 +7715,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     String phaseAdvice;
     if (cycleDay <= _periodLengthDays) {
       phase = 'Menstrual Phase 🩸';
-      phaseColor = const Color(0xFFE11D48);
+      phaseColor = const Color(0xFFDC2626);
       phaseAdvice = 'Stay hydrated, rest, and use clean pads. Change every 4-6 hours.';
     } else if (cycleDay <= 13) {
       phase = 'Follicular Phase 🌱';
@@ -7441,7 +7754,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               Container(
                 padding: const EdgeInsets.all(7),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFFF1F2),
+                  color: _greenPale,
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.favorite_rounded, color: _green, size: 18),
@@ -7452,7 +7765,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'PadHer Cycle Dignity Tracker',
+                      'PadCare Cycle Dignity Tracker',
                       style: TextStyle(
                         color: _ink,
                         fontSize: 15,
@@ -9693,7 +10006,7 @@ class _PadCareSplashScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFFF1F2),
+      backgroundColor: _greenPale,
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -9701,7 +10014,7 @@ class _PadCareSplashScreen extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFFFFF1F2), Color(0xFFFFE4E6)],
+            colors: [_greenPale, _paper],
           ),
         ),
         child: SafeArea(
@@ -9728,7 +10041,7 @@ class _PadCareSplashScreen extends StatelessWidget {
                         borderRadius: BorderRadius.circular(32),
                         boxShadow: const [
                           BoxShadow(
-                            color: Color(0x33BE123C),
+                            color: Color(0x33116B78),
                             blurRadius: 28,
                             offset: Offset(0, 14),
                           ),
@@ -9737,7 +10050,7 @@ class _PadCareSplashScreen extends StatelessWidget {
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(32),
                         child: Image.asset(
-                          'assets/padher_icon.png',
+                          'assets/padcare_icon.png',
                           fit: BoxFit.cover,
                           errorBuilder: (context, error, stackTrace) => Image.asset(
                             'assets/icon/app_icon.png',
@@ -9752,7 +10065,7 @@ class _PadCareSplashScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 26),
                     const Text(
-                      'PadHer',
+                      'PadCare',
                       style: TextStyle(
                         color: _ink,
                         fontSize: 34,
@@ -10618,7 +10931,7 @@ class _StockManagementCard extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(14, 13, 8, 13),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: isCritical ? const Color(0xFFFECDD3) : _line),
+        border: Border.all(color: isCritical ? const Color(0xFFFCA5A5) : _line),
         borderRadius: BorderRadius.circular(13),
       ),
       child: Column(
@@ -10644,19 +10957,19 @@ class _StockManagementCard extends StatelessWidget {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFFFF1F2),
+                              color: _greenPale,
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFF43F5E)),
+                              border: Border.all(color: const Color(0xFFEF4444)),
                             ),
                             child: const Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.warning_amber_rounded, color: Color(0xFFE11D48), size: 12),
+                                Icon(Icons.warning_amber_rounded, color: Color(0xFFDC2626), size: 12),
                                 SizedBox(width: 3),
                                 Text(
                                   'Critical (< 5 left)',
                                   style: TextStyle(
-                                    color: Color(0xFFE11D48),
+                                    color: _deepTeal,
                                     fontSize: 10,
                                     fontWeight: FontWeight.w800,
                                   ),
@@ -10708,7 +11021,7 @@ class _StockManagementCard extends StatelessWidget {
               value: (supply.onHand / ((supply.lowAt * 2).clamp(1, 9999))).clamp(0.0, 1.0),
               backgroundColor: const Color(0xFFF1F5F9),
               valueColor: AlwaysStoppedAnimation<Color>(
-                isCritical ? const Color(0xFFE11D48) : (low ? const Color(0xFFF59E0B) : _deepTeal),
+                isCritical ? const Color(0xFFDC2626) : (low ? const Color(0xFFF59E0B) : _deepTeal),
               ),
               minHeight: 5,
             ),
@@ -10723,7 +11036,7 @@ class _StockManagementCard extends StatelessWidget {
                       TextSpan(
                         text: '${supply.onHand}',
                         style: TextStyle(
-                          color: isCritical ? const Color(0xFFE11D48) : (low ? _coral : _ink),
+                          color: isCritical ? const Color(0xFFDC2626) : (low ? _coral : _ink),
                           fontSize: 25,
                           fontWeight: FontWeight.w800,
                         ),

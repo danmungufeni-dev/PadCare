@@ -70,16 +70,33 @@ class AboutPage extends StatelessWidget {
         child: Column(
           children: [
             Container(
-              width: 120,
-              height: 120,
+              width: 100,
+              height: 100,
               decoration: BoxDecoration(
-                color: scheme.primaryContainer,
-                borderRadius: BorderRadius.circular(24),
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(22),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.08),
+                    blurRadius: 12,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
-              child: Icon(
-                Icons.volunteer_activism_rounded,
-                size: 64,
-                color: scheme.primary,
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(22),
+                child: Image.asset(
+                  'assets/padcare_icon.png',
+                  width: 100,
+                  height: 100,
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) => Image.asset(
+                    'assets/icon/app_icon.png',
+                    width: 100,
+                    height: 100,
+                    fit: BoxFit.cover,
+                  ),
+                ),
               ),
             ),
             const SizedBox(height: 24),

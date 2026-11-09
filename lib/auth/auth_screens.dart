@@ -258,283 +258,382 @@ class _LoginHeroState extends State<LoginHero> {
     final scheme = theme.colorScheme;
 
     return Scaffold(
+      backgroundColor: const Color(0xFFF7FCFA),
       appBar: AppBar(
         title: const Text('PadCare Sign In'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
       ),
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 24),
-          children: [
-            const SizedBox(height: 16),
-            Center(
-              child: Container(
-                height: 160,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      scheme.primaryContainer,
-                      scheme.secondaryContainer.withValues(alpha: 0.6),
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: Stack(
-                  alignment: Alignment.center,
-                  children: [
-                    Icon(
-                      Icons.lock_person_rounded,
-                      size: 68,
-                      color: scheme.onPrimaryContainer,
-                    ),
-                    Positioned(
-                      bottom: 12,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: scheme.surface.withValues(alpha: 0.9),
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(
-                            color: scheme.outlineVariant.withValues(alpha: 0.5),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              children: [
+                  Center(
+                    child: Container(
+                      width: 76,
+                      height: 76,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x18116B78),
+                            blurRadius: 16,
+                            offset: Offset(0, 6),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(20),
+                        child: Image.asset(
+                          'assets/padcare_icon.png',
+                          width: 76,
+                          height: 76,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Image.asset(
+                            'assets/icon/app_icon.png',
+                            width: 76,
+                            height: 76,
+                            fit: BoxFit.cover,
                           ),
                         ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE4F8F2),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFA5EAC5)),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.cloud_done_rounded,
+                            size: 13,
+                            color: Color(0xFF10B981),
+                          ),
+                          SizedBox(width: 5),
+                          Text(
+                            'Firebase Auth & Storage Connected',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFF116B78),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Welcome back',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFF172B36),
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Sign in to continue to your PadCare account',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: const Color(0xFF6B8487),
+                    ),
+                  ),
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFFCA5A5)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 22),
+                  TextField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      filled: true,
+                      fillColor: Colors.white,
+                      prefixIcon: const Icon(Icons.mail_outline, color: Color(0xFF116B78)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFF116B78), width: 1.8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: _obscure,
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      filled: true,
+                      fillColor: Colors.white,
+                      prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF116B78)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFF116B78), width: 1.8),
+                      ),
+                      suffixIcon: IconButton(
+                        icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility, color: const Color(0xFF6B8487)),
+                        onPressed: () => setState(() => _obscure = !_obscure),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Flexible(
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
-                              Icons.cloud_done_rounded,
-                              size: 14,
-                              color: Color(0xFF10B981),
+                            Checkbox(
+                              value: _remember,
+                              visualDensity: VisualDensity.compact,
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                              activeColor: const Color(0xFF116B78),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                              onChanged: (v) => setState(() => _remember = v ?? false),
                             ),
-                            const SizedBox(width: 5),
-                            Text(
-                              'Firebase Auth & Storage Connected',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w600,
-                                color: scheme.onSurface,
+                            const SizedBox(width: 4),
+                            const Flexible(
+                              child: Text(
+                                'Remember me',
+                                style: TextStyle(color: Color(0xFF172B36), fontSize: 13),
+                                overflow: TextOverflow.ellipsis,
                               ),
                             ),
                           ],
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 28),
-            Text(
-              'Welcome back',
-              style: theme.textTheme.headlineSmall
-                  ?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              'Sign in to continue to your PadCare account',
-              style: theme.textTheme.bodyMedium
-                  ?.copyWith(color: scheme.onSurfaceVariant),
-            ),
-            if (_errorMessage != null) ...[
-              const SizedBox(height: 14),
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: scheme.errorContainer,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.error_outline, color: scheme.error, size: 20),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        _errorMessage!,
-                        style: TextStyle(color: scheme.onErrorContainer, fontSize: 13),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-            const SizedBox(height: 20),
-            TextField(
-              controller: _emailController,
-              keyboardType: TextInputType.emailAddress,
-              decoration: const InputDecoration(
-                labelText: 'Email',
-                prefixIcon: Icon(Icons.mail_outline),
-                border: OutlineInputBorder(),
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _passwordController,
-              obscureText: _obscure,
-              decoration: InputDecoration(
-                labelText: 'Password',
-                prefixIcon: const Icon(Icons.lock_outline),
-                border: const OutlineInputBorder(),
-                suffixIcon: IconButton(
-                  icon: Icon(_obscure ? Icons.visibility_off : Icons.visibility),
-                  onPressed: () => setState(() => _obscure = !_obscure),
-                ),
-              ),
-            ),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    Checkbox(
-                      value: _remember,
-                      onChanged: (v) => setState(() => _remember = v ?? false),
-                    ),
-                    const Text('Remember me'),
-                  ],
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const ResetPassword(),
-                      ),
-                    );
-                  },
-                  child: const Text('Forgot password?'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 52,
-              child: FilledButton(
-                onPressed: _loading ? null : _handleSignIn,
-                child: _loading
-                    ? const SizedBox(
-                        width: 22,
-                        height: 22,
-                        child: CircularProgressIndicator(strokeWidth: 2.5),
-                      )
-                    : const Text('Sign in'),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  "Don't have an account?",
-                  style: TextStyle(color: scheme.onSurfaceVariant),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const SignupTerms(),
-                      ),
-                    );
-                  },
-                  child: const Text('Sign up'),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: scheme.surfaceContainerHighest.withValues(alpha: 0.5),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: scheme.outlineVariant.withValues(alpha: 0.5),
-                ),
-              ),
-              child: Column(
-                children: [
-                  Text(
-                    'Creator & Demo Access',
-                    style: TextStyle(
-                      color: scheme.onSurfaceVariant,
-                      fontSize: 11.5,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            PadCareAuthNavigator.openApp(
-                              context,
-                              email: 'devgtnation@gmail.com',
-                              role: 'teacher',
-                              displayName: 'Dan Mungufeni (Lead Dev)',
-                              photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
-                            );
-                          },
-                          icon: const Icon(Icons.school_outlined, size: 15),
-                          label: const Text('Dan Mungufeni', style: TextStyle(fontSize: 11.5)),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                          ),
+                      TextButton(
+                        style: TextButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            PadCareAuthNavigator.openApp(
-                              context,
-                              email: 'abetinichlas@gmail.com',
-                              role: 'parent',
-                              displayName: 'Abeti Acadri Nicholas',
-                              photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
-                            );
-                          },
-                          icon: const Icon(Icons.family_restroom_outlined, size: 15),
-                          label: const Text('Abeti Nicholas', style: TextStyle(fontSize: 11.5)),
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 8),
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const ResetPassword(),
+                            ),
+                          );
+                        },
+                        child: const Text(
+                          'Forgot password?',
+                          style: TextStyle(
+                            color: Color(0xFF116B78),
+                            fontWeight: FontWeight.w700,
+                            fontSize: 13,
                           ),
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 6),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 50,
+                    child: FilledButton(
+                      onPressed: _loading ? null : _handleSignIn,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF116B78),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: _loading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                            )
+                          : const Text('Sign in', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
                   Wrap(
                     alignment: WrapAlignment.center,
-                    spacing: 6,
+                    crossAxisAlignment: WrapCrossAlignment.center,
                     children: [
-                      ActionChip(
-                        label: const Text('Fill Dan (devgtnation)', style: TextStyle(fontSize: 10.5)),
-                        avatar: const Icon(Icons.edit_note, size: 14),
-                        visualDensity: VisualDensity.compact,
-                        onPressed: () {
-                          setState(() {
-                            _emailController.text = 'devgtnation@gmail.com';
-                            _passwordController.text = 'padcare2026';
-                          });
-                        },
+                      const Text(
+                        "Don't have an account? ",
+                        style: TextStyle(color: Color(0xFF6B8487), fontSize: 13),
                       ),
-                      ActionChip(
-                        label: const Text('Fill Nicholas (abeti)', style: TextStyle(fontSize: 10.5)),
-                        avatar: const Icon(Icons.edit_note, size: 14),
-                        visualDensity: VisualDensity.compact,
+                      TextButton(
                         onPressed: () {
-                          setState(() {
-                            _emailController.text = 'abetinichlas@gmail.com';
-                            _passwordController.text = 'padcare2026';
-                          });
+                          Navigator.of(context).push(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const SignupTerms(),
+                            ),
+                          );
                         },
+                        child: const Text('Sign up', style: TextStyle(color: Color(0xFF116B78), fontWeight: FontWeight.w800, fontSize: 13)),
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: const Color(0xFFDCECEB)),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x0A000000),
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: const [
+                            Icon(Icons.bolt_rounded, size: 16, color: Color(0xFF0D9488)),
+                            SizedBox(width: 5),
+                            Text(
+                              'Creator & Demo Access',
+                              style: TextStyle(
+                                color: Color(0xFF116B78),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 10),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  PadCareAuthNavigator.openApp(
+                                    context,
+                                    email: 'devgtnation@gmail.com',
+                                    role: 'teacher',
+                                    displayName: 'Dan Mungufeni (Lead Dev)',
+                                    photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+                                  );
+                                },
+                                icon: const Icon(Icons.school_outlined, size: 15, color: Color(0xFF116B78)),
+                                label: const Text('Dan Mungufeni', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF172B36),
+                                  side: const BorderSide(color: Color(0xFFDCECEB)),
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton.icon(
+                                onPressed: () {
+                                  PadCareAuthNavigator.openApp(
+                                    context,
+                                    email: 'abetinichlas@gmail.com',
+                                    role: 'parent',
+                                    displayName: 'Abeti Acadri Nicholas',
+                                    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+                                  );
+                                },
+                                icon: const Icon(Icons.family_restroom_outlined, size: 15, color: Color(0xFF116B78)),
+                                label: const Text('Abeti Nicholas', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: const Color(0xFF172B36),
+                                  side: const BorderSide(color: Color(0xFFDCECEB)),
+                                  padding: const EdgeInsets.symmetric(vertical: 10),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Wrap(
+                          alignment: WrapAlignment.center,
+                          spacing: 6,
+                          children: [
+                            ActionChip(
+                              label: const Text('Fill Dan (devgtnation)', style: TextStyle(fontSize: 10.5, color: Color(0xFF116B78))),
+                              avatar: const Icon(Icons.edit_note, size: 14, color: Color(0xFF116B78)),
+                              backgroundColor: const Color(0xFFE4F8F2),
+                              side: const BorderSide(color: Color(0xFFA5EAC5)),
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () {
+                                setState(() {
+                                  _emailController.text = 'devgtnation@gmail.com';
+                                  _passwordController.text = 'padcare2026';
+                                });
+                              },
+                            ),
+                            ActionChip(
+                              label: const Text('Fill Nicholas (abeti)', style: TextStyle(fontSize: 10.5, color: Color(0xFF116B78))),
+                              avatar: const Icon(Icons.edit_note, size: 14, color: Color(0xFF116B78)),
+                              backgroundColor: const Color(0xFFE4F8F2),
+                              side: const BorderSide(color: Color(0xFFA5EAC5)),
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () {
+                                setState(() {
+                                  _emailController.text = 'abetinichlas@gmail.com';
+                                  _passwordController.text = 'padcare2026';
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
             const Divider(height: 28),
             Wrap(
               alignment: WrapAlignment.center,
@@ -579,6 +678,8 @@ class _LoginHeroState extends State<LoginHero> {
           ],
         ),
       ),
+    ),
+  ),
     );
   }
 }
@@ -1403,232 +1504,375 @@ class _SignupTermsState extends State<SignupTerms> {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
     final colors = [
-      scheme.error,
-      scheme.error,
-      Colors.orange,
-      Colors.amber,
-      Colors.green,
+      const Color(0xFFEF4444),
+      const Color(0xFFF97316),
+      const Color(0xFFF59E0B),
+      const Color(0xFF10B981),
+      const Color(0xFF0D9488),
     ];
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Create account')),
-      body: ListView(
-        padding: const EdgeInsets.all(24),
-        children: [
-          Text(
-            'Get started free with PadCare',
-            style: theme.textTheme.headlineSmall
-                ?.copyWith(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Join our community network for confidential, reliable menstrual hygiene support.',
-            style: theme.textTheme.bodyMedium
-                ?.copyWith(color: scheme.onSurfaceVariant),
-          ),
-          if (_errorMessage != null) ...[
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: scheme.errorContainer,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                children: [
-                  Icon(Icons.error_outline, color: scheme.error, size: 20),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      _errorMessage!,
-                      style: TextStyle(color: scheme.onErrorContainer, fontSize: 13),
+      backgroundColor: const Color(0xFFF7FCFA),
+      appBar: AppBar(
+        title: const Text('Create account'),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+      ),
+      body: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              children: [
+                  Center(
+                    child: Container(
+                      width: 68,
+                      height: 68,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(18),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x18116B78),
+                            blurRadius: 16,
+                            offset: Offset(0, 5),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(18),
+                        child: Image.asset(
+                          'assets/padcare_icon.png',
+                          width: 68,
+                          height: 68,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Image.asset(
+                            'assets/icon/app_icon.png',
+                            width: 68,
+                            height: 68,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Get started free with PadCare',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.w900,
+                      color: const Color(0xFF172B36),
+                      letterSpacing: -0.4,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Join our community network for confidential, reliable menstrual hygiene support.',
+                    textAlign: TextAlign.center,
+                    style: theme.textTheme.bodyMedium?.copyWith(
+                      color: const Color(0xFF6B8487),
+                    ),
+                  ),
+                  if (_errorMessage != null) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFFCA5A5)),
+                      ),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              _errorMessage!,
+                              style: const TextStyle(color: Color(0xFF991B1B), fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 22),
+                  TextField(
+                    controller: _nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Full name',
+                      filled: true,
+                      fillColor: Colors.white,
+                      prefixIcon: const Icon(Icons.person_outline, color: Color(0xFF116B78)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFF116B78), width: 1.8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _emailController,
+                    keyboardType: TextInputType.emailAddress,
+                    decoration: InputDecoration(
+                      labelText: 'Email',
+                      filled: true,
+                      fillColor: Colors.white,
+                      prefixIcon: const Icon(Icons.mail_outline, color: Color(0xFF116B78)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFF116B78), width: 1.8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  TextField(
+                    controller: _passwordController,
+                    obscureText: true,
+                    onChanged: (v) => setState(() => _password = v),
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      filled: true,
+                      fillColor: Colors.white,
+                      prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF116B78)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: const BorderSide(color: Color(0xFF116B78), width: 1.8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: List.generate(4, (i) {
+                      final active = i < _strength;
+                      return Expanded(
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 250),
+                          height: 5,
+                          margin: EdgeInsets.only(right: i < 3 ? 6 : 0),
+                          decoration: BoxDecoration(
+                            color: active ? colors[_strength] : const Color(0xFFE2E8F0),
+                            borderRadius: BorderRadius.circular(3),
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Strength: ${_labels[_strength]}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: colors[_strength],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Register as',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      color: Color(0xFF172B36),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SegmentedButton<String>(
+                    style: SegmentedButton.styleFrom(
+                      selectedBackgroundColor: const Color(0xFFE4F8F2),
+                      selectedForegroundColor: const Color(0xFF116B78),
+                      foregroundColor: const Color(0xFF6B8487),
+                      side: const BorderSide(color: Color(0xFFDCECEB)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    segments: const [
+                      ButtonSegment(
+                        value: 'parent',
+                        label: Text('Community Member', style: TextStyle(fontWeight: FontWeight.w700)),
+                        icon: Icon(Icons.family_restroom_outlined),
+                      ),
+                      ButtonSegment(
+                        value: 'teacher',
+                        label: Text('Teacher', style: TextStyle(fontWeight: FontWeight.w700)),
+                        icon: Icon(Icons.school_outlined),
+                      ),
+                    ],
+                    selected: {_role},
+                    onSelectionChanged: (set) {
+                      setState(() => _role = set.first);
+                    },
+                  ),
+                  if (_role == 'teacher') ...[
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      initialValue: _school,
+                      decoration: InputDecoration(
+                        labelText: 'Select your school',
+                        filled: true,
+                        fillColor: Colors.white,
+                        prefixIcon: const Icon(Icons.location_city_outlined, color: Color(0xFF116B78)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFF116B78), width: 1.8),
+                        ),
+                      ),
+                      items: _schools
+                          .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                          .toList(),
+                      onChanged: (v) {
+                        if (v != null) setState(() => _school = v);
+                      },
+                    ),
+                  ],
+                  const SizedBox(height: 18),
+                  const Text(
+                    'Profile Avatar (Synced with Firebase Storage)',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                      color: Color(0xFF172B36),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: List.generate(_presetAvatars.length, (i) {
+                      final isSelected = _selectedAvatarIndex == i;
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedAvatarIndex = i),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          margin: const EdgeInsets.symmetric(horizontal: 8),
+                          padding: const EdgeInsets.all(3),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isSelected ? const Color(0xFF116B78) : Colors.transparent,
+                              width: 2.8,
+                            ),
+                            boxShadow: isSelected
+                                ? const [
+                                    BoxShadow(
+                                      color: Color(0x28116B78),
+                                      blurRadius: 8,
+                                      offset: Offset(0, 3),
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: CircleAvatar(
+                            radius: 24,
+                            backgroundColor: const Color(0xFFE2E8F0),
+                            backgroundImage: NetworkImage(_presetAvatars[i]),
+                            child: isSelected
+                                ? Container(
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF116B78).withValues(alpha: 0.45),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.check, color: Colors.white, size: 20),
+                                  )
+                                : null,
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                  const SizedBox(height: 12),
+                  CheckboxListTile(
+                    value: _agreed,
+                    onChanged: (v) => setState(() => _agreed = v ?? false),
+                    controlAffinity: ListTileControlAffinity.leading,
+                    contentPadding: EdgeInsets.zero,
+                    activeColor: const Color(0xFF116B78),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                    title: const Text(
+                      'I agree to the Terms of Service and Privacy Policy',
+                      style: TextStyle(fontSize: 13, color: Color(0xFF172B36)),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    height: 50,
+                    child: FilledButton(
+                      onPressed: _agreed && !_loading ? _handleCreateAccount : null,
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF116B78),
+                        foregroundColor: Colors.white,
+                        disabledBackgroundColor: const Color(0xFFE2E8F0),
+                        disabledForegroundColor: const Color(0xFF94A3B8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: _loading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2.5, color: Colors.white),
+                            )
+                          : const Text('Create account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                    ),
+                  ),
+                  const SizedBox(height: 14),
+                  Wrap(
+                    alignment: WrapAlignment.center,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    children: [
+                      const Text(
+                        'Already have an account? ',
+                        style: TextStyle(color: Color(0xFF6B8487), fontSize: 13),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pushReplacement(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const LoginHero(),
+                            ),
+                          );
+                        },
+                        child: const Text('Sign in', style: TextStyle(color: Color(0xFF116B78), fontWeight: FontWeight.w800, fontSize: 13)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
                 ],
               ),
             ),
-          ],
-          const SizedBox(height: 20),
-          TextField(
-            controller: _nameController,
-            decoration: const InputDecoration(
-              labelText: 'Full name',
-              prefixIcon: Icon(Icons.person_outline),
-              border: OutlineInputBorder(),
-            ),
           ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _emailController,
-            keyboardType: TextInputType.emailAddress,
-            decoration: const InputDecoration(
-              labelText: 'Email',
-              prefixIcon: Icon(Icons.mail_outline),
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _passwordController,
-            obscureText: true,
-            onChanged: (v) => setState(() => _password = v),
-            decoration: const InputDecoration(
-              labelText: 'Password',
-              prefixIcon: Icon(Icons.lock_outline),
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: List.generate(4, (i) {
-              final active = i < _strength;
-              return Expanded(
-                child: Container(
-                  height: 6,
-                  margin: EdgeInsets.only(right: i < 3 ? 6 : 0),
-                  decoration: BoxDecoration(
-                    color: active ? colors[_strength] : scheme.surfaceContainerHighest,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            'Strength: ${_labels[_strength]}',
-            style: theme.textTheme.bodySmall
-                ?.copyWith(color: scheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Register as',
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          SegmentedButton<String>(
-            segments: const [
-              ButtonSegment(
-                value: 'parent',
-                label: Text('Community Member'),
-                icon: Icon(Icons.family_restroom_outlined),
-              ),
-              ButtonSegment(
-                value: 'teacher',
-                label: Text('Teacher'),
-                icon: Icon(Icons.school_outlined),
-              ),
-            ],
-            selected: {_role},
-            onSelectionChanged: (set) {
-              setState(() => _role = set.first);
-            },
-          ),
-          if (_role == 'teacher') ...[
-            const SizedBox(height: 14),
-            DropdownButtonFormField<String>(
-              initialValue: _school,
-              decoration: const InputDecoration(
-                labelText: 'Select your school',
-                prefixIcon: Icon(Icons.location_city_outlined),
-                border: OutlineInputBorder(),
-              ),
-              items: _schools
-                  .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                  .toList(),
-              onChanged: (v) {
-                if (v != null) setState(() => _school = v);
-              },
-            ),
-          ],
-          const SizedBox(height: 16),
-          Text(
-            'Profile Avatar (Synced with Firebase Storage)',
-            style: theme.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(_presetAvatars.length, (i) {
-              final isSelected = _selectedAvatarIndex == i;
-              return GestureDetector(
-                onTap: () => setState(() => _selectedAvatarIndex = i),
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 6),
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isSelected ? scheme.primary : Colors.transparent,
-                      width: 2.5,
-                    ),
-                  ),
-                  child: CircleAvatar(
-                    radius: 20,
-                    backgroundColor: scheme.surfaceContainerHighest,
-                    backgroundImage: NetworkImage(_presetAvatars[i]),
-                    child: isSelected
-                        ? Container(
-                            decoration: BoxDecoration(
-                              color: scheme.primary.withValues(alpha: 0.35),
-                              shape: BoxShape.circle,
-                            ),
-                            child: const Icon(Icons.check, color: Colors.white, size: 18),
-                          )
-                        : null,
-                  ),
-                ),
-              );
-            }),
-          ),
-          const SizedBox(height: 12),
-          CheckboxListTile(
-            value: _agreed,
-            onChanged: (v) => setState(() => _agreed = v ?? false),
-            controlAffinity: ListTileControlAffinity.leading,
-            contentPadding: EdgeInsets.zero,
-            title: const Text('I agree to the Terms of Service and Privacy Policy'),
-          ),
-          const SizedBox(height: 8),
-          SizedBox(
-            height: 52,
-            child: FilledButton(
-              onPressed: _agreed && !_loading ? _handleCreateAccount : null,
-              child: _loading
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2.5),
-                    )
-                  : const Text('Create account'),
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                'Already have an account?',
-                style: TextStyle(color: scheme.onSurfaceVariant),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pushReplacement(
-                    MaterialPageRoute<void>(
-                      builder: (_) => const LoginHero(),
-                    ),
-                  );
-                },
-                child: const Text('Sign in'),
-              ),
-            ],
-          ),
-        ],
-      ),
+        ),
     );
   }
 }
@@ -1657,10 +1901,37 @@ class SocialLogin extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               const Spacer(),
-              Icon(
-                Icons.volunteer_activism_rounded,
-                size: 64,
-                color: scheme.primary,
+              Center(
+                child: Container(
+                  width: 76,
+                  height: 76,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.08),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(18),
+                    child: Image.asset(
+                      'assets/padcare_icon.png',
+                      width: 76,
+                      height: 76,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                        'assets/icon/app_icon.png',
+                        width: 76,
+                        height: 76,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                ),
               ),
               const SizedBox(height: 20),
               Text(
@@ -1961,22 +2232,42 @@ class Welcome extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.all(28),
-            child: Column(
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480),
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Column(
               children: [
                 const Spacer(),
                 Container(
                   width: 96,
                   height: 96,
                   decoration: BoxDecoration(
-                    color: scheme.onPrimary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(28),
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.12),
+                        blurRadius: 16,
+                        offset: const Offset(0, 6),
+                      ),
+                    ],
                   ),
-                  child: Icon(
-                    Icons.volunteer_activism_rounded,
-                    size: 52,
-                    color: scheme.onPrimary,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(24),
+                    child: Image.asset(
+                      'assets/padcare_icon.png',
+                      width: 96,
+                      height: 96,
+                      fit: BoxFit.cover,
+                      errorBuilder: (context, error, stackTrace) => Image.asset(
+                        'assets/icon/app_icon.png',
+                        width: 96,
+                        height: 96,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 28),
@@ -2195,7 +2486,9 @@ class Welcome extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }
 

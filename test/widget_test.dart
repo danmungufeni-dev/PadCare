@@ -352,7 +352,7 @@ void main() {
     expect(find.text('Hello, there!'), findsOneWidget);
   });
 
-  testWidgets('PadHer cycle tracker and emergency pad SOS workflow', (
+  testWidgets('PadCare cycle tracker and emergency pad SOS workflow', (
     tester,
   ) async {
     SharedPreferences.setMockInitialValues({});
@@ -364,10 +364,10 @@ void main() {
     await tester.tap(find.byKey(const ValueKey('submit-access')));
     await tester.pumpAndSettle();
 
-    // Verify PadHer branding and new elevated features on Home
-    expect(find.text('PadHer'), findsWidgets);
+    // Verify PadCare branding and new elevated features on Home
+    expect(find.text('PadCare'), findsWidgets);
     expect(find.text('Urgent Pad SOS'), findsOneWidget);
-    expect(find.text('PadHer Cycle Dignity Tracker'), findsOneWidget);
+    expect(find.text('PadCare Cycle Dignity Tracker'), findsOneWidget);
 
     // Tap Emergency SOS "Get Now"
     final getNowBtn = find.text('Get Now');
@@ -389,7 +389,7 @@ void main() {
     await tester.ensureVisible(activityBtn);
     await tester.tap(activityBtn);
     await tester.pumpAndSettle();
-    expect(find.textContaining('Request PH-SOS-'), findsOneWidget);
+    expect(find.textContaining('Request PC-SOS-'), findsOneWidget);
     expect(find.text('Ready'), findsOneWidget);
   });
 }

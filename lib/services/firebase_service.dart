@@ -6,6 +6,15 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import '../firebase_options.dart';
 
+export 'auth_service.dart';
+export 'school_service.dart';
+export 'request_service.dart';
+export 'pin_service.dart';
+export 'inventory_service.dart';
+export 'sponsor_service.dart';
+export 'analytics_service.dart';
+export 'notification_service.dart';
+
 class AuthResult {
   final bool isSuccess;
   final String? errorMessage;
@@ -909,6 +918,27 @@ class FirestoreService {
         },
         SetOptions(merge: true),
       );
+
+      final rawPin = requestData['pickupPin']?.toString();
+      if (rawPin != null && rawPin.isNotEmpty) {
+        final cleanPin = rawPin.replaceAll('#', '').replaceFirst(RegExp(r'^(PH-|REQ-)', caseSensitive: false), '').trim();
+        if (cleanPin.isNotEmpty) {
+          final expires = DateTime.now().add(const Duration(days: 7));
+          await _db!.collection('pin_records').doc(cleanPin).set({
+            'pin': cleanPin,
+            'requestId': id,
+            'reference': requestData['reference'] ?? 'PH-$cleanPin',
+            'schoolId': requestData['school'] ?? '',
+            'productId': requestData['product'] ?? 'Disposable pads',
+            'quantity': requestData['quantity'] ?? 1,
+            'status': requestData['status'] == 'Collected' ? 'redeemed' : 'active',
+            'failedAttempts': 0,
+            'expiresAt': expires.toIso8601String(),
+            'createdAt': FieldValue.serverTimestamp(),
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+      }
     } catch (e) {
       debugPrint('Firestore saveRequest error: $e');
     }
@@ -1102,6 +1132,21 @@ class FirestoreService {
         data['id'] ??= queryRefReq.docs.first.id;
         return data;
       }
+
+      // 5. Query pin_records collection by document ID
+      final pinDoc = await _db!.collection('pin_records').doc(clean).get();
+      if (pinDoc.exists && pinDoc.data() != null) {
+        final pinData = pinDoc.data()!;
+        final reqId = pinData['requestId']?.toString();
+        if (reqId != null && reqId.isNotEmpty) {
+          final reqDoc = await _db!.collection('requests').doc(reqId).get();
+          if (reqDoc.exists && reqDoc.data() != null) {
+            final data = reqDoc.data()!;
+            data['id'] ??= reqDoc.id;
+            return data;
+          }
+        }
+      }
     } catch (e) {
       debugPrint('Firestore findRequestByPin error: $e');
     }
@@ -1194,6 +1239,18 @@ class FirestoreService {
           'updatedAt': FieldValue.serverTimestamp(),
         });
 
+        // Mark associated PIN record as redeemed
+        final cleanPin = pin.replaceAll('#', '').replaceFirst(RegExp(r'^(PH-|REQ-)', caseSensitive: false), '').trim();
+        if (cleanPin.isNotEmpty) {
+          final pinDocRef = _db!.collection('pin_records').doc(cleanPin);
+          transaction.set(pinDocRef, {
+            'status': 'redeemed',
+            'redeemedAt': FieldValue.serverTimestamp(),
+            'redeemedBy': dispensedBy,
+            'updatedAt': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
+        }
+
         // Audit log
         final dispId = 'DISP-$requestId-${DateTime.now().millisecondsSinceEpoch}';
         final dispRef = _db!.collection('dispensations').doc(dispId);
@@ -1205,6 +1262,7 @@ class FirestoreService {
           'product': product,
           'quantity': quantity,
           'dispensedBy': dispensedBy,
+          'dispensedAt': FieldValue.serverTimestamp(),
           'timestamp': FieldValue.serverTimestamp(),
           'status': 'completed',
         });

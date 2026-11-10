@@ -1,0 +1,272 @@
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const admin = require("firebase-admin");
+
+admin.initializeApp();
+const db = admin.firestore();
+
+/**
+ * 1. SECURE SERVER-SIDE PIN GENERATION
+ * Callable function invoked when a teacher submits a student sanitary pad request.
+ * Generates a unique 4-digit numeric string, creates `pin_records`, and updates `requests`.
+ */
+exports.generateRequestPin = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Authentication required to generate request PIN.");
+  }
+
+  const { requestId, schoolId, productId, quantity, teacherName } = request.data || {};
+  if (!requestId || !schoolId || !quantity) {
+    throw new HttpsError("invalid-argument", "Missing required parameters: requestId, schoolId, quantity.");
+  }
+
+  // 1. Generate unique 4-digit PIN not in active use
+  let candidatePin = "";
+  let isUnique = false;
+  let attempts = 0;
+
+  while (!isUnique && attempts < 20) {
+    attempts++;
+    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    candidatePin = randomNum.toString();
+
+    const existingDoc = await db.collection("pin_records").doc(candidatePin).get();
+    if (!existingDoc.exists) {
+      isUnique = true;
+    } else {
+      const data = existingDoc.data();
+      if (data.status !== "active") {
+        isUnique = true; // Safe to recycle inactive or old redeemed pins
+      }
+    }
+  }
+
+  if (!isUnique) {
+    candidatePin = (1000 + (Date.now() % 9000)).toString();
+  }
+
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 30); // 30-day validity
+
+  const reference = `PH-${candidatePin}`;
+
+  const batch = db.batch();
+
+  // Create PIN Record
+  const pinRef = db.collection("pin_records").doc(candidatePin);
+  batch.set(pinRef, {
+    pin: candidatePin,
+    requestId: requestId,
+    reference: reference,
+    schoolId: schoolId,
+    productId: productId || "disposable-pads",
+    quantity: Number(quantity),
+    status: "active",
+    failedAttempts: 0,
+    expiresAt: admin.firestore.Timestamp.fromDate(expiresAt),
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+    createdByUid: request.auth.uid,
+    createdByName: teacherName || "Teacher",
+  });
+
+  // Update Request Record
+  const reqRef = db.collection("requests").doc(requestId);
+  batch.set(
+    reqRef,
+    {
+      reference: reference,
+      pickupPin: candidatePin,
+      status: "Approved",
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+
+  await batch.commit();
+
+  return {
+    success: true,
+    pin: candidatePin,
+    reference: reference,
+    expiresAt: expiresAt.toISOString(),
+  };
+});
+
+/**
+ * 2. ATOMIC PIN DISPENSE AND INVENTORY HANDOUT
+ * Callable function executed when a school administrator enters a PIN.
+ * Atomic transaction ensures:
+ * - PIN is valid, active, and belongs to admin's school
+ * - Stock is available and atomically deducted
+ * - Request is marked Collected
+ * - Distribution transaction is logged
+ * - Double dispensing is strictly prevented
+ */
+exports.dispenseByPin = onCall(async (request) => {
+  if (!request.auth) {
+    throw new HttpsError("unauthenticated", "Authentication required to dispense products.");
+  }
+
+  const { pin, schoolFacility, dispensedByName } = request.data || {};
+  if (!pin || !schoolFacility) {
+    throw new HttpsError("invalid-argument", "Missing required parameters: pin, schoolFacility.");
+  }
+
+  const cleanPin = pin.toString().replace(/#/g, "").trim();
+
+  return await db.runTransaction(async (transaction) => {
+    // 1. Verify PIN Record
+    const pinRef = db.collection("pin_records").doc(cleanPin);
+    const pinDoc = await transaction.get(pinRef);
+
+    if (!pinDoc.exists) {
+      throw new HttpsError("not-found", `PIN #${cleanPin} does not exist in the system.`);
+    }
+
+    const pinData = pinDoc.data();
+
+    if (pinData.status === "redeemed") {
+      throw new HttpsError("failed-precondition", `PIN #${cleanPin} was already collected and dispensed.`);
+    }
+
+    if (pinData.status !== "active") {
+      throw new HttpsError("failed-precondition", `PIN #${cleanPin} is no longer active (${pinData.status}).`);
+    }
+
+    // Check school facility match
+    const normSchool = schoolFacility.toLowerCase();
+    const pinSchool = (pinData.schoolId || "").toLowerCase();
+    if (!normSchool.includes(pinSchool) && !pinSchool.includes(normSchool)) {
+      throw new HttpsError("permission-denied", `PIN #${cleanPin} belongs to ${pinData.schoolId}, not ${schoolFacility}.`);
+    }
+
+    // 2. Verify Request
+    const reqRef = db.collection("requests").doc(pinData.requestId);
+    const reqDoc = await transaction.get(reqRef);
+    if (!reqDoc.exists) {
+      throw new HttpsError("not-found", `Associated request for PIN #${cleanPin} was not found.`);
+    }
+
+    const reqData = reqDoc.data();
+    if (reqData.status === "Collected") {
+      throw new HttpsError("already-exists", `Request ${pinData.reference} was already collected.`);
+    }
+
+    // 3. Verify Stock in School Facility
+    const schoolRef = db.collection("schools").doc(schoolFacility);
+    const schoolDoc = await transaction.get(schoolRef);
+
+    const isKit = (pinData.productId || "").toLowerCase().includes("kit");
+    const requestedQty = Number(pinData.quantity) || 1;
+
+    let availableStock = 0;
+    if (schoolDoc.exists) {
+      const sData = schoolDoc.data();
+      availableStock = isKit ? (sData.kitsOnHand || 0) : (sData.packsOnHand || 0);
+    }
+
+    if (availableStock < requestedQty) {
+      throw new HttpsError("resource-exhausted", `Insufficient stock at ${schoolFacility}. Available: ${availableStock}, Requested: ${requestedQty}.`);
+    }
+
+    // 4. Atomic Deductions & State Transitions
+    // A. Update School Stock
+    transaction.set(
+      schoolRef,
+      {
+        [isKit ? "kitsOnHand" : "packsOnHand"]: availableStock - requestedQty,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      },
+      { merge: true }
+    );
+
+    // B. Mark Request as Collected
+    transaction.update(reqRef, {
+      status: "Collected",
+      collectedAt: admin.firestore.FieldValue.serverTimestamp(),
+      collectedBy: dispensedByName || request.auth.token.email || "School Staff",
+      updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+    });
+
+    // C. Mark PIN as Redeemed
+    transaction.update(pinRef, {
+      status: "redeemed",
+      redeemedAt: admin.firestore.FieldValue.serverTimestamp(),
+      redeemedByUid: request.auth.uid,
+    });
+
+    // D. Create Immutable Distribution Audit Record
+    const dispRef = db.collection("dispensations").doc(`DIST-${pinData.requestId}-${Date.now()}`);
+    transaction.set(dispRef, {
+      requestId: pinData.requestId,
+      reference: pinData.reference,
+      pickupPin: cleanPin,
+      school: schoolFacility,
+      productId: pinData.productId,
+      quantity: requestedQty,
+      dispensedBy: dispensedByName || request.auth.token.email || "School Staff",
+      dispensedByUid: request.auth.uid,
+      dispensedAt: admin.firestore.FieldValue.serverTimestamp(),
+      status: "completed",
+    });
+
+    return {
+      success: true,
+      pin: cleanPin,
+      reference: pinData.reference,
+      quantity: requestedQty,
+      product: pinData.productId,
+      school: schoolFacility,
+    };
+  });
+});
+
+/**
+ * 3. NOTIFICATION TRIGGER ON REQUEST STATUS UPDATE
+ */
+exports.sendRequestNotification = onDocumentUpdated("requests/{requestId}", async (event) => {
+  const before = event.data.before.data();
+  const after = event.data.after.data();
+
+  if (before.status === after.status) return;
+
+  const teacherUid = after.teacherUid;
+  if (!teacherUid) return;
+
+  // Retrieve teacher profile and device token
+  const teacherDoc = await db.collection("users").doc(teacherUid).get();
+  if (!teacherDoc.exists) return;
+
+  const teacherData = teacherDoc.data();
+  const fcmToken = teacherData.fcmToken;
+
+  // Insert in-app notification document
+  await db.collection("notifications").add({
+    recipientUid: teacherUid,
+    schoolId: after.schoolId || after.school,
+    title: `Request ${after.reference || after.id} Updated`,
+    body: `Your request status has changed to: ${after.status}.`,
+    type: "request_update",
+    read: false,
+    createdAt: admin.firestore.FieldValue.serverTimestamp(),
+  });
+
+  // If FCM token available, send push alert
+  if (fcmToken) {
+    try {
+      await admin.messaging().send({
+        token: fcmToken,
+        notification: {
+          title: `Request ${after.reference} Update`,
+          body: `Status: ${after.status} at ${after.school}.`,
+        },
+        data: {
+          requestId: String(event.params.requestId),
+          status: String(after.status),
+        },
+      });
+    } catch (err) {
+      console.warn("FCM push delivery error:", err);
+    }
+  }
+});

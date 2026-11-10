@@ -657,5 +657,175 @@ void main() {
 
       expect(find.textContaining('already collected/dispensed'), findsOneWidget);
     });
+
+    // -------------------------------------------------------------
+    // Test N: Multi-Session Cross-Role Flow: Teacher creates request in Teacher flow ->
+    // Persists with PIN -> Administrator logs in on separate session ->
+    // Receives Request PH-<PIN> -> Enters #<PIN> -> Dispenses successfully ->
+    // Database updates automatically -> Double-dispensing and cross-school are blocked.
+    // -------------------------------------------------------------
+    testWidgets('Test N: Cross-Session Teacher-to-Admin Flow: Teacher creates request, Admin redeems PIN #<PIN> in separate session, stock updates, double dispense blocked', (tester) async {
+      final initialData = {
+        'requests': <Map<String, dynamic>>[],
+        'stock': {"St. Mary's Secondary::Disposable pads": 30, "Oli Primary School::Disposable pads": 20},
+      };
+
+      SharedPreferences.setMockInitialValues({
+        'padcare.localState.v1': jsonEncode(initialData),
+      });
+
+      // -----------------------------------------------------------
+      // SESSION 1: TEACHER creates request for 4 packs of disposable pads
+      // -----------------------------------------------------------
+      await tester.pumpWidget(const MaterialApp(
+        home: HomeScreen(facility: "St. Mary's Secondary", teacherName: 'Teacher Grace'),
+      ));
+      await tester.pumpAndSettle();
+
+      // Navigate to Requests tab
+      await tester.tap(find.text('Requests'));
+      await tester.pumpAndSettle();
+
+      // Tap New Student Request button
+      final newReqBtn = find.byKey(const ValueKey('teacher-new-request-btn'));
+      expect(newReqBtn, findsOneWidget);
+      await tester.tap(newReqBtn);
+      await tester.pumpAndSettle();
+
+      // Select 4 packs
+      await tester.tap(find.text('4'));
+      await tester.pumpAndSettle();
+
+      // Tap 'Generate PIN & Save Request'
+      final saveBtn = find.byKey(const ValueKey('save-teacher-request-btn'));
+      await tester.tap(saveBtn);
+      await tester.pumpAndSettle();
+
+      // System generates PIN and displays dialog
+      expect(find.text('PIN Generated'), findsOneWidget);
+      expect(find.text('Request ID'), findsOneWidget);
+
+      // Verify the generated PIN and reference in persistent storage
+      final prefs = await SharedPreferences.getInstance();
+      final localJson = prefs.getString('padcare.localState.v1');
+      expect(localJson, isNotNull);
+      final decoded = jsonDecode(localJson!) as Map<String, dynamic>;
+      final requests = decoded['requests'] as List;
+      expect(requests.length, 1);
+      final generatedReq = requests.first as Map<String, dynamic>;
+      final generatedPin = generatedReq['pickupPin'].toString();
+      final generatedRef = generatedReq['reference'].toString();
+
+      // Assert relationship between PIN and Request ID
+      expect(generatedPin.length, 4);
+      expect(generatedRef, 'PH-$generatedPin');
+      expect(generatedReq['quantity'], 4);
+      expect(generatedReq['product'], 'Disposable pads');
+      expect(generatedReq['school'], "St. Mary's Secondary");
+
+      // Dismiss dialog and terminate Teacher session
+      await tester.tap(find.text('Done'));
+      await tester.pumpAndSettle();
+
+      // Unmount Teacher session
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+
+      // -----------------------------------------------------------
+      // SESSION 2: ADMINISTRATOR logs into St. Mary's Secondary
+      // -----------------------------------------------------------
+      await tester.pumpWidget(const MaterialApp(
+        home: HomeScreen(facility: "St. Mary's Secondary", teacherName: 'Matron Mary'),
+      ));
+      await tester.pumpAndSettle();
+
+      // Administrator receives request in Requests section
+      await tester.tap(find.text('Requests'));
+      await tester.pumpAndSettle();
+
+      // Verify Administrator sees the exact Request PH-<PIN>
+      expect(find.text('Request $generatedRef'), findsOneWidget);
+      expect(find.text('4 packs of Disposable pads'), findsOneWidget);
+
+      // Administrator enters #<PIN> with leading '#' into 1-Tap PIN Dispense field
+      final pinField = find.byType(TextField);
+      await tester.ensureVisible(pinField);
+      await tester.enterText(pinField, '#$generatedPin');
+      await tester.pump();
+
+      // Administrator taps Dispense
+      final dispenseBtn = find.byKey(const ValueKey('verify-pin-dispense-btn'));
+      await tester.ensureVisible(dispenseBtn);
+      await tester.tap(dispenseBtn);
+      await tester.pumpAndSettle();
+
+      // Dispense confirmation dialog displays matching request information
+      expect(find.text('Confirm Dispense & Handout'), findsOneWidget);
+      expect(find.text(generatedRef), findsWidgets);
+      expect(find.text('#$generatedPin'), findsWidgets);
+      expect(find.text("St. Mary's Secondary"), findsWidgets);
+      expect(find.text('4 packs'), findsWidgets);
+      expect(find.text('30 packs'), findsOneWidget); // Initial stock
+      expect(find.text('26 packs'), findsOneWidget); // Remaining stock (30 - 4 = 26)
+
+      // Administrator confirms dispensing
+      final confirmBtn = find.byKey(const ValueKey('confirm-dispense-dialog-btn'));
+      await tester.tap(confirmBtn);
+      await tester.pumpAndSettle();
+
+      // Success notification displayed
+      expect(find.textContaining('Verified PIN #$generatedPin! Dispensed 4 Disposable pads'), findsOneWidget);
+
+      // Database updates automatically
+      final updatedJson = prefs.getString('padcare.localState.v1');
+      final updatedData = jsonDecode(updatedJson!) as Map<String, dynamic>;
+      final updatedReq = (updatedData['requests'] as List).first as Map<String, dynamic>;
+      expect(updatedReq['status'], 'Collected');
+
+      // Stock reduced by 4 packs: 30 - 4 = 26
+      final updatedStock = updatedData['stock'] as Map<String, dynamic>;
+      expect(updatedStock["St. Mary's Secondary::Disposable pads"], 26);
+
+      // Verify request card on screen reflects 'Collected'
+      expect(find.text('Collected'), findsWidgets);
+
+      // -----------------------------------------------------------
+      // PREVENT DOUBLE DISPENSING: Entering the same PIN again must fail
+      // -----------------------------------------------------------
+      await tester.ensureVisible(pinField);
+      await tester.enterText(pinField, '#$generatedPin');
+      await tester.ensureVisible(dispenseBtn);
+      await tester.tap(dispenseBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('was already collected/dispensed'), findsOneWidget);
+
+      // -----------------------------------------------------------
+      // SESSION 3: DIFFERENT SCHOOL ADMINISTRATOR (Oli Primary School)
+      // Attempting to redeem PIN from another school must be rejected
+      // -----------------------------------------------------------
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+
+      await tester.pumpWidget(const MaterialApp(
+        home: HomeScreen(facility: "Oli Primary School", teacherName: 'Headteacher John'),
+      ));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Requests'));
+      await tester.pumpAndSettle();
+
+      final oliPinField = find.byType(TextField);
+      await tester.ensureVisible(oliPinField);
+      await tester.enterText(oliPinField, generatedPin);
+
+      final oliDispenseBtn = find.byKey(const ValueKey('verify-pin-dispense-btn'));
+      await tester.ensureVisible(oliDispenseBtn);
+      await tester.tap(oliDispenseBtn);
+      await tester.pumpAndSettle();
+
+      // System rejects cross-school redemption with explicit school mismatch notification
+      expect(find.textContaining("is registered for pickup at St. Mary's Secondary, not Oli Primary School"), findsOneWidget);
+    });
   });
 }

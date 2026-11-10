@@ -9,78 +9,204 @@ service cloud.firestore {
     // Collection: users
     // Document ID: {userId} (Firebase Auth UID)
     // Fields:
-    //   - uid: string (required) - Firebase Auth UID
-    //   - email: string (required) - User email address
-    //   - displayName: string (required) - Full user name
-    //   - role: string (required, 'teacher' | 'parent' | 'admin') - User role
-    //   - school: string (optional) - Affiliated school name
-    //   - authorized: bool (required) - Whether teacher/staff is authorized by admin
-    //   - status: string (required, 'pending' | 'approved' | 'rejected')
-    //   - photoUrl: string (optional)
-    //   - phoneNumber: string (optional)
+    //   - uid: string (required, 1..128 chars) - Firebase Auth UID
+    //   - email: string (required, valid email, <= 128 chars) - User email address
+    //   - role: string (required, 'teacher' | 'school_admin' | 'sponsor' | 'super_admin' | 'parent' | 'admin' | 'staff' | 'matron')
+    //   - displayName: string (optional, <= 100 chars)
+    //   - fullName: string (optional, <= 100 chars)
+    //   - name: string (optional, <= 100 chars)
+    //   - school: string (optional, <= 120 chars) - Associated school facility
+    //   - schoolId: string (optional, <= 120 chars) - Associated school identifier
+    //   - schoolName: string (optional, <= 120 chars) - School display name
+    //   - authorized: bool (optional) - Verification/authorization status
+    //   - status: string (optional, <= 50 chars)
+    //   - accountStatus: string (optional, <= 50 chars)
+    //   - photoUrl: string (optional, <= 500 chars) - User avatar URL
+    //   - phoneNumber: string (optional, <= 30 chars)
+    //   - fcmToken: string (optional, <= 256 chars) - Push notification device token
+    //   - tokenUpdatedAt: timestamp (optional)
+    //   - createdAt: timestamp or string (optional)
     //   - updatedAt: timestamp (optional)
+    //   - lastLoginAt: timestamp or string (optional)
+    //   - notificationPreferences: map (optional)
     //
     // Collection: schools
-    // Document ID: {schoolId} (School Name / Facility ID)
+    // Document ID: {schoolId} (School Facility ID e.g. 'st-marys-secondary')
     // Fields:
-    //   - name: string (required) - School facility name
-    //   - kitsOnHand: int (optional) - Reusable dignity kits in inventory
-    //   - packsOnHand: int (optional) - Disposable sanitary pad packs in inventory
+    //   - name: string (required, 2..150 chars) - School facility name
+    //   - schoolId: string (optional, <= 120 chars)
+    //   - id: string (optional, <= 120 chars)
+    //   - registrationNumber: string (optional, <= 50 chars)
+    //   - district: string (optional, <= 50 chars)
+    //   - subCounty: string (optional, <= 50 chars)
+    //   - contactPhone: string (optional, <= 30 chars)
+    //   - contactEmail: string (optional, <= 100 chars)
+    //   - logoUrl: string (optional, <= 500 chars)
+    //   - status: string (optional, 'active' | 'pending' | 'suspended')
+    //   - assignedStaffUids: list (optional, max 100 items)
+    //   - kitsOnHand: int/number (optional, >= 0) - Reusable dignity kits in inventory
+    //   - packsOnHand: int/number (optional, >= 0) - Disposable pad packs in inventory
+    //   - createdAt: timestamp or string (optional)
+    //   - updatedAt: timestamp (optional)
+    //
+    // Collection: inventory
+    // Document ID: {inventoryId}
+    // Fields:
+    //   - schoolId: string (required, 1..120 chars) - School facility ID
+    //   - productId: string (required, 1..100 chars) - Item product identifier
+    //   - productName: string (required, 1..100 chars) - Item product name
+    //   - availableQuantity: int/number (required, >= 0)
+    //   - reservedQuantity: int/number (optional, >= 0)
+    //   - totalReceived: int/number (optional, >= 0)
+    //   - totalDistributed: int/number (optional, >= 0)
+    //   - unit: string (optional, <= 30 chars)
+    //   - lowStockThreshold: int/number (optional, >= 0)
+    //   - id: string (optional, <= 120 chars)
+    //   - lastUpdated: timestamp or string (optional)
+    //   - createdAt: timestamp or string (optional)
     //   - updatedAt: timestamp (optional)
     //
     // Collection: requests
     // Document ID: {requestId}
     // Fields:
-    //   - id: string (optional) - Request identifier
-    //   - reference: string (optional) - Reference code (e.g., REQ-...)
-    //   - pickupPin: string (optional) - 4-digit verification PIN
-    //   - school: string (optional) - Designated pickup school
-    //   - area: string (optional) - Community / sub-county area
-    //   - product: string (optional) - Sanitary product type requested
-    //   - quantity: int (optional) - Quantity requested
-    //   - status: string (optional) - 'Pending' | 'Approved' | 'Collected' | etc.
-    //   - createdAt: string or timestamp (optional)
+    //   - teacherUid: string (required, 1..128 chars) - Requesting teacher's Auth UID
+    //   - quantity: int/number (required, > 0 and <= 500)
+    //   - pickupPin: string or int (required, 4..16 chars) - Verification PIN
+    //   - schoolId: string (optional, <= 120 chars) - Designated school facility
+    //   - school: string (optional, <= 120 chars)
+    //   - schoolName: string (optional, <= 120 chars)
+    //   - status: string (optional, <= 50 chars) - Request lifecycle state
+    //   - reference: string (optional, <= 100 chars)
+    //   - teacherName: string (optional, <= 100 chars)
+    //   - productId: string (optional, <= 100 chars)
+    //   - product: string (optional, <= 100 chars)
+    //   - productName: string (optional, <= 100 chars)
+    //   - area: string (optional, <= 100 chars)
+    //   - requestId: string (optional, <= 120 chars)
+    //   - id: string (optional, <= 120 chars)
+    //   - collectedBy: string (optional, <= 128 chars)
+    //   - createdAt: timestamp or string (optional)
+    //   - updatedAt: timestamp (optional)
+    //   - approvedAt: timestamp or string (optional)
+    //   - collectedAt: timestamp or string (optional)
+    //
+    // Collection: pin_records
+    // Document ID: {pin} (4-digit numeric verification PIN)
+    // Fields:
+    //   - pin: string (required, 4..16 chars) - Verification PIN
+    //   - requestId: string (required, 1..120 chars) - Associated request ID
+    //   - schoolId: string (required, 1..120 chars) - School facility ID
+    //   - quantity: int/number (required, > 0 and <= 500)
+    //   - status: string (required, 'active' | 'redeemed' | 'expired' | 'revoked')
+    //   - reference: string (optional, <= 100 chars)
+    //   - productId: string (optional, <= 100 chars)
+    //   - failedAttempts: int/number (optional, >= 0)
+    //   - creatorUid: string (optional, <= 128 chars)
+    //   - expiresAt: timestamp or string (optional)
+    //   - createdAt: timestamp or string (optional)
+    //   - redeemedAt: timestamp or string (optional)
+    //   - lastAttemptAt: timestamp (optional)
+    //   - updatedAt: timestamp (optional)
+    //
+    // Collection: dispensations
+    // Document ID: {dispensationId}
+    // Fields:
+    //   - school: string (required, 2..120 chars) - School facility name
+    //   - product: string (required, 2..100 chars) - Product dispensed
+    //   - quantity: int/number (required, > 0 and <= 100)
+    //   - dispensedBy: string (required, 1..128 chars) - Dispensing staff UID / email
+    //   - dispensedAt: timestamp or string (required) - Timestamp of distribution
+    //   - schoolId: string (optional, <= 120 chars)
+    //   - dispensationId: string (optional, <= 120 chars)
+    //   - id: string (optional, <= 120 chars)
+    //   - requestId: string (optional, <= 120 chars)
+    //   - reference: string (optional, <= 100 chars)
+    //   - pickupPin: string (optional, <= 16 chars)
+    //   - status: string (optional, <= 40 chars)
+    //   - beneficiaryType: string (optional, <= 50 chars)
+    //   - notes: string (optional, <= 500 chars)
+    //   - academicTerm: string (optional, <= 30 chars)
+    //   - academicYear: string or int (optional)
+    //   - timestamp: timestamp (optional)
+    //   - createdAt: timestamp or string (optional)
     //   - updatedAt: timestamp (optional)
     //
     // Collection: donations
     // Document ID: {donationId}
     // Fields:
-    //   - amount: number (required) - Donated amount in UGX
-    //   - currency: string (required) - 'UGX'
-    //   - donorName: string (optional) - Name of donor
-    //   - phone: string (optional) - MoMo phone number
-    //   - status: string (required) - 'completed' | 'pending' | 'failed'
-    //   - timestamp: timestamp (optional)
+    //   - amount: int/number (required, > 0) - Amount donated
+    //   - currency: string (required, == 'UGX')
+    //   - reference: string (required, 3..100 chars) - MoMo/Card transaction reference
+    //   - sponsorUid: string (optional, <= 128 chars) - Donor UID
+    //   - uid: string (optional, <= 128 chars)
+    //   - donorName: string (optional, <= 100 chars)
+    //   - sponsorName: string (optional, <= 100 chars)
+    //   - phone: string (optional, <= 30 chars)
+    //   - amountUgx: int/number (optional, > 0)
+    //   - kitsFunded: int/number (optional, >= 0)
+    //   - sponsoredKits: int/number (optional, >= 0)
+    //   - schoolId: string (optional, <= 120 chars)
+    //   - school: string (optional, <= 120 chars)
+    //   - paymentMethod: string (optional, <= 50 chars)
+    //   - provider: string (optional, <= 50 chars)
+    //   - status: string (optional, 'completed' | 'pending' | 'failed')
+    //   - transactionReference: string (optional, <= 100 chars)
+    //   - donationId: string (optional, <= 120 chars)
+    //   - id: string (optional, <= 120 chars)
+    //   - timestamp: timestamp or string (optional)
+    //   - createdAt: timestamp or string (optional)
+    //   - updatedAt: timestamp (optional)
+    //
+    // Collection: campaigns
+    // Document ID: {campaignId}
+    // Fields:
+    //   - title: string (required, 2..200 chars)
+    //   - description: string (required, <= 2000 chars)
+    //   - targetKits: int/number (required, > 0)
+    //   - targetUGX: int/number (required, > 0)
+    //   - status: string (required, 'active' | 'completed' | 'paused' | 'archived')
+    //   - fundedKits: int/number (optional, >= 0)
+    //   - raisedUGX: int/number (optional, >= 0)
+    //   - campaignId: string (optional, <= 120 chars)
+    //   - id: string (optional, <= 120 chars)
+    //   - createdAt: timestamp or string (optional)
+    //   - updatedAt: timestamp (optional)
+    //
+    // Collection: notifications
+    // Document ID: {notificationId}
+    // Fields:
+    //   - recipientUid: string (required, 1..128 chars) - Target recipient Auth UID
+    //   - title: string (required, 1..200 chars)
+    //   - body: string (required, 1..1000 chars)
+    //   - type: string (required, 'request_update' | 'dispense' | 'low_stock' | 'announcement')
+    //   - read: bool (required)
+    //   - id: string (optional, <= 120 chars)
+    //   - schoolId: string (optional, <= 120 chars)
+    //   - createdAt: timestamp or string (optional)
+    //   - updatedAt: timestamp (optional)
+    //
+    // Collection: audit_logs
+    // Document ID: {logId}
+    // Fields:
+    //   - action: string (required, 2..100 chars) - Performed action description
+    //   - performedBy: string (required, 1..128 chars) - Staff UID / identifier
+    //   - schoolId: string (optional, <= 120 chars)
+    //   - details: map (optional)
+    //   - logId: string (optional, <= 120 chars)
+    //   - timestamp: timestamp or string (optional)
+    //   - createdAt: timestamp or string (optional)
     //
     // Collection: restock_requests
     // Document ID: {requisitionId}
     // Fields:
-    //   - id: string (optional) - Requisition identifier
-    //   - school: string (required) - Requesting school
-    //   - kitsNeeded: int (optional) - Reusable kits requested from central hub
-    //   - packsNeeded: int (optional) - Disposable packs requested
-    //   - urgency: string (optional) - 'Standard' | 'Critical'
-    //   - status: string (optional) - Requisition state
-    //   - createdAt: timestamp (optional)
-    //
-    // Collection: dispensations
-    // Document ID: {dispensationId}
-    // Fields:
-    //   - school: string (required, 2..120 chars) - School/facility dispensing pads
-    //   - product: string (required, 2..80 chars) - Product dispensed (e.g. 'Reusable Dignity Kit', 'Disposable Pads')
-    //   - quantity: int (required, > 0 and <= 100) - Number of pad units/kits dispensed
-    //   - dispensedBy: string (required, 1..128 chars) - Dispensing staff UID or verified email
-    //   - dispensedAt: timestamp (required) - Timestamp of handout transaction
-    //   - dispensationId: string (optional, 1..100 chars) - Document identifier if duplicated in body
-    //   - requestId: string (optional, 1..100 chars) - Associated request ID / reference code
-    //   - reference: string (optional, 1..100 chars) - Human-readable request reference
-    //   - pickupPin: string (optional, 1..16 chars) - Confidential pickup PIN verified
-    //   - status: string (optional, 1..40 chars) - 'dispensed' | 'collected' | 'verified' | 'audited'
-    //   - beneficiaryType: string (optional, 1..50 chars) - 'student' | 'emergency' | 'community' (No student PII)
-    //   - notes: string (optional, 0..500 chars) - Operational/safeguarding notes
-    //   - academicTerm: string (optional, 1..30 chars) - e.g. 'Term 1 2026'
-    //   - academicYear: string or int (optional) - e.g. '2026' or 2026
-    //   - createdAt: timestamp (optional)
+    //   - school: string (required, 2..120 chars)
+    //   - schoolId: string (optional, <= 120 chars)
+    //   - kitsNeeded: int/number (optional, >= 0)
+    //   - packsNeeded: int/number (optional, >= 0)
+    //   - urgency: string (optional, <= 50 chars)
+    //   - status: string (optional, <= 50 chars)
+    //   - id: string (optional, <= 120 chars)
+    //   - createdAt: timestamp or string (optional)
     //   - updatedAt: timestamp (optional)
     //
     // ===============================================================
@@ -94,7 +220,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Check if user has an existing profile document
+    // Check if user has an existing profile document in Firestore
     function hasUserDoc() {
       return isAuthenticated() && exists(/databases/$(database)/documents/users/$(request.auth.uid));
     }
@@ -104,83 +230,258 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    // Check if user is a system administrator via token claims, user doc, or bootstrap email
-    function isAdmin() {
+    // Check if user is a platform super administrator
+    function isSuperAdmin() {
       return isAuthenticated() && (
+        request.auth.token.get('role', '') in ['super_admin', 'admin'] ||
+        request.auth.token.get('super_admin', false) == true ||
         request.auth.token.get('admin', false) == true ||
-        request.auth.token.get('role', '') == 'admin' ||
         (request.auth.token.email != null && (
           request.auth.token.email in ['admin@padcare.org', 'devgtnation@gmail.com', 'abetinichlas@gmail.com'] ||
           request.auth.token.email.matches('.*admin.*@padcare\\.org$')
         )) ||
-        (hasUserDoc() && getUserData().get('role', '') == 'admin')
+        (hasUserDoc() && getUserData().get('role', '') in ['super_admin', 'admin'])
       );
     }
 
-    // Check if user is an authorized school staff member (teacher, matron, school admin)
-    function isSchoolStaff() {
+    // Check if user is an authorized school administrator for the given schoolId
+    function isSchoolAdmin(schoolId) {
+      return isAuthenticated() && schoolId != null && schoolId != '' && (
+        isSuperAdmin() ||
+        (
+          request.auth.token.get('role', '') in ['school_admin', 'admin'] &&
+          (request.auth.token.get('schoolId', '') == schoolId || request.auth.token.get('school', '') == schoolId)
+        ) ||
+        (
+          hasUserDoc() &&
+          getUserData().get('role', '') in ['school_admin', 'admin'] &&
+          (getUserData().get('schoolId', '') == schoolId || getUserData().get('school', '') == schoolId || getUserData().get('schoolName', '') == schoolId) &&
+          (getUserData().get('authorized', true) == true && getUserData().get('accountStatus', 'active') in ['active', 'approved'])
+        )
+      );
+    }
+
+    // Check if user is an authorized teacher for the given schoolId
+    function isTeacher(schoolId) {
+      return isAuthenticated() && schoolId != null && schoolId != '' && (
+        (
+          request.auth.token.get('role', '') == 'teacher' &&
+          (request.auth.token.get('schoolId', '') == schoolId || request.auth.token.get('school', '') == schoolId)
+        ) ||
+        (
+          hasUserDoc() &&
+          getUserData().get('role', '') == 'teacher' &&
+          (getUserData().get('schoolId', '') == schoolId || getUserData().get('school', '') == schoolId || getUserData().get('schoolName', '') == schoolId) &&
+          (getUserData().get('authorized', true) == true && getUserData().get('accountStatus', 'active') in ['active', 'approved'])
+        )
+      );
+    }
+
+    // Check if user is staff (teacher or school admin) from the same school as docData
+    function isStaffFromSameSchool(docData) {
+      let docSchool = docData.get('schoolId', docData.get('school', ''));
+      return docSchool != '' && (isSchoolAdmin(docSchool) || isTeacher(docSchool));
+    }
+
+    // Check if user is an authorized staff member (teacher, school admin, matron, super_admin)
+    function isStaff() {
       return isAuthenticated() && (
-        request.auth.token.get('role', '') in ['teacher', 'staff', 'matron', 'administrator'] ||
-        (request.auth.token.email != null && (
-          request.auth.token.email in ['teacher@padcare.org', 'teacher@stmarys.org'] ||
-          request.auth.token.email.matches('.*teacher.*@.*') ||
-          request.auth.token.email.matches('.*@padcare\\.org$')
-        )) ||
-        (hasUserDoc() && (
-          getUserData().get('role', '') in ['teacher', 'staff', 'matron', 'administrator'] &&
-          (getUserData().get('authorized', false) == true || getUserData().get('status', '') == 'approved')
-        ))
+        isSuperAdmin() ||
+        request.auth.token.get('role', '') in ['teacher', 'school_admin', 'staff', 'matron', 'admin'] ||
+        (hasUserDoc() && getUserData().get('role', '') in ['teacher', 'school_admin', 'staff', 'matron', 'admin'])
       );
     }
 
-    // Check if user is either staff or an administrator
-    function isStaffOrAdmin() {
-      return isAdmin() || isSchoolStaff();
-    }
-
-    // Ensure specified immutable fields are not modified on update
+    // Verify that the specified immutable fields have not been modified during an update
     function areImmutableFieldsUnchanged(fields) {
       return !request.resource.data.diff(resource.data).affectedKeys().hasAny(fields);
     }
 
+    // Validate email format
+    function isValidEmail(email) {
+      return email is string &&
+        email.size() <= 128 &&
+        email.matches("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
+    }
+
+    // Helper to extract school from request data
+    function getResourceSchool() {
+      return resource.data.get('schoolId', resource.data.get('school', ''));
+    }
+
+    // Helper to extract school from pending write request data
+    function getRequestResourceSchool() {
+      return request.resource.data.get('schoolId', request.resource.data.get('school', ''));
+    }
+
+    // Check if the current user is the creator teacher for a pin record
+    function isPinCreatorTeacher(pinData) {
+      return request.auth.uid == pinData.get('creatorUid', '') ||
+             (pinData.get('requestId', '') != '' &&
+              exists(/databases/$(database)/documents/requests/$(pinData.requestId)) &&
+              get(/databases/$(database)/documents/requests/$(pinData.requestId)).data.get('teacherUid', '') == request.auth.uid);
+    }
+
     // ===============================================================
-    // Domain Validators
+    // Domain Validators (MANDATORY: Used in both Create and Update)
     // ===============================================================
 
-    // Validates pad dispensation transactions for audit integrity & safeguarding
+    // Validates User Profile Schema and Field Constraints
+    function isValidUser(data) {
+      let allowedFields = [
+        'uid', 'email', 'displayName', 'fullName', 'name', 'role',
+        'school', 'schoolId', 'schoolName', 'authorized', 'status', 'accountStatus',
+        'photoUrl', 'phoneNumber', 'fcmToken', 'tokenUpdatedAt',
+        'createdAt', 'updatedAt', 'lastLoginAt', 'notificationPreferences'
+      ];
+      return data.keys().hasOnly(allowedFields) &&
+             ('uid' in data && data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128) &&
+             ('email' in data && data.email is string && data.email.size() <= 128 && isValidEmail(data.email)) &&
+             ('role' in data && data.role is string && data.role in ['teacher', 'school_admin', 'sponsor', 'super_admin', 'parent', 'admin', 'staff', 'matron']) &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
+             (!('fullName' in data) || (data.fullName is string && data.fullName.size() <= 100)) &&
+             (!('name' in data) || (data.name is string && data.name.size() <= 100)) &&
+             (!('school' in data) || (data.school is string && data.school.size() <= 120)) &&
+             (!('schoolId' in data) || (data.schoolId is string && data.schoolId.size() <= 120)) &&
+             (!('schoolName' in data) || (data.schoolName is string && data.schoolName.size() <= 120)) &&
+             (!('authorized' in data) || data.authorized is bool) &&
+             (!('status' in data) || (data.status is string && data.status.size() <= 50)) &&
+             (!('accountStatus' in data) || (data.accountStatus is string && data.accountStatus.size() <= 50)) &&
+             (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 500)) &&
+             (!('phoneNumber' in data) || (data.phoneNumber is string && data.phoneNumber.size() <= 30)) &&
+             (!('fcmToken' in data) || (data.fcmToken is string && data.fcmToken.size() <= 256)) &&
+             (!('tokenUpdatedAt' in data) || data.tokenUpdatedAt is timestamp) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp) &&
+             (!('lastLoginAt' in data) || data.lastLoginAt is timestamp || data.lastLoginAt is string) &&
+             (!('notificationPreferences' in data) || data.notificationPreferences is map);
+    }
+
+    // Validates School Facility Schema
+    function isValidSchool(data) {
+      let allowedFields = [
+        'schoolId', 'id', 'name', 'registrationNumber', 'district', 'subCounty',
+        'contactPhone', 'contactEmail', 'logoUrl', 'status', 'assignedStaffUids',
+        'kitsOnHand', 'packsOnHand', 'createdAt', 'updatedAt'
+      ];
+      return data.keys().hasOnly(allowedFields) &&
+             ('name' in data && data.name is string && data.name.size() >= 2 && data.name.size() <= 150) &&
+             (!('schoolId' in data) || (data.schoolId is string && data.schoolId.size() <= 120)) &&
+             (!('id' in data) || (data.id is string && data.id.size() <= 120)) &&
+             (!('registrationNumber' in data) || (data.registrationNumber is string && data.registrationNumber.size() <= 50)) &&
+             (!('district' in data) || (data.district is string && data.district.size() <= 50)) &&
+             (!('subCounty' in data) || (data.subCounty is string && data.subCounty.size() <= 50)) &&
+             (!('contactPhone' in data) || (data.contactPhone is string && data.contactPhone.size() <= 30)) &&
+             (!('contactEmail' in data) || (data.contactEmail is string && data.contactEmail.size() <= 100)) &&
+             (!('logoUrl' in data) || (data.logoUrl is string && data.logoUrl.size() <= 500)) &&
+             (!('status' in data) || (data.status is string && data.status in ['active', 'pending', 'suspended'])) &&
+             (!('assignedStaffUids' in data) || (data.assignedStaffUids is list && data.assignedStaffUids.size() <= 100)) &&
+             (!('kitsOnHand' in data) || ((data.kitsOnHand is int || data.kitsOnHand is number) && data.kitsOnHand >= 0)) &&
+             (!('packsOnHand' in data) || ((data.packsOnHand is int || data.packsOnHand is number) && data.packsOnHand >= 0)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    // Validates School Inventory Schema
+    function isValidInventory(data) {
+      let allowedFields = [
+        'id', 'schoolId', 'productId', 'productName', 'availableQuantity',
+        'reservedQuantity', 'totalReceived', 'totalDistributed', 'unit',
+        'lowStockThreshold', 'lastUpdated', 'createdAt', 'updatedAt'
+      ];
+      return data.keys().hasOnly(allowedFields) &&
+             ('schoolId' in data && data.schoolId is string && data.schoolId.size() >= 1 && data.schoolId.size() <= 120) &&
+             ('productId' in data && data.productId is string && data.productId.size() >= 1 && data.productId.size() <= 100) &&
+             ('productName' in data && data.productName is string && data.productName.size() >= 1 && data.productName.size() <= 100) &&
+             ('availableQuantity' in data && (data.availableQuantity is int || data.availableQuantity is number) && data.availableQuantity >= 0) &&
+             (!('reservedQuantity' in data) || ((data.reservedQuantity is int || data.reservedQuantity is number) && data.reservedQuantity >= 0)) &&
+             (!('totalReceived' in data) || ((data.totalReceived is int || data.totalReceived is number) && data.totalReceived >= 0)) &&
+             (!('totalDistributed' in data) || ((data.totalDistributed is int || data.totalDistributed is number) && data.totalDistributed >= 0)) &&
+             (!('unit' in data) || (data.unit is string && data.unit.size() <= 30)) &&
+             (!('lowStockThreshold' in data) || ((data.lowStockThreshold is int || data.lowStockThreshold is number) && data.lowStockThreshold >= 0)) &&
+             (!('id' in data) || (data.id is string && data.id.size() <= 120)) &&
+             (!('lastUpdated' in data) || data.lastUpdated is string || data.lastUpdated is timestamp) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    // Validates Period Product Request Schema
+    function isValidRequest(data) {
+      let allowedFields = [
+        'requestId', 'id', 'reference', 'teacherUid', 'teacherName',
+        'schoolId', 'school', 'schoolName', 'productId', 'product', 'productName',
+        'quantity', 'pickupPin', 'status', 'createdAt', 'updatedAt',
+        'approvedAt', 'collectedAt', 'collectedBy', 'area'
+      ];
+      return data.keys().hasOnly(allowedFields) &&
+             ('teacherUid' in data && data.teacherUid is string && data.teacherUid.size() >= 1 && data.teacherUid.size() <= 128) &&
+             ('quantity' in data && (data.quantity is int || data.quantity is number) && data.quantity > 0 && data.quantity <= 500) &&
+             ('pickupPin' in data && (data.pickupPin is string || data.pickupPin is int)) &&
+             (!('pickupPin' in data && data.pickupPin is string) || (data.pickupPin.size() >= 4 && data.pickupPin.size() <= 16)) &&
+             (!('status' in data) || (data.status is string && data.status.size() <= 50)) &&
+             (!('reference' in data) || (data.reference is string && data.reference.size() <= 100)) &&
+             (!('teacherName' in data) || (data.teacherName is string && data.teacherName.size() <= 100)) &&
+             (!('schoolId' in data) || (data.schoolId is string && data.schoolId.size() <= 120)) &&
+             (!('school' in data) || (data.school is string && data.school.size() <= 120)) &&
+             (!('schoolName' in data) || (data.schoolName is string && data.schoolName.size() <= 120)) &&
+             (!('productId' in data) || (data.productId is string && data.productId.size() <= 100)) &&
+             (!('product' in data) || (data.product is string && data.product.size() <= 100)) &&
+             (!('productName' in data) || (data.productName is string && data.productName.size() <= 100)) &&
+             (!('area' in data) || (data.area is string && data.area.size() <= 100)) &&
+             (!('requestId' in data) || (data.requestId is string && data.requestId.size() <= 120)) &&
+             (!('id' in data) || (data.id is string && data.id.size() <= 120)) &&
+             (!('collectedBy' in data) || (data.collectedBy is string && data.collectedBy.size() <= 128)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp) &&
+             (!('approvedAt' in data) || data.approvedAt is timestamp || data.approvedAt is string) &&
+             (!('collectedAt' in data) || data.collectedAt is timestamp || data.collectedAt is string);
+    }
+
+    // Validates PIN Record Schema
+    function isValidPinRecord(data) {
+      let allowedFields = [
+        'pin', 'requestId', 'reference', 'schoolId', 'productId',
+        'quantity', 'status', 'failedAttempts', 'expiresAt', 'createdAt',
+        'redeemedAt', 'lastAttemptAt', 'updatedAt', 'creatorUid'
+      ];
+      return data.keys().hasOnly(allowedFields) &&
+             ('pin' in data && data.pin is string && data.pin.size() >= 4 && data.pin.size() <= 16) &&
+             ('requestId' in data && data.requestId is string && data.requestId.size() >= 1 && data.requestId.size() <= 120) &&
+             ('schoolId' in data && data.schoolId is string && data.schoolId.size() >= 1 && data.schoolId.size() <= 120) &&
+             ('quantity' in data && (data.quantity is int || data.quantity is number) && data.quantity > 0 && data.quantity <= 500) &&
+             ('status' in data && data.status is string && data.status in ['active', 'redeemed', 'expired', 'revoked']) &&
+             (!('reference' in data) || (data.reference is string && data.reference.size() <= 100)) &&
+             (!('productId' in data) || (data.productId is string && data.productId.size() <= 100)) &&
+             (!('creatorUid' in data) || (data.creatorUid is string && data.creatorUid.size() <= 128)) &&
+             (!('failedAttempts' in data) || ((data.failedAttempts is int || data.failedAttempts is number) && data.failedAttempts >= 0)) &&
+             (!('expiresAt' in data) || data.expiresAt is timestamp || data.expiresAt is string) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
+             (!('redeemedAt' in data) || data.redeemedAt is timestamp || data.redeemedAt is string) &&
+             (!('lastAttemptAt' in data) || data.lastAttemptAt is timestamp) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    // Validates Pad Dispensation Transaction Schema
     function isValidDispensation(data) {
       let allowedFields = [
-        'school', 'product', 'quantity', 'dispensedBy', 'dispensedAt',
-        'dispensationId', 'requestId', 'reference', 'pickupPin', 'status',
-        'beneficiaryType', 'notes', 'academicTerm', 'academicYear',
+        'school', 'schoolId', 'product', 'quantity', 'dispensedBy', 'dispensedAt',
+        'dispensationId', 'id', 'requestId', 'reference', 'pickupPin', 'status',
+        'beneficiaryType', 'notes', 'academicTerm', 'academicYear', 'timestamp',
         'createdAt', 'updatedAt'
       ];
       let requiredFields = ['school', 'product', 'quantity', 'dispensedBy', 'dispensedAt'];
 
       return data.keys().hasAll(requiredFields) &&
              data.keys().hasOnly(allowedFields) &&
-             // School / Facility validation
-             data.school is string &&
-             data.school.size() >= 2 &&
-             data.school.size() <= 120 &&
-             // Product validation
-             data.product is string &&
-             data.product.size() >= 2 &&
-             data.product.size() <= 80 &&
-             // Quantity bounds (must be a positive int/number, max 100 per distribution)
-             (data.quantity is int || data.quantity is number) &&
-             data.quantity > 0 &&
-             data.quantity <= 100 &&
-             // Dispenser UID / email audit validation
-             data.dispensedBy is string &&
-             data.dispensedBy.size() >= 1 &&
-             data.dispensedBy.size() <= 128 &&
-             // Dispensation timestamp validation (not set to the future)
-             data.dispensedAt is timestamp &&
-             data.dispensedAt <= request.time + duration.value(5, 'm') &&
-             // Optional fields validation
-             (!('dispensationId' in data) || (data.dispensationId is string && data.dispensationId.size() <= 100)) &&
-             (!('requestId' in data) || (data.requestId is string && data.requestId.size() <= 100)) &&
+             data.school is string && data.school.size() >= 2 && data.school.size() <= 120 &&
+             data.product is string && data.product.size() >= 2 && data.product.size() <= 100 &&
+             (data.quantity is int || data.quantity is number) && data.quantity > 0 && data.quantity <= 100 &&
+             data.dispensedBy is string && data.dispensedBy.size() >= 1 && data.dispensedBy.size() <= 128 &&
+             (data.dispensedAt is timestamp || (data.dispensedAt is string && data.dispensedAt.size() <= 50)) &&
+             (!('schoolId' in data) || (data.schoolId is string && data.schoolId.size() <= 120)) &&
+             (!('dispensationId' in data) || (data.dispensationId is string && data.dispensationId.size() <= 120)) &&
+             (!('id' in data) || (data.id is string && data.id.size() <= 120)) &&
+             (!('requestId' in data) || (data.requestId is string && data.requestId.size() <= 120)) &&
              (!('reference' in data) || (data.reference is string && data.reference.size() <= 100)) &&
              (!('pickupPin' in data) || (data.pickupPin is string && data.pickupPin.size() <= 16)) &&
              (!('status' in data) || (data.status is string && data.status.size() <= 40)) &&
@@ -188,7 +489,111 @@ service cloud.firestore {
              (!('notes' in data) || (data.notes is string && data.notes.size() <= 500)) &&
              (!('academicTerm' in data) || (data.academicTerm is string && data.academicTerm.size() <= 30)) &&
              (!('academicYear' in data) || (data.academicYear is string && data.academicYear.size() <= 10) || data.academicYear is int) &&
-             (!('createdAt' in data) || data.createdAt is timestamp) &&
+             (!('timestamp' in data) || data.timestamp is timestamp) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    // Validates Donation Schema
+    function isValidDonation(data) {
+      let allowedFields = [
+        'donationId', 'id', 'sponsorUid', 'uid', 'donorName', 'sponsorName',
+        'phone', 'amount', 'amountUgx', 'currency', 'kitsFunded', 'sponsoredKits',
+        'schoolId', 'school', 'paymentMethod', 'provider', 'status',
+        'reference', 'transactionReference', 'timestamp', 'createdAt', 'updatedAt'
+      ];
+      return data.keys().hasOnly(allowedFields) &&
+             ('amount' in data && (data.amount is int || data.amount is number) && data.amount > 0) &&
+             ('currency' in data && data.currency == 'UGX') &&
+             ('reference' in data && data.reference is string && data.reference.size() >= 3 && data.reference.size() <= 100) &&
+             (!('sponsorUid' in data) || (data.sponsorUid is string && data.sponsorUid.size() <= 128)) &&
+             (!('uid' in data) || (data.uid is string && data.uid.size() <= 128)) &&
+             (!('donorName' in data) || (data.donorName is string && data.donorName.size() <= 100)) &&
+             (!('sponsorName' in data) || (data.sponsorName is string && data.sponsorName.size() <= 100)) &&
+             (!('phone' in data) || (data.phone is string && data.phone.size() <= 30)) &&
+             (!('amountUgx' in data) || ((data.amountUgx is int || data.amountUgx is number) && data.amountUgx > 0)) &&
+             (!('kitsFunded' in data) || ((data.kitsFunded is int || data.kitsFunded is number) && data.kitsFunded >= 0)) &&
+             (!('sponsoredKits' in data) || ((data.sponsoredKits is int || data.sponsoredKits is number) && data.sponsoredKits >= 0)) &&
+             (!('schoolId' in data) || (data.schoolId is string && data.schoolId.size() <= 120)) &&
+             (!('school' in data) || (data.school is string && data.school.size() <= 120)) &&
+             (!('paymentMethod' in data) || (data.paymentMethod is string && data.paymentMethod.size() <= 50)) &&
+             (!('provider' in data) || (data.provider is string && data.provider.size() <= 50)) &&
+             (!('status' in data) || (data.status is string && data.status in ['completed', 'pending', 'failed'])) &&
+             (!('transactionReference' in data) || (data.transactionReference is string && data.transactionReference.size() <= 100)) &&
+             (!('donationId' in data) || (data.donationId is string && data.donationId.size() <= 120)) &&
+             (!('id' in data) || (data.id is string && data.id.size() <= 120)) &&
+             (!('timestamp' in data) || data.timestamp is timestamp || data.timestamp is string) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    // Validates Campaign Schema
+    function isValidCampaign(data) {
+      let allowedFields = [
+        'campaignId', 'id', 'title', 'description', 'targetKits', 'fundedKits',
+        'targetUGX', 'raisedUGX', 'status', 'createdAt', 'updatedAt'
+      ];
+      return data.keys().hasOnly(allowedFields) &&
+             ('title' in data && data.title is string && data.title.size() >= 2 && data.title.size() <= 200) &&
+             ('description' in data && data.description is string && data.description.size() <= 2000) &&
+             ('targetKits' in data && (data.targetKits is int || data.targetKits is number) && data.targetKits > 0) &&
+             (!('fundedKits' in data) || ((data.fundedKits is int || data.fundedKits is number) && data.fundedKits >= 0)) &&
+             (!('targetUGX' in data) || ((data.targetUGX is int || data.targetUGX is number) && data.targetUGX > 0)) &&
+             (!('raisedUGX' in data) || ((data.raisedUGX is int || data.raisedUGX is number) && data.raisedUGX >= 0)) &&
+             ('status' in data && data.status is string && data.status in ['active', 'completed', 'paused', 'archived']) &&
+             (!('campaignId' in data) || (data.campaignId is string && data.campaignId.size() <= 120)) &&
+             (!('id' in data) || (data.id is string && data.id.size() <= 120)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    // Validates Notification Schema
+    function isValidNotification(data) {
+      let allowedFields = [
+        'id', 'recipientUid', 'schoolId', 'title', 'body', 'type',
+        'read', 'createdAt', 'updatedAt'
+      ];
+      return data.keys().hasOnly(allowedFields) &&
+             ('recipientUid' in data && data.recipientUid is string && data.recipientUid.size() >= 1 && data.recipientUid.size() <= 128) &&
+             ('title' in data && data.title is string && data.title.size() >= 1 && data.title.size() <= 200) &&
+             ('body' in data && data.body is string && data.body.size() <= 1000) &&
+             ('type' in data && data.type is string && data.type in ['request_update', 'dispense', 'low_stock', 'announcement']) &&
+             ('read' in data && data.read is bool) &&
+             (!('id' in data) || (data.id is string && data.id.size() <= 120)) &&
+             (!('schoolId' in data) || (data.schoolId is string && data.schoolId.size() <= 120)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
+             (!('updatedAt' in data) || data.updatedAt is timestamp);
+    }
+
+    // Validates Audit Log Schema
+    function isValidAuditLog(data) {
+      let allowedFields = [
+        'logId', 'action', 'performedBy', 'schoolId', 'details', 'timestamp', 'createdAt'
+      ];
+      return data.keys().hasOnly(allowedFields) &&
+             ('action' in data && data.action is string && data.action.size() >= 2 && data.action.size() <= 100) &&
+             ('performedBy' in data && data.performedBy is string && data.performedBy.size() >= 1 && data.performedBy.size() <= 128) &&
+             (!('schoolId' in data) || (data.schoolId is string && data.schoolId.size() <= 120)) &&
+             (!('details' in data) || data.details is map) &&
+             (!('logId' in data) || (data.logId is string && data.logId.size() <= 120)) &&
+             (!('timestamp' in data) || data.timestamp is timestamp || data.timestamp is string) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string);
+    }
+
+    // Validates Restock Requisition Schema
+    function isValidRestockRequest(data) {
+      let allowedFields = [
+        'id', 'school', 'schoolId', 'kitsNeeded', 'packsNeeded', 'urgency', 'status', 'createdAt', 'updatedAt'
+      ];
+      return data.keys().hasOnly(allowedFields) &&
+             ('school' in data && data.school is string && data.school.size() >= 2 && data.school.size() <= 120) &&
+             (!('schoolId' in data) || (data.schoolId is string && data.schoolId.size() <= 120)) &&
+             (!('kitsNeeded' in data) || ((data.kitsNeeded is int || data.kitsNeeded is number) && data.kitsNeeded >= 0)) &&
+             (!('packsNeeded' in data) || ((data.packsNeeded is int || data.packsNeeded is number) && data.packsNeeded >= 0)) &&
+             (!('urgency' in data) || (data.urgency is string && data.urgency.size() <= 50)) &&
+             (!('status' in data) || (data.status is string && data.status.size() <= 50)) &&
+             (!('id' in data) || (data.id is string && data.id.size() <= 120)) &&
+             (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
              (!('updatedAt' in data) || data.updatedAt is timestamp);
     }
 
@@ -196,66 +601,253 @@ service cloud.firestore {
     // Rules
     // ===============================================================
 
-    // User Profiles
+    // 1. User Profiles
+    // Read: user himself, super_admin, or staff from the same schoolId.
+    // Create/Update: user himself (uid == userId), or super_admin. Cannot elevate own role to 'super_admin'.
     match /users/{userId} {
-      // Authenticated users can read profiles
-      allow read: if isAuthenticated();
-      // Users can register their own profile document
-      allow create: if isAuthenticated() && request.auth.uid == userId;
-      // Users can update their profile or backend admin can authorize teachers
-      allow update: if isAuthenticated();
+      allow read: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        isSuperAdmin() ||
+        isStaffFromSameSchool(resource.data)
+      );
+
+      allow create: if isAuthenticated() &&
+        isValidUser(request.resource.data) &&
+        (
+          isSuperAdmin() ||
+          (
+            request.auth.uid == userId &&
+            request.resource.data.uid == request.auth.uid &&
+            request.resource.data.get('role', 'parent') != 'super_admin' &&
+            request.resource.data.get('role', '') != 'admin'
+          )
+        );
+
+      allow update: if isAuthenticated() &&
+        isValidUser(request.resource.data) &&
+        (
+          isSuperAdmin() ||
+          (
+            request.auth.uid == userId &&
+            areImmutableFieldsUnchanged(['uid', 'createdAt']) &&
+            request.resource.data.get('role', resource.data.role) != 'super_admin' &&
+            request.resource.data.get('role', resource.data.role) != 'admin' &&
+            (request.resource.data.role == resource.data.role || request.resource.data.role in ['teacher', 'school_admin', 'sponsor', 'parent'])
+          )
+        );
+
+      allow delete: if isSuperAdmin();
     }
 
-    // School Information & Stock Inventory
+    // 2. Schools Information & Facilities
+    // Read: all authenticated or public read for active schools.
+    // Write: only users with role == 'super_admin'.
     match /schools/{schoolId} {
-      // Publicly viewable so parents and students can see pickup points
-      allow read: if true;
-      // Only authorized staff/teachers can update inventory levels
-      allow write: if isAuthenticated();
+      allow read: if isAuthenticated() || resource.data.get('status', 'active') == 'active';
+      allow create: if isSuperAdmin() && isValidSchool(request.resource.data);
+      allow update: if isSuperAdmin() && isValidSchool(request.resource.data);
+      allow delete: if isSuperAdmin();
     }
 
-    // Emergency Period Product Requests
+    // 3. School Inventory & Stock Levels
+    // Read: authenticated users.
+    // Write: school_admin of that schoolId or super_admin.
+    match /inventory/{inventoryId} {
+      allow read: if isAuthenticated();
+
+      allow create: if isValidInventory(request.resource.data) &&
+        (isSuperAdmin() || isSchoolAdmin(request.resource.data.get('schoolId', '')));
+
+      allow update: if isValidInventory(request.resource.data) &&
+        (isSuperAdmin() || (isSchoolAdmin(resource.data.get('schoolId', '')) && areImmutableFieldsUnchanged(['schoolId'])));
+
+      allow delete: if isSuperAdmin() || isSchoolAdmin(resource.data.get('schoolId', ''));
+    }
+
+    // 4. Period Product Requests
+    // Read: request's teacherUid, school_admin of that school, or super_admin.
+    // Create: authenticated teacher of that school.
+    // Update: school_admin of that school (for status 'Approved', 'Ready for collection', 'Collected'), or creator teacher (for 'Cancelled').
     match /requests/{requestId} {
-      // Allow anonymous and community requests
-      allow read, write: if true;
+      allow read: if isAuthenticated() && (
+        request.auth.uid == resource.data.get('teacherUid', '') ||
+        isSchoolAdmin(getResourceSchool()) ||
+        isSuperAdmin()
+      );
+
+      allow create: if isAuthenticated() &&
+        isValidRequest(request.resource.data) &&
+        (
+          isSuperAdmin() ||
+          (
+            isTeacher(getRequestResourceSchool()) &&
+            request.resource.data.get('teacherUid', '') == request.auth.uid &&
+            request.resource.data.get('status', 'Pending') in ['Pending', 'pending']
+          )
+        );
+
+      allow update: if isAuthenticated() &&
+        isValidRequest(request.resource.data) &&
+        (
+          isSuperAdmin() ||
+          (
+            isSchoolAdmin(getResourceSchool()) &&
+            request.resource.data.status in ['Approved', 'Ready for collection', 'Collected', 'approved', 'ready', 'collected'] &&
+            areImmutableFieldsUnchanged(['teacherUid', 'schoolId', 'school', 'pickupPin', 'productId', 'product', 'quantity', 'createdAt'])
+          ) ||
+          (
+            request.auth.uid == resource.data.get('teacherUid', '') &&
+            request.resource.data.status in ['Cancelled', 'cancelled'] &&
+            areImmutableFieldsUnchanged(['teacherUid', 'schoolId', 'school', 'pickupPin', 'productId', 'product', 'quantity', 'createdAt'])
+          )
+        );
+
+      allow delete: if isSuperAdmin();
     }
 
-    // Community Pad Drive Donations (MoMo)
-    match /donations/{donationId} {
-      // Publicly readable for total sponsored milestones
-      allow read: if true;
-      // Allow community members to submit donations
-      allow write: if true;
+    // 5. Verification PIN Records
+    // Read: school_admin of that schoolId, creator teacher, or super_admin.
+    // Create: authenticated teacher or school_admin.
+    // Update: school_admin (to mark redeemed) or super_admin.
+    match /pin_records/{pin} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        isSchoolAdmin(resource.data.get('schoolId', '')) ||
+        isPinCreatorTeacher(resource.data)
+      );
+
+      allow create: if isAuthenticated() &&
+        isValidPinRecord(request.resource.data) &&
+        (
+          isSuperAdmin() ||
+          isSchoolAdmin(request.resource.data.get('schoolId', '')) ||
+          isTeacher(request.resource.data.get('schoolId', ''))
+        );
+
+      allow update: if isAuthenticated() &&
+        isValidPinRecord(request.resource.data) &&
+        (
+          isSuperAdmin() ||
+          (
+            isSchoolAdmin(resource.data.get('schoolId', '')) &&
+            (
+              (request.resource.data.status == 'redeemed' &&
+               areImmutableFieldsUnchanged(['pin', 'requestId', 'schoolId', 'productId', 'quantity', 'createdAt'])) ||
+              request.resource.data.diff(resource.data).affectedKeys().hasOnly(['failedAttempts', 'lastAttemptAt', 'updatedAt'])
+            )
+          )
+        );
+
+      allow delete: if isSuperAdmin();
     }
 
-    // School Emergency Restock Requisitions (Matron -> Arua Central Hub)
-    match /restock_requests/{requisitionId} {
-      allow read, write: if true;
-    }
-
-    // Pad Dispensing Transactions & Audit Logs
+    // 6. Pad Dispensation Records
+    // Read: school_admin of that school or super_admin.
+    // Create: authorized school_admin with required fields (school, product, quantity, dispensedBy, dispensedAt). Immutable (no update/delete).
     match /dispensations/{dispensationId} {
-      // Read & Audit: Only school administrators and authorized staff can inspect dispensing records
-      // Public / student read is strictly blocked to maintain confidentiality and safeguarding
-      allow read: if isStaffOrAdmin();
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        isSchoolAdmin(resource.data.get('schoolId', resource.data.get('school', '')))
+      );
 
-      // Record Transaction: Authorized staff/admin can record new dispensing events
-      // Requires strict schema validation and verifies dispenser identity
-      allow create: if isStaffOrAdmin() &&
-                       isValidDispensation(request.resource.data) &&
-                       (request.resource.data.dispensedBy == request.auth.uid ||
-                        (request.auth.token.email != null && request.resource.data.dispensedBy == request.auth.token.email) ||
-                        isAdmin());
+      allow create: if isAuthenticated() &&
+        isValidDispensation(request.resource.data) &&
+        (
+          isSuperAdmin() ||
+          (
+            isSchoolAdmin(request.resource.data.get('schoolId', request.resource.data.get('school', ''))) &&
+            (request.resource.data.dispensedBy == request.auth.uid ||
+             (request.auth.token.email != null && request.resource.data.dispensedBy == request.auth.token.email))
+          )
+        );
 
-      // Update / Reconcile: Authorized staff/admin can update operational audit fields (e.g. status, notes)
-      // Core audit fields (dispensedBy, dispensedAt, school, createdAt) are strictly immutable
-      allow update: if isStaffOrAdmin() &&
-                       isValidDispensation(request.resource.data) &&
-                       areImmutableFieldsUnchanged(['dispensedBy', 'dispensedAt', 'school', 'createdAt']) &&
-                       (isAdmin() || areImmutableFieldsUnchanged(['quantity', 'product', 'pickupPin', 'requestId']));
+      allow update, delete: if false;
+    }
 
-      // Delete: Restricted strictly to system administrators to protect audit integrity
-      allow delete: if isAdmin();
+    // 7. Community Donations
+    // Read: donor sponsorUid or super_admin.
+    // Create: authenticated user with amount > 0, currency == 'UGX', valid reference.
+    match /donations/{donationId} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        request.auth.uid == resource.data.get('sponsorUid', resource.data.get('uid', ''))
+      );
+
+      allow create: if isAuthenticated() &&
+        isValidDonation(request.resource.data) &&
+        (request.resource.data.amount is int || request.resource.data.amount is number) &&
+        request.resource.data.amount > 0 &&
+        request.resource.data.currency == 'UGX' &&
+        request.resource.data.reference is string &&
+        request.resource.data.reference.size() >= 3 &&
+        request.resource.data.reference.size() <= 100;
+
+      allow update, delete: if false;
+    }
+
+    // 8. Fundraising Campaigns
+    // Read: all users.
+    // Write: super_admin.
+    match /campaigns/{campaignId} {
+      allow read: if true;
+      allow create: if isSuperAdmin() && isValidCampaign(request.resource.data);
+      allow update: if isSuperAdmin() && isValidCampaign(request.resource.data);
+      allow delete: if isSuperAdmin();
+    }
+
+    // 9. User Notifications
+    // Read/Update: recipientUid == request.auth.uid.
+    // Create: authenticated users or backend triggers.
+    match /notifications/{notificationId} {
+      allow read: if isAuthenticated() && resource.data.recipientUid == request.auth.uid;
+
+      allow update: if isAuthenticated() &&
+        resource.data.recipientUid == request.auth.uid &&
+        isValidNotification(request.resource.data) &&
+        areImmutableFieldsUnchanged(['recipientUid', 'id', 'createdAt', 'title', 'body', 'type']);
+
+      allow create: if isAuthenticated() && isValidNotification(request.resource.data);
+
+      allow delete: if isAuthenticated() && (resource.data.recipientUid == request.auth.uid || isSuperAdmin());
+    }
+
+    // 10. Audit Logs
+    // Read: super_admin only.
+    // Create: authenticated staff. Immutable.
+    match /audit_logs/{logId} {
+      allow read: if isSuperAdmin();
+      allow create: if isStaff() && isValidAuditLog(request.resource.data);
+      allow update, delete: if false;
+    }
+
+    // 11. School Emergency Restock Requisitions
+    // Operational hub requisitions for school inventory
+    match /restock_requests/{requisitionId} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        isSchoolAdmin(resource.data.get('schoolId', resource.data.get('school', ''))) ||
+        isTeacher(resource.data.get('schoolId', resource.data.get('school', '')))
+      );
+
+      allow create: if isAuthenticated() &&
+        isValidRestockRequest(request.resource.data) &&
+        (
+          isSuperAdmin() ||
+          isSchoolAdmin(request.resource.data.get('schoolId', request.resource.data.get('school', ''))) ||
+          isTeacher(request.resource.data.get('schoolId', request.resource.data.get('school', '')))
+        );
+
+      allow update: if isAuthenticated() &&
+        isValidRestockRequest(request.resource.data) &&
+        (
+          isSuperAdmin() ||
+          (
+            isSchoolAdmin(resource.data.get('schoolId', resource.data.get('school', ''))) &&
+            areImmutableFieldsUnchanged(['school', 'schoolId', 'id', 'createdAt'])
+          )
+        );
+
+      allow delete: if isSuperAdmin();
     }
   }
 }

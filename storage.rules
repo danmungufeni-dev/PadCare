@@ -1,0 +1,53 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isUnderSizeLimit(maxSizeMB) {
+      return request.resource.size < maxSizeMB * 1024 * 1024;
+    }
+
+    // User profile avatars
+    match /users/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if isOwner(userId) && isImage() && isUnderSizeLimit(5);
+    }
+
+    // School logos and branding
+    match /schools/{schoolId}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isImage() && isUnderSizeLimit(5);
+    }
+
+    // Campaign banners and educational media
+    match /campaigns/{campaignId}/{fileName} {
+      allow read: if true;
+      allow write: if isAuthenticated() && isImage() && isUnderSizeLimit(10);
+    }
+
+    // Verification and official school accreditation documents
+    match /verification/{userId}/{fileName} {
+      allow read: if isOwner(userId);
+      allow write: if isOwner(userId) && isUnderSizeLimit(10);
+    }
+
+    // Offline app assets or APK packages
+    match /packages/{fileName} {
+      allow read: if true;
+      allow write: if false; // Only deployable via admin
+    }
+  }
+}

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "527730536648",
+    "project_id": "padcare-73556",
+    "storage_bucket": "padcare-73556.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:527730536648:android:a9c986fa6f150ba3bf35fd",
+        "android_client_info": {
+          "package_name": "com.padcare.padcare"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA9-bGGnCi9FQVt3JZDRM9o9Wq4aIZBECA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

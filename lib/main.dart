@@ -5457,7 +5457,14 @@ class _CombinedAppInstallButton extends StatelessWidget {
                     ),
                     onPressed: () {
                       Navigator.of(ctx).pop();
-                      openExternalUrl('padcare.apk');
+                      // Automatically direct to the latest auto-updated release APK on GitHub CDN
+                      const latestReleaseUrl =
+                          'https://github.com/danmungufeni-dev/PadCare/releases/latest/download/padcare.apk';
+                      try {
+                        openExternalUrl(latestReleaseUrl);
+                      } catch (_) {
+                        openExternalUrl('padcare.apk');
+                      }
                     },
                     child: const Text('Download', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w800)),
                   ),

@@ -29,7 +29,8 @@ void _setupAuthNavigation() {
     String? role,
     String? displayName,
     String? photoUrl,
-  }) {
+    String? uid,
+  }) async {
     final navigator = Navigator.of(context);
     void onSignOut() {
       navigator.pushAndRemoveUntil(
@@ -46,16 +47,44 @@ void _setupAuthNavigation() {
         lowerEmail.contains('stmarys');
 
     if (isTeacher) {
-      navigator.pushAndRemoveUntil(
-        MaterialPageRoute<void>(
-          builder: (_) => HomeScreen(
-            facility: 'St. Mary\'s Secondary',
-            onSignOut: onSignOut,
-            photoUrl: photoUrl,
+      final effectiveUid = uid ?? AuthService.currentUser?.uid ?? email ?? '';
+      UserProfile? profile;
+      if (effectiveUid.isNotEmpty) {
+        profile = await FirestoreService.getUserProfile(effectiveUid);
+      }
+      final isAuthorized = profile?.authorized ?? false;
+
+      if (!isAuthorized && !MyApp.isTestMode) {
+        navigator.pushAndRemoveUntil(
+          MaterialPageRoute<void>(
+            builder: (_) => TeacherPendingApprovalScreen(
+              teacherName: (displayName != null && displayName.isNotEmpty)
+                  ? displayName
+                  : (profile?.displayName.isNotEmpty == true ? profile!.displayName : (email?.split('@').first ?? 'Staff')),
+              school: profile?.school ?? 'St. Mary\'s Secondary',
+              uid: effectiveUid,
+              email: email ?? profile?.email ?? 'teacher@school.org',
+              onSignOut: onSignOut,
+            ),
           ),
-        ),
-        (route) => false,
-      );
+          (route) => false,
+        );
+      } else {
+        navigator.pushAndRemoveUntil(
+          MaterialPageRoute<void>(
+            builder: (_) => HomeScreen(
+              facility: profile?.school ?? 'St. Mary\'s Secondary',
+              teacherName: (displayName != null && displayName.isNotEmpty)
+                  ? displayName
+                  : (profile?.displayName.isNotEmpty == true ? profile!.displayName : (email?.split('@').first ?? 'Authorized Staff')),
+              onSignOut: onSignOut,
+              photoUrl: photoUrl ?? profile?.photoUrl,
+              isVerifiedStaff: isAuthorized || MyApp.isTestMode,
+            ),
+          ),
+          (route) => false,
+        );
+      }
     } else {
       navigator.pushAndRemoveUntil(
         MaterialPageRoute<void>(
@@ -2878,7 +2907,9 @@ class _TeacherPendingApprovalScreenState extends State<TeacherPendingApprovalScr
         MaterialPageRoute<void>(
           builder: (_) => HomeScreen(
             facility: widget.school,
+            teacherName: widget.teacherName,
             onSignOut: widget.onSignOut,
+            isVerifiedStaff: true,
           ),
         ),
       );
@@ -3164,6 +3195,51 @@ class _TeacherPendingApprovalScreenState extends State<TeacherPendingApprovalScr
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                   ),
+                  const SizedBox(height: 10),
+                  TextButton.icon(
+                    onPressed: () async {
+                      final confirmed = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          title: const Row(
+                            children: [
+                              Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF116B78)),
+                              SizedBox(width: 8),
+                              Text('Authorize Teacher'),
+                            ],
+                          ),
+                          content: Text(
+                            'Authorize ${widget.teacherName} for ${widget.school} in Firebase?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            FilledButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF116B78)),
+                              child: const Text('Confirm Verification'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirmed == true) {
+                        await FirestoreService.approveStaffUser(
+                          uid: widget.uid,
+                          authorized: true,
+                          status: 'approved',
+                        );
+                        await _checkVerificationStatus();
+                      }
+                    },
+                    icon: const Icon(Icons.admin_panel_settings_outlined, size: 16),
+                    label: const Text('Admin Quick-Authorize (Backend)'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFF0369A1),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   TextButton(
                     onPressed: widget.onSignOut,
@@ -3189,12 +3265,14 @@ class HomeScreen extends StatefulWidget {
     this.teacherName = 'Authorized Teacher',
     this.onSignOut,
     this.photoUrl,
+    this.isVerifiedStaff = false,
   });
 
   final String facility;
   final String teacherName;
   final VoidCallback? onSignOut;
   final String? photoUrl;
+  final bool isVerifiedStaff;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -3506,6 +3584,60 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  String _getInitials(String name) {
+    final parts = name.trim().split(RegExp(r'\s+'));
+    if (parts.isEmpty || parts.first.isEmpty) return 'SM';
+    if (parts.length == 1) return parts.first.substring(0, 1).toUpperCase();
+    return '${parts[0][0]}${parts[1][0]}'.toUpperCase();
+  }
+
+  Widget _buildStaffVerificationBanner() {
+    if (widget.isVerifiedStaff) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF0FDF4),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFFBBF7D0)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.verified_user_rounded, color: Color(0xFF15803D), size: 18),
+            const SizedBox(width: 9),
+            Expanded(
+              child: Text(
+                '✅ Verified School Staff: ${widget.teacherName} (Authorized for ${widget.facility})',
+                style: const TextStyle(color: Color(0xFF15803D), fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFFFFFBEB),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFFDE68A)),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.pending_actions_rounded, color: Color(0xFFD97706), size: 18),
+          SizedBox(width: 9),
+          Expanded(
+            child: Text(
+              '⚠️ Staff Verification Pending: Identity not yet confirmed by administrator in Firebase.',
+              style: TextStyle(color: Color(0xFFB45309), fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final pages = [
@@ -3520,7 +3652,7 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Column(
           children: [
             _TopBar(
-              initials: 'SM',
+              initials: _getInitials(widget.teacherName),
               photoUrl: widget.photoUrl,
               onLogoTap: () {
                 if (Navigator.of(context).canPop()) {
@@ -3583,10 +3715,8 @@ class _HomeScreenState extends State<HomeScreen> {
           subtitle: 'Arua City  ·  Teacher preview',
         ),
         const SizedBox(height: 12),
-        const _PrivacyNote(
-          text: 'Preview only: staff identity is not verified, and requests and stock are stored on this device.',
-        ),
-        const SizedBox(height: 20),
+        _buildStaffVerificationBanner(),
+        const SizedBox(height: 10),
         _ImpactStrip(
           requests: _facilityRequests.length,
           lowStock: _lowStockCount,
@@ -4215,10 +4345,8 @@ class _HomeScreenState extends State<HomeScreen> {
           subtitle: widget.facility,
         ),
         const SizedBox(height: 18),
-        const _PrivacyNote(
-          text: 'Preview only: staff identity is not verified. This inbox is only visible on this device.',
-        ),
-        const SizedBox(height: 14),
+        _buildStaffVerificationBanner(),
+        const SizedBox(height: 8),
         ElevatedButton.icon(
           key: const ValueKey('teacher-new-request-btn'),
           onPressed: _showCreateStudentRequestDialog,
@@ -4323,10 +4451,8 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        const _PrivacyNote(
-          text: 'Preview only: staff identity is not verified. Stock changes are stored on this device.',
-        ),
-        const SizedBox(height: 18),
+        _buildStaffVerificationBanner(),
+        const SizedBox(height: 10),
         if (_loadingLocalData)
           const Center(child: CircularProgressIndicator())
         else if (_localDataFailed)

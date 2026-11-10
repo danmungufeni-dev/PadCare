@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 
 import '../services/firebase_service.dart';
 import '../info/info_screens.dart';
+import '../services/url_launcher_stub.dart'
+    if (dart.library.html) '../services/url_launcher_web.dart';
 
 /// Navigation coordinator for PadCare Authentication Suite.
 /// Allows decoupled navigation into PadCare home screens.
@@ -117,10 +119,20 @@ class EmailVerification extends StatelessWidget {
                   if (onOpenEmailApp != null) {
                     onOpenEmailApp!();
                   } else {
+                    final lower = displayEmail.toLowerCase();
+                    String url = 'https://mail.google.com/mail/u/0/#search/in%3Aanywhere+padcare';
+                    if (lower.contains('@yahoo.')) {
+                      url = 'https://mail.yahoo.com/';
+                    } else if (lower.contains('@outlook.') || lower.contains('@hotmail.')) {
+                      url = 'https://outlook.live.com/';
+                    }
+                    try {
+                      openExternalUrl(url);
+                    } catch (_) {}
                     ScaffoldMessenger.of(context).showSnackBar(
                       SnackBar(
-                        content: Text('Opening email app for $displayEmail...'),
-                        duration: const Duration(seconds: 2),
+                        content: Text('Opening webmail / Gmail for $displayEmail...'),
+                        duration: const Duration(seconds: 3),
                       ),
                     );
                   }
@@ -138,14 +150,19 @@ class EmailVerification extends StatelessWidget {
                   style: TextStyle(color: scheme.onSurfaceVariant),
                 ),
                 TextButton(
-                  onPressed: () {
+                  onPressed: () async {
                     if (onResendEmail != null) {
                       onResendEmail!();
                     } else {
+                      final res = await AuthService.sendEmailVerification();
+                      if (!context.mounted) return;
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
-                          content: Text('Verification email resent to $displayEmail'),
-                          duration: const Duration(seconds: 2),
+                          content: Text(res.isSuccess
+                              ? 'Verification email sent to $displayEmail! (Check your inbox or spam)'
+                              : (res.errorMessage ?? 'Failed to send verification email.')),
+                          backgroundColor: res.isSuccess ? const Color(0xFF116B78) : Colors.redAccent,
+                          duration: const Duration(seconds: 3),
                         ),
                       );
                     }

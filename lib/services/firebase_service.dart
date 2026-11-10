@@ -914,6 +914,32 @@ class FirestoreService {
     }
   }
 
+  /// Approves and authorizes a teacher or school staff member in Firestore.
+  static Future<bool> approveStaffUser({
+    required String uid,
+    required bool authorized,
+    String status = 'approved',
+  }) async {
+    if (_offlineProfiles.containsKey(uid)) {
+      final existing = _offlineProfiles[uid]!;
+      _offlineProfiles[uid] = existing.copyWith(authorized: authorized, status: status);
+      _offlineProfiles[existing.email] = _offlineProfiles[uid]!;
+    }
+    if (!FirebaseService.isFirebaseAvailable || _db == null) return true;
+    try {
+      await _db!.collection('users').doc(uid).set({
+        'authorized': authorized,
+        'status': status,
+        'approvedAt': FieldValue.serverTimestamp(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
+      return true;
+    } catch (e) {
+      debugPrint('Firestore approveStaffUser error: $e');
+      return false;
+    }
+  }
+
   /// Fetches user profile from Firestore `users/{uid}` or offline cache
   static Future<UserProfile?> getUserProfile(String uidOrEmail) async {
     if (_offlineProfiles.containsKey(uidOrEmail)) {

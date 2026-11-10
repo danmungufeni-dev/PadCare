@@ -916,6 +916,20 @@ class FirestoreService {
 
   static final Map<String, UserProfile> _offlineProfiles = {};
 
+  /// Official admin master passkeys accepted for on-site administrative approvals.
+  static const List<String> adminPasskeys = [
+    'PadCareAdmin@2026',
+    'PadCare2026!',
+    'PadCareAdmin2026',
+    'padcare@admin2026',
+  ];
+
+  /// Validates whether the provided password is an authorized PadCare admin passkey.
+  static bool verifyAdminPasskey(String input) {
+    final clean = input.trim();
+    return adminPasskeys.contains(clean);
+  }
+
   /// Saves or updates user profile in `users/{uid}`
   static Future<void> saveUserProfile(UserProfile profile) async {
     _offlineProfiles[profile.uid] = profile;

@@ -2992,6 +2992,126 @@ class _TeacherPendingApprovalScreenState extends State<TeacherPendingApprovalScr
     );
   }
 
+  void _showAdminQuickAuthorizeDialog() {
+    final passwordCtrl = TextEditingController();
+    bool obscurePassword = true;
+    String? errorText;
+    bool authorizing = false;
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          title: const Row(
+            children: [
+              Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF116B78), size: 24),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text('Admin Authorization', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Enter the PadCare Administrator Passkey to authorize ${widget.teacherName} for ${widget.school}.',
+                style: const TextStyle(fontSize: 13, height: 1.45, color: Color(0xFF475569)),
+              ),
+              const SizedBox(height: 14),
+              TextField(
+                key: const ValueKey('admin-passkey-field'),
+                controller: passwordCtrl,
+                obscureText: obscurePassword,
+                autofocus: true,
+                decoration: InputDecoration(
+                  labelText: 'Admin Password',
+                  hintText: 'Enter secret admin passkey',
+                  prefixIcon: const Icon(Icons.key_rounded, color: Color(0xFF116B78)),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: _muted,
+                      size: 20,
+                    ),
+                    onPressed: () => setDialogState(() => obscurePassword = !obscurePassword),
+                  ),
+                  errorText: errorText,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide(color: errorText != null ? Colors.red : const Color(0xFFDCECEB)),
+                  ),
+                ),
+                onSubmitted: (_) {
+                  final pass = passwordCtrl.text;
+                  if (!FirestoreService.verifyAdminPasskey(pass)) {
+                    setDialogState(() {
+                      errorText = 'Incorrect admin password. Access denied.';
+                    });
+                    return;
+                  }
+                },
+              ),
+              const SizedBox(height: 10),
+              const Row(
+                children: [
+                  Icon(Icons.shield_outlined, size: 14, color: Color(0xFF64748B)),
+                  SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      'Restricted: known only to PadCare system administrators.',
+                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+            ),
+            FilledButton(
+              key: const ValueKey('confirm-admin-auth-btn'),
+              onPressed: authorizing
+                  ? null
+                  : () async {
+                      final pass = passwordCtrl.text;
+                      if (!FirestoreService.verifyAdminPasskey(pass)) {
+                        setDialogState(() {
+                          errorText = 'Incorrect admin password. Access denied.';
+                        });
+                        return;
+                      }
+                      setDialogState(() {
+                        authorizing = true;
+                        errorText = null;
+                      });
+                      await FirestoreService.approveStaffUser(
+                        uid: widget.uid,
+                        authorized: true,
+                        status: 'approved',
+                      );
+                      if (!mounted) return;
+                      Navigator.pop(ctx);
+                      await _checkVerificationStatus();
+                    },
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF116B78),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: Text(authorizing ? 'Verifying...' : 'Authorize Staff'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -3220,45 +3340,10 @@ class _TeacherPendingApprovalScreenState extends State<TeacherPendingApprovalScr
                   ),
                   const SizedBox(height: 10),
                   TextButton.icon(
-                    onPressed: () async {
-                      final confirmed = await showDialog<bool>(
-                        context: context,
-                        builder: (ctx) => AlertDialog(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                          title: const Row(
-                            children: [
-                              Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF116B78)),
-                              SizedBox(width: 8),
-                              Text('Authorize Teacher'),
-                            ],
-                          ),
-                          content: Text(
-                            'Authorize ${widget.teacherName} for ${widget.school} in Firebase?',
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () => Navigator.pop(ctx, false),
-                              child: const Text('Cancel'),
-                            ),
-                            FilledButton(
-                              onPressed: () => Navigator.pop(ctx, true),
-                              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF116B78)),
-                              child: const Text('Confirm Verification'),
-                            ),
-                          ],
-                        ),
-                      );
-                      if (confirmed == true) {
-                        await FirestoreService.approveStaffUser(
-                          uid: widget.uid,
-                          authorized: true,
-                          status: 'approved',
-                        );
-                        await _checkVerificationStatus();
-                      }
-                    },
+                    key: const ValueKey('admin-quick-authorize-btn'),
+                    onPressed: _showAdminQuickAuthorizeDialog,
                     icon: const Icon(Icons.admin_panel_settings_outlined, size: 16),
-                    label: const Text('Admin Quick-Authorize (Backend)'),
+                    label: const Text('Admin Quick-Authorize (Passkey Protected)'),
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF0369A1),
                     ),

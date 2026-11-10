@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'firebase_service.dart';
+import 'offline_queue_service.dart';
 
 /// Represents a participating school facility in PadCare.
 class SchoolModel {
@@ -78,13 +80,6 @@ class SchoolService {
       subCounty: 'Arua Hill',
       createdAt: DateTime.now(),
     ),
-    'oli-primary-school': SchoolModel(
-      schoolId: 'oli-primary-school',
-      name: 'Oli Primary School',
-      district: 'Arua',
-      subCounty: 'Oli',
-      createdAt: DateTime.now(),
-    ),
     'ediofe-girls-school': SchoolModel(
       schoolId: 'ediofe-girls-school',
       name: 'Ediofe Girls School',
@@ -92,11 +87,101 @@ class SchoolService {
       subCounty: 'Ediofe',
       createdAt: DateTime.now(),
     ),
+    'oli-primary-school': SchoolModel(
+      schoolId: 'oli-primary-school',
+      name: 'Oli Primary School',
+      district: 'Arua',
+      subCounty: 'Oli',
+      createdAt: DateTime.now(),
+    ),
+    'arua-public-primary': SchoolModel(
+      schoolId: 'arua-public-primary',
+      name: 'Arua Public Primary',
+      district: 'Arua',
+      subCounty: 'Arua Hill',
+      createdAt: DateTime.now(),
+    ),
+    'mvara-secondary': SchoolModel(
+      schoolId: 'mvara-secondary',
+      name: 'Mvara Secondary',
+      district: 'Arua',
+      subCounty: 'Arua Hill',
+      createdAt: DateTime.now(),
+    ),
+    'muni-girls-secondary': SchoolModel(
+      schoolId: 'muni-girls-secondary',
+      name: 'Muni Girls Secondary',
+      district: 'Arua',
+      subCounty: 'Ayivu',
+      createdAt: DateTime.now(),
+    ),
+    'logiri-girls-secondary': SchoolModel(
+      schoolId: 'logiri-girls-secondary',
+      name: 'Logiri Girls Secondary',
+      district: 'Arua',
+      subCounty: 'Logiri',
+      createdAt: DateTime.now(),
+    ),
+    'offaka-secondary': SchoolModel(
+      schoolId: 'offaka-secondary',
+      name: 'Offaka Secondary',
+      district: 'Arua',
+      subCounty: 'Offaka',
+      createdAt: DateTime.now(),
+    ),
   };
 
-  /// Registers or updates a school in Firestore `schools/{schoolId}`.
-  static Future<void> saveSchool(SchoolModel school) async {
+  /// Generates a clean URL/doc slug from a school name.
+  static String generateSchoolId(String name) {
+    final slug = name
+        .toLowerCase()
+        .replaceAll(RegExp(r'[^a-z0-9]+'), '-')
+        .replaceAll(RegExp(r'^-+|-+$'), '');
+    return slug.isEmpty ? 'school-${DateTime.now().millisecondsSinceEpoch}' : slug;
+  }
+
+  /// Returns sorted list of known school names from memory cache.
+  static List<String> get cachedSchoolNames {
+    final set = <String>{};
+    for (final s in _memorySchools.values) {
+      set.add(s.name);
+    }
+    final list = set.toList()..sort();
+    return list;
+  }
+
+  /// Fetches schools from Firestore `schools` collection and updates memory cache.
+  static Future<List<String>> fetchSchoolNames() async {
+    if (!FirebaseService.isFirebaseAvailable || _db == null) {
+      return cachedSchoolNames;
+    }
+    try {
+      final snap = await _db!.collection('schools').get();
+      for (final doc in snap.docs) {
+        final school = SchoolModel.fromJson(doc.data());
+        _memorySchools[school.schoolId] = school;
+        _memorySchools[school.name] = school;
+      }
+    } catch (e) {
+      debugPrint('SchoolService fetchSchoolNames error: $e');
+    }
+    return cachedSchoolNames;
+  }
+
+  /// Registers or updates a school in Firestore `schools/{schoolId}` and offline queue.
+  static Future<void> saveSchool(SchoolModel school, {bool enqueueOffline = true}) async {
     _memorySchools[school.schoolId] = school;
+    _memorySchools[school.name] = school;
+
+    if (enqueueOffline) {
+      unawaited(
+        OfflineQueueService.enqueue(
+          type: 'save_school',
+          payload: school.toJson(),
+        ),
+      );
+    }
+
     if (!FirebaseService.isFirebaseAvailable || _db == null) return;
     try {
       await _db!.collection('schools').doc(school.schoolId).set(

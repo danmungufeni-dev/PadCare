@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:padcare/services/firebase_service.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
   group('PadCare Complete Firebase Backend Service Tests', () {
     // -------------------------------------------------------------
     // Test 1: User Roles and Profile Model

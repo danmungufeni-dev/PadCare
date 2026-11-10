@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../services/firebase_service.dart';
+import '../services/school_service.dart';
 import '../info/info_screens.dart';
 import '../services/url_launcher_stub.dart'
     if (dart.library.html) '../services/url_launcher_web.dart';
@@ -1701,6 +1702,11 @@ class _SignupTermsState extends State<SignupTerms> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _newSchoolNameController = TextEditingController();
+  final _newSchoolPhoneController = TextEditingController();
+  String _newSchoolSubCounty = 'Arua Hill';
+  bool _isAddingSchool = false;
+  bool _savingSchool = false;
   String _password = '';
   String _role = 'parent';
   String _school = "St. Mary's Secondary";
@@ -1711,25 +1717,82 @@ class _SignupTermsState extends State<SignupTerms> {
     'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
   ];
-  static const _schools = [
-    "St. Mary's Secondary",
-    "Ediofe Girls School",
-    "Arua Public Primary",
-    "Mvara Secondary",
-    "Muni Girls Secondary",
-    "Logiri Girls Secondary",
-    "Offaka Secondary",
-  ];
+  late List<String> _schools;
   bool _agreed = false;
   bool _loading = false;
   String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _schools = List<String>.from(SchoolService.cachedSchoolNames);
+    if (!_schools.contains("St. Mary's Secondary")) {
+      _schools.insert(0, "St. Mary's Secondary");
+    }
+    _fetchDynamicSchools();
+  }
+
+  void _fetchDynamicSchools() async {
+    final names = await SchoolService.fetchSchoolNames();
+    if (mounted && names.isNotEmpty) {
+      setState(() {
+        _schools = List<String>.from(names);
+        if (!_schools.contains(_school)) {
+          _schools.insert(0, _school);
+        }
+      });
+    }
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _newSchoolNameController.dispose();
+    _newSchoolPhoneController.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleAddNewSchool() async {
+    final name = _newSchoolNameController.text.trim();
+    if (name.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter a school name.')),
+      );
+      return;
+    }
+    setState(() => _savingSchool = true);
+    final schoolId = SchoolService.generateSchoolId(name);
+    final school = SchoolModel(
+      schoolId: schoolId,
+      name: name,
+      district: 'Arua',
+      subCounty: _newSchoolSubCounty,
+      contactPhone: _newSchoolPhoneController.text.trim().isNotEmpty
+          ? _newSchoolPhoneController.text.trim()
+          : '+256700000000',
+      createdAt: DateTime.now(),
+    );
+    await SchoolService.saveSchool(school);
+    if (!mounted) return;
+    setState(() {
+      _savingSchool = false;
+      if (!_schools.contains(name)) {
+        _schools.add(name);
+        _schools.sort();
+      }
+      _school = name;
+      _isAddingSchool = false;
+      _newSchoolNameController.clear();
+      _newSchoolPhoneController.clear();
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('🎉 School "$name" added and selected!'),
+        backgroundColor: const Color(0xFF116B78),
+      ),
+    );
   }
 
   int get _strength {
@@ -2033,7 +2096,9 @@ class _SignupTermsState extends State<SignupTerms> {
                   if (_role == 'teacher') ...[
                     const SizedBox(height: 14),
                     DropdownButtonFormField<String>(
-                      initialValue: _school,
+                      key: const ValueKey('signup-school-dropdown'),
+                      isExpanded: true,
+                      initialValue: _schools.contains(_school) ? _school : (_schools.isNotEmpty ? _schools.first : null),
                       decoration: InputDecoration(
                         labelText: 'Select your school',
                         filled: true,
@@ -2052,13 +2117,208 @@ class _SignupTermsState extends State<SignupTerms> {
                           borderSide: const BorderSide(color: Color(0xFF116B78), width: 1.8),
                         ),
                       ),
-                      items: _schools
-                          .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                          .toList(),
+                      items: [
+                        ..._schools.map((s) => DropdownMenuItem(
+                              value: s,
+                              child: Text(s, overflow: TextOverflow.ellipsis),
+                            )),
+                        const DropdownMenuItem(
+                          value: '__ADD_NEW__',
+                          child: Row(
+                            children: [
+                              Icon(Icons.add_business_rounded, color: Color(0xFF116B78), size: 18),
+                              SizedBox(width: 8),
+                              Text(
+                                '+ Add a new school...',
+                                style: TextStyle(
+                                  color: Color(0xFF116B78),
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       onChanged: (v) {
-                        if (v != null) setState(() => _school = v);
+                        if (v == '__ADD_NEW__') {
+                          setState(() => _isAddingSchool = true);
+                        } else if (v != null) {
+                          setState(() => _school = v);
+                        }
                       },
                     ),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton.icon(
+                        key: const ValueKey('toggle-add-school-btn'),
+                        onPressed: () => setState(() => _isAddingSchool = !_isAddingSchool),
+                        icon: Icon(
+                          _isAddingSchool ? Icons.close_rounded : Icons.add_rounded,
+                          size: 16,
+                          color: const Color(0xFF116B78),
+                        ),
+                        label: Text(
+                          _isAddingSchool
+                              ? 'Cancel adding school'
+                              : "Can't find your school? Add a new school",
+                          style: const TextStyle(
+                            color: Color(0xFF116B78),
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (_isAddingSchool) ...[
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF0FDF4),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFFBBF7D0)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Row(
+                              children: [
+                                Icon(Icons.school_rounded, color: Color(0xFF116B78), size: 19),
+                                SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Register New School in Arua',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w800,
+                                      fontSize: 13.5,
+                                      color: Color(0xFF116B78),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            const Text(
+                              'Add your institution to PadCare to enable sanitary pad distributions.',
+                              style: TextStyle(fontSize: 11.5, color: Color(0xFF52796F)),
+                            ),
+                            const SizedBox(height: 12),
+                            TextField(
+                              key: const ValueKey('new-school-name-field'),
+                              controller: _newSchoolNameController,
+                              textCapitalization: TextCapitalization.words,
+                              decoration: InputDecoration(
+                                labelText: 'School name (e.g. Arua Secondary School)',
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: Color(0xFF116B78), width: 1.5),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            DropdownButtonFormField<String>(
+                              key: const ValueKey('new-school-subcounty-dropdown'),
+                              initialValue: _newSchoolSubCounty,
+                              decoration: InputDecoration(
+                                labelText: 'Sub-County / Division in Arua',
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                                ),
+                              ),
+                              items: const [
+                                'Arua Hill',
+                                'Ediofe',
+                                'Oli',
+                                'Ayivu',
+                                'Dadamu',
+                                'Manibe',
+                                'Logiri',
+                                'Offaka',
+                                'Other Arua Division',
+                              ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                              onChanged: (v) {
+                                if (v != null) setState(() => _newSchoolSubCounty = v);
+                              },
+                            ),
+                            const SizedBox(height: 10),
+                            TextField(
+                              key: const ValueKey('new-school-phone-field'),
+                              controller: _newSchoolPhoneController,
+                              keyboardType: TextInputType.phone,
+                              decoration: InputDecoration(
+                                labelText: 'School contact phone (optional)',
+                                hintText: '+256 700 000 000',
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: ElevatedButton.icon(
+                                    key: const ValueKey('save-new-school-btn'),
+                                    onPressed: _savingSchool ? null : _handleAddNewSchool,
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFF116B78),
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    icon: _savingSchool
+                                        ? const SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                              color: Colors.white,
+                                            ),
+                                          )
+                                        : const Icon(Icons.check_rounded, size: 18),
+                                    label: Text(
+                                      _savingSchool ? 'Saving...' : 'Save & Select School',
+                                      style: const TextStyle(fontWeight: FontWeight.w700),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                TextButton(
+                                  onPressed: () => setState(() => _isAddingSchool = false),
+                                  child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
                   const SizedBox(height: 18),
                   const Text(

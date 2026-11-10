@@ -13,6 +13,7 @@ import 'services/geo_service.dart';
 import 'services/momo_service.dart';
 import 'services/offline_queue_service.dart';
 import 'services/pwa_service.dart';
+import 'services/school_service.dart';
 import 'services/whatsapp_service.dart';
 import 'services/url_launcher_stub.dart'
     if (dart.library.html) 'services/url_launcher_web.dart';
@@ -387,6 +388,12 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
   void _saveSchool() {
     final school = _newSchoolController.text.trim();
     if (school.isEmpty) return;
+    final schoolId = SchoolService.generateSchoolId(school);
+    SchoolService.saveSchool(SchoolModel(
+      schoolId: schoolId,
+      name: school,
+      createdAt: DateTime.now(),
+    ));
     setState(() {
       if (!_schoolOptions.contains(school)) _schoolOptions.add(school);
       _school = school;
@@ -3738,6 +3745,67 @@ class _HomeScreenState extends State<HomeScreen> {
           lowStock: _lowStockCount,
         ),
         const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+            boxShadow: const [
+              BoxShadow(
+                color: Color(0x06000000),
+                blurRadius: 10,
+                offset: Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE4F8F2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.school_rounded, color: _deepTeal, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'School Distribution Network',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: _ink),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Active: ${widget.facility}',
+                      style: const TextStyle(fontSize: 11.5, color: _muted),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              ElevatedButton.icon(
+                key: const ValueKey('staff-add-school-btn'),
+                onPressed: _showAddSchoolDialog,
+                icon: const Icon(Icons.add_rounded, size: 16),
+                label: const Text('Add School', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _deepTeal,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  minimumSize: Size.zero,
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
         Row(
           children: [
             const Expanded(child: _SectionTitle('Stock at this point')),
@@ -4711,6 +4779,188 @@ class _HomeScreenState extends State<HomeScreen> {
 
   void _showPledgeDialog(BuildContext context) {
     _showGlobalImpactSheet(context);
+  }
+
+  void _showAddSchoolDialog() {
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    final liaisonCtrl = TextEditingController();
+    String subCounty = 'Arua Hill';
+    bool saving = false;
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
+      ),
+      builder: (sheetContext) => StatefulBuilder(
+        builder: (ctx, setModalState) => SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(
+            22,
+            16,
+            22,
+            MediaQuery.of(ctx).viewInsets.bottom + 24,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 44,
+                  height: 5,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFD0DFDC),
+                    borderRadius: BorderRadius.circular(2.5),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 18),
+              const Row(
+                children: [
+                  Icon(Icons.school_rounded, color: _deepTeal, size: 24),
+                  SizedBox(width: 10),
+                  Text(
+                    'Register New School',
+                    style: TextStyle(
+                      color: _ink,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w900,
+                      fontFamily: _fontHeading,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Add a primary or secondary school in Arua to the PadCare distribution network.',
+                style: TextStyle(color: _muted, fontSize: 13, height: 1.45),
+              ),
+              const SizedBox(height: 18),
+              TextField(
+                key: const ValueKey('add-school-modal-name'),
+                controller: nameCtrl,
+                textCapitalization: TextCapitalization.words,
+                decoration: InputDecoration(
+                  labelText: 'School Name *',
+                  hintText: 'e.g. Arua Secondary School',
+                  prefixIcon: const Icon(Icons.business_outlined, color: _deepTeal),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                key: const ValueKey('add-school-modal-subcounty'),
+                initialValue: subCounty,
+                decoration: InputDecoration(
+                  labelText: 'Sub-County / Division in Arua',
+                  prefixIcon: const Icon(Icons.location_on_outlined, color: _deepTeal),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                items: const [
+                  'Arua Hill',
+                  'Ediofe',
+                  'Oli',
+                  'Ayivu',
+                  'Dadamu',
+                  'Manibe',
+                  'Logiri',
+                  'Offaka',
+                  'Other Arua Division',
+                ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                onChanged: (v) {
+                  if (v != null) setModalState(() => subCounty = v);
+                },
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const ValueKey('add-school-modal-liaison'),
+                controller: liaisonCtrl,
+                decoration: InputDecoration(
+                  labelText: 'Senior Woman Teacher / Focal Person (optional)',
+                  hintText: 'e.g. Tr. Mary Draru',
+                  prefixIcon: const Icon(Icons.person_outline, color: _deepTeal),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const ValueKey('add-school-modal-phone'),
+                controller: phoneCtrl,
+                keyboardType: TextInputType.phone,
+                decoration: InputDecoration(
+                  labelText: 'School Contact Phone (optional)',
+                  hintText: '+256 700 000 000',
+                  prefixIcon: const Icon(Icons.phone_outlined, color: _deepTeal),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                key: const ValueKey('submit-add-school-btn'),
+                onPressed: saving
+                    ? null
+                    : () async {
+                        final name = nameCtrl.text.trim();
+                        if (name.isEmpty) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Please enter a school name.')),
+                          );
+                          return;
+                        }
+                        setModalState(() => saving = true);
+                        final schoolId = SchoolService.generateSchoolId(name);
+                        final school = SchoolModel(
+                          schoolId: schoolId,
+                          name: name,
+                          district: 'Arua',
+                          subCounty: subCounty,
+                          contactPhone: phoneCtrl.text.trim().isNotEmpty
+                              ? phoneCtrl.text.trim()
+                              : '+256700000000',
+                          contactEmail: '${schoolId.replaceAll("-", "")}@padcare.org',
+                          status: 'active',
+                          createdAt: DateTime.now(),
+                        );
+                        await SchoolService.saveSchool(school);
+                        if (!mounted) return;
+                        if (sheetContext.mounted) {
+                          Navigator.pop(sheetContext);
+                        }
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text('🎉 School "$name" registered successfully in PadCare!'),
+                            backgroundColor: const Color(0xFF116B78),
+                            duration: const Duration(seconds: 4),
+                          ),
+                        );
+                      },
+                icon: saving
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Icon(Icons.check_rounded),
+                label: Text(
+                  saving ? 'Registering School...' : 'Register School Facility',
+                  style: const TextStyle(fontWeight: FontWeight.w800),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _deepTeal,
+                  foregroundColor: Colors.white,
+                  minimumSize: const Size(double.infinity, 50),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 
   void _openRestockRequisitionDialog() {
@@ -10469,11 +10719,31 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               ),
               const SizedBox(height: 20),
               ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
+                  final name = facilityNameCtrl.text.trim();
+                  if (name.isEmpty) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Please enter a facility or school name.')),
+                    );
+                    return;
+                  }
+                  final schoolId = SchoolService.generateSchoolId(name);
+                  final school = SchoolModel(
+                    schoolId: schoolId,
+                    name: name,
+                    district: 'Arua',
+                    subCounty: addressCtrl.text.trim().isNotEmpty ? addressCtrl.text.trim() : 'Arua Hill',
+                    contactPhone: contactCtrl.text.trim().isNotEmpty ? contactCtrl.text.trim() : '+256700000000',
+                    status: 'pending',
+                    createdAt: DateTime.now(),
+                  );
+                  await SchoolService.saveSchool(school);
+                  if (!context.mounted) return;
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Provider application submitted for verification review!'),
+                    SnackBar(
+                      content: Text('🎉 $facilityType "$name" submitted for PadCare distribution review!'),
+                      backgroundColor: const Color(0xFF116B78),
                     ),
                   );
                 },

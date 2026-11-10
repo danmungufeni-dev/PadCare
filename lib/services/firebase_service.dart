@@ -1181,7 +1181,7 @@ class FirestoreService {
     required String pin,
   }) async {
     if (!FirebaseService.isFirebaseAvailable || _db == null) {
-      return {'success': true, 'offline': true};
+      return {'success': false, 'error': 'Database connection unavailable. Offline dispensing is prohibited.'};
     }
 
     try {
@@ -1267,11 +1267,30 @@ class FirestoreService {
           'status': 'completed',
         });
 
+        // Traceable stock movement log
+        final moveId = 'SM-$requestId-${DateTime.now().millisecondsSinceEpoch}';
+        final moveRef = _db!.collection('stock_movements').doc(moveId);
+        transaction.set(moveRef, {
+          'movementId': moveId,
+          'schoolId': school,
+          'school': school,
+          'productId': product,
+          'quantityChange': -quantity,
+          'previousStock': isKit ? currentKits + quantity : currentPacks + quantity,
+          'newStock': isKit ? currentKits : currentPacks,
+          'reason': 'student_dispense',
+          'referenceId': requestId,
+          'pickupPin': pin,
+          'performedBy': dispensedBy,
+          'timestamp': FieldValue.serverTimestamp(),
+        });
+
         return {
           'success': true,
           'kitsRemaining': currentKits,
           'packsRemaining': currentPacks,
           'dispensationId': dispId,
+          'movementId': moveId,
         };
       });
     } catch (e) {

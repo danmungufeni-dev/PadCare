@@ -31,7 +31,7 @@ class AnalyticsService {
         'action': action,
         'performedBy': performedBy,
         'schoolId': schoolId,
-        if (details != null) 'details': details,
+        'details': ?details,
         'timestamp': FieldValue.serverTimestamp(),
       });
     } catch (e) {

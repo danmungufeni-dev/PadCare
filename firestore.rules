@@ -849,5 +849,44 @@ service cloud.firestore {
 
       allow delete: if isSuperAdmin();
     }
+
+    // 12. Products Catalogue
+    // Public read for app UI catalogue; super_admin managed.
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if isSuperAdmin();
+    }
+
+    // 13. Stock Movements (Traceable inventory log)
+    // Read: super_admin or school_admin of that school.
+    // Create: authorized staff on stock change. Immutable.
+    match /stock_movements/{movementId} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        isSchoolAdmin(resource.data.get('schoolId', resource.data.get('school', '')))
+      );
+      allow create: if isAuthenticated() && (
+        isSuperAdmin() ||
+        isSchoolAdmin(request.resource.data.get('schoolId', request.resource.data.get('school', '')))
+      );
+      allow update, delete: if false;
+    }
+
+    // 14. School Members
+    // User role & staff assignment per school.
+    match /school_members/{memberId} {
+      allow read: if isAuthenticated() && (
+        isSuperAdmin() ||
+        isSchoolAdmin(resource.data.get('schoolId', '')) ||
+        resource.data.get('uid', '') == request.auth.uid
+      );
+      allow write: if isSuperAdmin();
+    }
+
+    // 15. Platform Application Settings & Configurations
+    match /app_settings/{settingId} {
+      allow read: if isAuthenticated();
+      allow write: if isSuperAdmin();
+    }
   }
 }

@@ -3750,8 +3750,19 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (confirmed != true) return;
 
-    // 9. Atomic cloud transaction if connected
-    if (!MyApp.isTestMode && FirebaseService.isFirebaseAvailable) {
+    // 9. Atomic cloud transaction with offline dispensing guard
+    if (!MyApp.isTestMode) {
+      if (!FirebaseService.isFirebaseAvailable) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Offline dispensing is disabled for security. An active connection to Firebase is required to verify PIN and finalize stock deductions.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+        return;
+      }
+
       final staffEmail = widget.teacherName.isNotEmpty ? widget.teacherName : 'Authorized Staff';
       final atomicResult = await FirestoreService.dispenseRequestAtomic(
         requestId: match.id,

@@ -14,6 +14,8 @@ class DonationModel {
   final String paymentMethod; // 'MoMo' | 'Airtel' | 'Card'
   final String paymentStatus; // 'completed' | 'pending' | 'failed'
   final String transactionReference;
+  final String? receiptNumber;
+  final DateTime? verifiedAt;
   final DateTime createdAt;
 
   const DonationModel({
@@ -27,6 +29,8 @@ class DonationModel {
     this.paymentMethod = 'MoMo',
     this.paymentStatus = 'completed',
     required this.transactionReference,
+    this.receiptNumber,
+    this.verifiedAt,
     required this.createdAt,
   });
 
@@ -43,6 +47,8 @@ class DonationModel {
     'paymentMethod': paymentMethod,
     'status': paymentStatus,
     'reference': transactionReference,
+    if (receiptNumber != null) 'receiptNumber': receiptNumber,
+    if (verifiedAt != null) 'verifiedAt': verifiedAt!.toIso8601String(),
     'timestamp': createdAt.toIso8601String(),
     'createdAt': createdAt.toIso8601String(),
   };
@@ -59,6 +65,10 @@ class DonationModel {
       paymentMethod: (json['paymentMethod'] ?? 'MoMo').toString(),
       paymentStatus: (json['status'] ?? 'completed').toString(),
       transactionReference: (json['reference'] ?? json['transactionReference'] ?? '').toString(),
+      receiptNumber: json['receiptNumber'] as String?,
+      verifiedAt: json['verifiedAt'] != null
+          ? (DateTime.tryParse(json['verifiedAt'].toString()))
+          : null,
       createdAt: json['timestamp'] != null
           ? (DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now())
           : DateTime.now(),

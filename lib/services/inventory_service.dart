@@ -126,6 +126,67 @@ class DistributionRecordModel {
   }
 }
 
+/// Traceable stock movement transaction log
+class StockMovementModel {
+  final String movementId;
+  final String schoolId;
+  final String productId;
+  final int quantityChange;
+  final int previousStock;
+  final int newStock;
+  final String reason; // 'student_dispense' | 'restock' | 'damage' | 'adjustment'
+  final String referenceId;
+  final String? pickupPin;
+  final String performedBy;
+  final DateTime timestamp;
+
+  const StockMovementModel({
+    required this.movementId,
+    required this.schoolId,
+    required this.productId,
+    required this.quantityChange,
+    required this.previousStock,
+    required this.newStock,
+    required this.reason,
+    required this.referenceId,
+    this.pickupPin,
+    required this.performedBy,
+    required this.timestamp,
+  });
+
+  Map<String, dynamic> toJson() => {
+    'movementId': movementId,
+    'schoolId': schoolId,
+    'productId': productId,
+    'quantityChange': quantityChange,
+    'previousStock': previousStock,
+    'newStock': newStock,
+    'reason': reason,
+    'referenceId': referenceId,
+    if (pickupPin != null) 'pickupPin': pickupPin,
+    'performedBy': performedBy,
+    'timestamp': timestamp.toIso8601String(),
+  };
+
+  factory StockMovementModel.fromJson(Map<String, dynamic> json) {
+    return StockMovementModel(
+      movementId: (json['movementId'] ?? json['id'] ?? '').toString(),
+      schoolId: (json['schoolId'] ?? json['school'] ?? '').toString(),
+      productId: (json['productId'] ?? 'disposable-pads').toString(),
+      quantityChange: (json['quantityChange'] is num) ? (json['quantityChange'] as num).toInt() : 0,
+      previousStock: (json['previousStock'] is num) ? (json['previousStock'] as num).toInt() : 0,
+      newStock: (json['newStock'] is num) ? (json['newStock'] as num).toInt() : 0,
+      reason: (json['reason'] ?? 'adjustment').toString(),
+      referenceId: (json['referenceId'] ?? '').toString(),
+      pickupPin: json['pickupPin']?.toString(),
+      performedBy: (json['performedBy'] ?? 'Staff').toString(),
+      timestamp: json['timestamp'] != null
+          ? (DateTime.tryParse(json['timestamp'].toString()) ?? DateTime.now())
+          : DateTime.now(),
+    );
+  }
+}
+
 /// Inventory and distribution service with atomic transaction protection.
 class InventoryService {
   static FirebaseFirestore? get _db =>
@@ -163,6 +224,22 @@ class InventoryService {
         .handleError((e) {
           debugPrint('streamDistributions error: $e');
           return <DistributionRecordModel>[];
+        });
+  }
+
+  /// Streams traceable stock movements for an individual school.
+  static Stream<List<StockMovementModel>> streamStockMovements(String schoolName) {
+    if (!FirebaseService.isFirebaseAvailable || _db == null) {
+      return const Stream.empty();
+    }
+    return _db!
+        .collection('stock_movements')
+        .where('schoolId', isEqualTo: schoolName)
+        .snapshots()
+        .map((snap) => snap.docs.map((doc) => StockMovementModel.fromJson(doc.data())).toList())
+        .handleError((e) {
+          debugPrint('streamStockMovements error: $e');
+          return <StockMovementModel>[];
         });
   }
 }

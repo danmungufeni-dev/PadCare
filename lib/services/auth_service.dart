@@ -1,9 +1,3 @@
-import 'dart:async';
-import 'dart:typed_data';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
-import 'firebase_service.dart';
-
 /// Predefined user roles in PadCare.
 class UserRole {
   static const String teacher = 'teacher';

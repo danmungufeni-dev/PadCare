@@ -487,6 +487,13 @@ class AuthService {
           await credential.user?.updatePhotoURL(finalPhotoUrl);
         }
 
+        // Send email verification link
+        try {
+          await credential.user?.sendEmailVerification();
+        } catch (e) {
+          debugPrint('sendEmailVerification notice: $e');
+        }
+
         final profile = UserProfile(
           uid: uid,
           email: cleanEmail,
@@ -571,6 +578,34 @@ class AuthService {
         return AuthResult(
           isSuccess: false,
           errorMessage: 'Password reset error: $e',
+        );
+      }
+    }
+    return const AuthResult(isSuccess: true);
+  }
+
+  /// Sends email verification to the currently authenticated user.
+  static Future<AuthResult> sendEmailVerification() async {
+    if (FirebaseService.isFirebaseAvailable && _auth != null) {
+      try {
+        final user = _auth!.currentUser;
+        if (user == null) {
+          return const AuthResult(
+            isSuccess: false,
+            errorMessage: 'No signed-in user found.',
+          );
+        }
+        await user.sendEmailVerification();
+        return const AuthResult(isSuccess: true);
+      } on FirebaseAuthException catch (e) {
+        return AuthResult(
+          isSuccess: false,
+          errorMessage: e.message ?? 'Verification email dispatch failed.',
+        );
+      } catch (e) {
+        return AuthResult(
+          isSuccess: false,
+          errorMessage: 'Verification error: $e',
         );
       }
     }

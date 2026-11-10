@@ -394,6 +394,13 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
         return;
       }
       uid = res.user?.uid ?? uid;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Account created for $email! Verification email sent (check your inbox or spam).'),
+          backgroundColor: const Color(0xFF116B78),
+          duration: const Duration(seconds: 5),
+        ),
+      );
     }
 
     final navigator = Navigator.of(context);
@@ -3119,6 +3126,29 @@ class _TeacherPendingApprovalScreenState extends State<TeacherPendingApprovalScr
                     style: FilledButton.styleFrom(
                       backgroundColor: _deepTeal,
                       minimumSize: const Size(double.infinity, 48),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  OutlinedButton.icon(
+                    onPressed: () async {
+                      final res = await AuthService.sendEmailVerification();
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(res.isSuccess
+                              ? 'Verification email sent to ${widget.email}. Please check your inbox or spam folder.'
+                              : (res.errorMessage ?? 'Failed to send email.')),
+                          backgroundColor: res.isSuccess ? const Color(0xFF116B78) : Colors.redAccent,
+                        ),
+                      );
+                    },
+                    icon: const Icon(Icons.mark_email_read_outlined, size: 18),
+                    label: const Text('Resend Verification Email'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF116B78),
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      minimumSize: const Size(double.infinity, 46),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                   ),

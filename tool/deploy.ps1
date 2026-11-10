@@ -10,6 +10,8 @@ try {
 
     Write-Host "Configuring GitHub Pages .nojekyll and 404.html..." -ForegroundColor Cyan
     New-Item -ItemType File -Path "build\web\.nojekyll" -Force | Out-Null
+    $ts = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+    (Get-Content "build\web\index.html") -replace 'flutter_bootstrap\.js', "flutter_bootstrap.js?v=$ts" | Set-Content "build\web\index.html"
     Copy-Item -Path "build\web\index.html" -Destination "build\web\404.html" -Force
 
     $originUrl = (git remote get-url origin)

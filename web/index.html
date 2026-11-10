@@ -32,6 +32,9 @@
 
   <title>PadCare</title>
   <link rel="manifest" href="manifest.json">
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+  <meta http-equiv="Pragma" content="no-cache">
+  <meta http-equiv="Expires" content="0">
 
   <style>
     /* Suppress the default Flutter debug loading ribbon */
@@ -134,6 +137,14 @@
     window.addEventListener('dart-app-ready', function () {
       setTimeout(_removeLoadingScreen, 200);
     });
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function (registrations) {
+        for (var i = 0; i < registrations.length; i++) {
+          registrations[i].update();
+        }
+      });
+    }
   </script>
 
   <script src="flutter_bootstrap.js" async></script>

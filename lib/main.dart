@@ -23,6 +23,7 @@ export 'auth/auth_screens.dart';
 export 'info/info_screens.dart';
 
 void _setupAuthNavigation() {
+  PadCareAuthNavigator.testMode = MyApp.isTestMode;
   PadCareAuthNavigator.onNavigateToApp = (
     BuildContext context, {
     String? email,
@@ -3130,6 +3131,21 @@ class _TeacherPendingApprovalScreenState extends State<TeacherPendingApprovalScr
                             ),
                           ],
                         ),
+                        if (widget.uid.isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              const Icon(Icons.fingerprint_rounded, size: 18, color: _muted),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: SelectableText(
+                                  'UID: ${widget.uid}',
+                                  style: const TextStyle(color: _muted, fontSize: 11, fontFamily: 'monospace'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ],
                     ),
                   ),

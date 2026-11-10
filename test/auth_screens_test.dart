@@ -526,5 +526,51 @@ void main() {
       await tester.pump();
       expect(find.text('teacher@stmarys.org'), findsOneWidget);
     });
+
+    testWidgets('EmailVerification renders email and blocks unverified progression', (tester) async {
+      PadCareAuthNavigator.testMode = false;
+      bool verifiedCallbackCalled = false;
+
+      await tester.pumpWidget(
+        testWrapper(
+          EmailVerification(
+            email: 'testuser@padcare.org',
+            onVerified: () => verifiedCallbackCalled = true,
+          ),
+        ),
+      );
+
+      expect(find.text('Verify your email'), findsOneWidget);
+      expect(find.textContaining('testuser@padcare.org'), findsOneWidget);
+      expect(find.text('Open email app'), findsOneWidget);
+      expect(find.text("I've verified, continue to PadCare"), findsOneWidget);
+
+      // Tap continue when unverified
+      await tester.tap(find.text("I've verified, continue to PadCare"));
+      await tester.pumpAndSettle();
+
+      // Ensure error was presented and callback was NOT triggered
+      expect(verifiedCallbackCalled, isFalse);
+      expect(find.textContaining('Email not yet verified'), findsWidgets);
+    });
+
+    testWidgets('EmailVerification proceeds smoothly when testMode/verified is active', (tester) async {
+      PadCareAuthNavigator.testMode = true;
+      bool verifiedCallbackCalled = false;
+
+      await tester.pumpWidget(
+        testWrapper(
+          EmailVerification(
+            email: 'verified@padcare.org',
+            onVerified: () => verifiedCallbackCalled = true,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text("I've verified, continue to PadCare"));
+      await tester.pumpAndSettle();
+
+      expect(verifiedCallbackCalled, isTrue);
+    });
   });
 }

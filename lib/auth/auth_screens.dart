@@ -9,12 +9,14 @@ import '../services/url_launcher_stub.dart'
 /// Navigation coordinator for PadCare Authentication Suite.
 /// Allows decoupled navigation into PadCare home screens.
 class PadCareAuthNavigator {
+  static bool testMode = false;
   static void Function(
     BuildContext context, {
     String? email,
     String? role,
     String? displayName,
     String? photoUrl,
+    String? uid,
   })? onNavigateToApp;
 
   static void openApp(
@@ -23,6 +25,7 @@ class PadCareAuthNavigator {
     String? role,
     String? displayName,
     String? photoUrl,
+    String? uid,
   }) {
     if (onNavigateToApp != null) {
       onNavigateToApp!(
@@ -31,6 +34,7 @@ class PadCareAuthNavigator {
         role: role,
         displayName: displayName,
         photoUrl: photoUrl,
+        uid: uid,
       );
     } else {
       Navigator.of(context).popUntil((route) => route.isFirst);
@@ -41,8 +45,11 @@ class PadCareAuthNavigator {
 // ---------------------------------------------------------------------------
 // 1. EmailVerification
 // ---------------------------------------------------------------------------
-class EmailVerification extends StatelessWidget {
+class EmailVerification extends StatefulWidget {
   final String? email;
+  final String? role;
+  final String? displayName;
+  final String? photoUrl;
   final VoidCallback? onVerified;
   final VoidCallback? onOpenEmailApp;
   final VoidCallback? onResendEmail;
@@ -50,16 +57,89 @@ class EmailVerification extends StatelessWidget {
   const EmailVerification({
     super.key,
     this.email,
+    this.role,
+    this.displayName,
+    this.photoUrl,
     this.onVerified,
     this.onOpenEmailApp,
     this.onResendEmail,
   });
 
   @override
+  State<EmailVerification> createState() => _EmailVerificationState();
+}
+
+class _EmailVerificationState extends State<EmailVerification> {
+  bool _checking = false;
+  String? _statusError;
+
+  Future<void> _handleContinue() async {
+    setState(() {
+      _checking = true;
+      _statusError = null;
+    });
+
+    try {
+      final verified = await AuthService.isEmailVerified();
+      final canProceed = verified || PadCareAuthNavigator.testMode;
+
+      if (!canProceed) {
+        if (!mounted) return;
+        final displayEmail = widget.email ?? AuthService.currentUser?.email ?? 'your email';
+        setState(() {
+          _checking = false;
+          _statusError =
+              'We have not detected your email verification yet. Please open the link sent to $displayEmail first, then tap continue.';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('⚠️ Email not yet verified. Please click the link sent to $displayEmail first.'),
+            backgroundColor: const Color(0xFFD97706),
+            duration: const Duration(seconds: 4),
+          ),
+        );
+        return;
+      }
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('🎉 Email verified! Proceeding to PadCare...'),
+          backgroundColor: Color(0xFF116B78),
+          duration: Duration(seconds: 2),
+        ),
+      );
+
+      if (widget.onVerified != null) {
+        widget.onVerified!();
+        return;
+      }
+
+      final displayEmail = widget.email ?? AuthService.currentUser?.email ?? 'community@padcare.org';
+      PadCareAuthNavigator.openApp(
+        context,
+        email: displayEmail,
+        role: widget.role ?? (displayEmail.toLowerCase().contains('teacher') ? 'teacher' : 'parent'),
+        displayName: widget.displayName,
+        photoUrl: widget.photoUrl,
+        uid: AuthService.currentUser?.uid,
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _checking = false;
+        _statusError = 'Verification error: $e';
+      });
+    } finally {
+      if (mounted) setState(() => _checking = false);
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final scheme = theme.colorScheme;
-    final displayEmail = email ?? 'community@padcare.org';
+    final displayEmail = widget.email ?? AuthService.currentUser?.email ?? 'community@padcare.org';
 
     return Scaffold(
       appBar: AppBar(
@@ -111,13 +191,49 @@ class EmailVerification extends StatelessWidget {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
+            if (_statusError != null) ...[
+              const SizedBox(height: 18),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFFBEB),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFFDE68A)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Row(
+                      children: [
+                        Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 20),
+                        SizedBox(width: 8),
+                        Text(
+                          'Email Verification Required',
+                          style: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF92400E), fontSize: 13),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      _statusError!,
+                      style: const TextStyle(color: Color(0xFF78350F), fontSize: 12.5, height: 1.4),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      '• Check your inbox and spam folder.\n• If using institutional email (@muni.ac.ug), check campus filters.\n• After clicking the link in your email, tap the button below again.',
+                      style: TextStyle(color: Color(0xFF92400E), fontSize: 11.5, height: 1.4),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 24),
             SizedBox(
               height: 52,
               child: FilledButton.icon(
                 onPressed: () {
-                  if (onOpenEmailApp != null) {
-                    onOpenEmailApp!();
+                  if (widget.onOpenEmailApp != null) {
+                    widget.onOpenEmailApp!();
                   } else {
                     final lower = displayEmail.toLowerCase();
                     String url = 'https://mail.google.com/mail/u/0/#search/in%3Aanywhere+padcare';
@@ -151,8 +267,8 @@ class EmailVerification extends StatelessWidget {
                 ),
                 TextButton(
                   onPressed: () async {
-                    if (onResendEmail != null) {
-                      onResendEmail!();
+                    if (widget.onResendEmail != null) {
+                      widget.onResendEmail!();
                     } else {
                       final res = await AuthService.sendEmailVerification();
                       if (!context.mounted) return;
@@ -172,19 +288,32 @@ class EmailVerification extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 12),
-            OutlinedButton(
-              onPressed: () {
-                if (onVerified != null) {
-                  onVerified!();
-                } else {
-                  PadCareAuthNavigator.openApp(
-                    context,
-                    email: displayEmail,
-                    role: 'parent',
-                  );
-                }
-              },
-              child: const Text("I've verified, continue to PadCare"),
+            SizedBox(
+              height: 50,
+              child: OutlinedButton(
+                onPressed: _checking ? null : _handleContinue,
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF116B78), width: 1.5),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                child: _checking
+                    ? const Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF116B78)),
+                          ),
+                          SizedBox(width: 10),
+                          Text('Checking verification...'),
+                        ],
+                      )
+                    : const Text(
+                        "I've verified, continue to PadCare",
+                        style: TextStyle(color: Color(0xFF116B78), fontWeight: FontWeight.w700),
+                      ),
+              ),
             ),
             const Spacer(),
           ],
@@ -256,12 +385,30 @@ class _LoginHeroState extends State<LoginHero> {
       if (widget.onLoginSuccess != null) {
         widget.onLoginSuccess!();
       } else {
+        final isVerified = AuthService.currentUser?.emailVerified ?? true;
+        final role = result.profile?.role ?? (email.toLowerCase().contains('teacher') ? 'teacher' : 'parent');
+
+        if (!isVerified && !PadCareAuthNavigator.testMode) {
+          Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              builder: (_) => EmailVerification(
+                email: email,
+                role: role,
+                displayName: result.profile?.displayName ?? result.user?.displayName,
+                photoUrl: result.photoUrl ?? result.profile?.photoUrl,
+              ),
+            ),
+          );
+          return;
+        }
+
         PadCareAuthNavigator.openApp(
           context,
           email: email,
-          role: result.profile?.role ?? (email.toLowerCase().contains('teacher') ? 'teacher' : 'parent'),
+          role: role,
           displayName: result.profile?.displayName ?? result.user?.displayName,
           photoUrl: result.photoUrl ?? result.profile?.photoUrl,
+          uid: result.user?.uid ?? result.profile?.uid,
         );
       }
     } else {
@@ -1629,6 +1776,9 @@ class _SignupTermsState extends State<SignupTerms> {
         MaterialPageRoute<void>(
           builder: (_) => EmailVerification(
             email: email,
+            role: _role,
+            displayName: name,
+            photoUrl: result.photoUrl ?? selectedPhotoUrl,
             onVerified: () {
               if (widget.onSignedUp != null) {
                 widget.onSignedUp!();
@@ -1639,6 +1789,7 @@ class _SignupTermsState extends State<SignupTerms> {
                   role: _role,
                   displayName: name,
                   photoUrl: result.photoUrl ?? selectedPhotoUrl,
+                  uid: result.user?.uid ?? result.profile?.uid,
                 );
               }
             },

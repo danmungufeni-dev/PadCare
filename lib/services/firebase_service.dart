@@ -612,6 +612,23 @@ class AuthService {
     return const AuthResult(isSuccess: true);
   }
 
+  /// Reloads the current user and checks whether their email is verified in Firebase Auth.
+  static Future<bool> isEmailVerified() async {
+    if (FirebaseService.isFirebaseAvailable && _auth != null) {
+      try {
+        final user = _auth!.currentUser;
+        if (user != null) {
+          await user.reload();
+          return _auth!.currentUser?.emailVerified ?? false;
+        }
+      } catch (e) {
+        debugPrint('isEmailVerified error: $e');
+        return _auth!.currentUser?.emailVerified ?? false;
+      }
+    }
+    return false;
+  }
+
   /// Signs in or registers with Google Auth, incorporating Google account details.
   static Future<AuthResult> signInWithGoogle() async {
     if (FirebaseService.isFirebaseAvailable && _auth != null) {

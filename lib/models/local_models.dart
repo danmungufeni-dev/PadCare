@@ -283,6 +283,8 @@ class SupportPoint {
     this.instructions = 'Walk in and ask for adolescent health or matron desk. Confidential and free.',
     this.phone = '+256 772 100 200',
     this.lastUpdated = 'Today at 09:00 AM',
+    this.latitude = 3.0210,
+    this.longitude = 30.9115,
   });
 
   final String id;
@@ -300,6 +302,8 @@ class SupportPoint {
   final String instructions;
   final String phone;
   final String lastUpdated;
+  final double latitude;
+  final double longitude;
 }
 
 typedef _SupportPoint = SupportPoint;
@@ -321,6 +325,8 @@ const kSupportPoints = <SupportPoint>[
     instructions: 'Report to outpatient clinic room 3. Supplies provided immediately with discretion.',
     phone: '+256 772 450 119',
     lastUpdated: 'Today at 08:30 AM',
+    latitude: 3.0031,
+    longitude: 30.9125,
   ),
   SupportPoint(
     id: 'arua-hospital',
@@ -338,6 +344,8 @@ const kSupportPoints = <SupportPoint>[
     instructions: 'Maternity & Youth Friendly Corner. Open 24/7 with trained female nursing staff.',
     phone: '+256 476 420 021',
     lastUpdated: 'Today at 09:15 AM',
+    latitude: 3.0205,
+    longitude: 30.9110,
   ),
   SupportPoint(
     id: 'ediofe-school',
@@ -355,6 +363,8 @@ const kSupportPoints = <SupportPoint>[
     instructions: 'Senior Woman Teacher office near the administration block.',
     phone: '+256 782 300 812',
     lastUpdated: 'Yesterday at 04:00 PM',
+    latitude: 3.0336,
+    longitude: 30.8988,
   ),
   SupportPoint(
     id: 'st-marys-school',
@@ -372,6 +382,8 @@ const kSupportPoints = <SupportPoint>[
     instructions: 'School health liaison office. Parent & student collections welcome.',
     phone: '+256 774 912 345',
     lastUpdated: 'Today at 10:00 AM',
+    latitude: 3.0185,
+    longitude: 30.9250,
   ),
   SupportPoint(
     id: 'ceford-ngo',
@@ -389,6 +401,8 @@ const kSupportPoints = <SupportPoint>[
     instructions: 'Community empowerment desk, ground floor reception.',
     phone: '+256 476 422 555',
     lastUpdated: 'Today at 11:30 AM',
+    latitude: 3.0240,
+    longitude: 30.9150,
   ),
   SupportPoint(
     id: 'oli-primary',
@@ -406,6 +420,8 @@ const kSupportPoints = <SupportPoint>[
     instructions: 'Staffroom counseling corner, ask for Senior Woman Teacher.',
     phone: '+256 752 118 900',
     lastUpdated: 'Today at 07:45 AM',
+    latitude: 3.0298,
+    longitude: 30.9172,
   ),
 ];
 

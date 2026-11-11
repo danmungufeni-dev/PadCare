@@ -8788,47 +8788,6 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     ),
                     Positioned(
                       top: 14,
-                      left: 14,
-                      child: Material(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(20),
-                        elevation: 2.5,
-                        child: InkWell(
-                          borderRadius: BorderRadius.circular(20),
-                          onTap: () {
-                            final coords = GeoService.aruaCoordinates[_selectedMapPoint.id] ?? GeoService.aruaCenter;
-                            GeoService.openPlace(
-                              latitude: coords.latitude,
-                              longitude: coords.longitude,
-                              destinationName: _selectedMapPoint.name,
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text('Opening Google Maps at ${_selectedMapPoint.name}...'),
-                                backgroundColor: _deepTeal,
-                                behavior: SnackBarBehavior.floating,
-                              ),
-                            );
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.map_rounded, color: _deepTeal, size: 16),
-                                SizedBox(width: 6),
-                                Text(
-                                  'Google Maps Direct',
-                                  style: TextStyle(color: _deepTeal, fontWeight: FontWeight.w800, fontSize: 12),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    Positioned(
-                      top: 14,
                       right: 14,
                       child: FloatingActionButton.small(
                         heroTag: 'recenter-map',
@@ -8848,7 +8807,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                         backgroundColor: Colors.white,
                         foregroundColor: _deepTeal,
                         elevation: 3,
-                        tooltip: 'Open in Google Maps',
+                        tooltip: 'Get Free Directions (GPS)',
                         onPressed: () {
                           final coords = GeoService.aruaCoordinates[_selectedMapPoint.id] ?? GeoService.aruaCenter;
                           GeoService.openDirections(
@@ -8858,13 +8817,13 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                           );
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Opening Google Maps route to ${_selectedMapPoint.name}...'),
+                              content: Text('Opening free GPS route to ${_selectedMapPoint.name}...'),
                               backgroundColor: _deepTeal,
                               behavior: SnackBarBehavior.floating,
                             ),
                           );
                         },
-                        child: const Icon(Icons.navigation_rounded, size: 20),
+                        child: const Icon(Icons.directions_rounded, size: 20),
                       ),
                     ),
                     Positioned(
@@ -9056,9 +9015,9 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                         ),
                       );
                     },
-                    icon: const Icon(Icons.navigation_rounded, size: 15),
+                    icon: const Icon(Icons.directions_rounded, size: 16),
                     label: const Text(
-                      'Google Maps',
+                      'Get Directions ↗',
                       style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13),
                     ),
                     style: ElevatedButton.styleFrom(

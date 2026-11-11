@@ -1,23 +1,288 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart' hide Path;
 import '../../models/local_models.dart';
 
 const Color _mapInk = Color(0xFF172B36);
 
 /// Interactive map showing support locations (Clinics, Schools, NGOs) across Arua.
-class InteractiveAruaMap extends StatelessWidget {
+/// Supports both OpenStreetMap (real interactive street tiles) and PadCare's
+/// zero-data stylized offline canvas painter.
+class InteractiveAruaMap extends StatefulWidget {
   const InteractiveAruaMap({
     super.key,
     required this.points,
     required this.selectedPoint,
     required this.onSelect,
+    this.initialUseStreetMap = true,
   });
 
   final List<SupportPoint> points;
   final SupportPoint selectedPoint;
   final ValueChanged<SupportPoint> onSelect;
+  final bool initialUseStreetMap;
+
+  @override
+  State<InteractiveAruaMap> createState() => _InteractiveAruaMapState();
+}
+
+class _InteractiveAruaMapState extends State<InteractiveAruaMap> {
+  late bool _showStreetMap;
+  late final MapController _mapController;
+
+  @override
+  void initState() {
+    super.initState();
+    _showStreetMap = widget.initialUseStreetMap;
+    _mapController = MapController();
+  }
+
+  @override
+  void didUpdateWidget(covariant InteractiveAruaMap oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selectedPoint.id != widget.selectedPoint.id && _showStreetMap) {
+      try {
+        _mapController.move(
+          LatLng(widget.selectedPoint.latitude, widget.selectedPoint.longitude),
+          14.5,
+        );
+      } catch (_) {}
+    }
+  }
+
+  @override
+  void dispose() {
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  void _zoomIn() {
+    try {
+      final currentZoom = _mapController.camera.zoom;
+      _mapController.move(_mapController.camera.center, currentZoom + 1);
+    } catch (_) {}
+  }
+
+  void _zoomOut() {
+    try {
+      final currentZoom = _mapController.camera.zoom;
+      _mapController.move(_mapController.camera.center, currentZoom - 1);
+    } catch (_) {}
+  }
+
+  void _recenter() {
+    try {
+      _mapController.move(
+        LatLng(widget.selectedPoint.latitude, widget.selectedPoint.longitude),
+        14.5,
+      );
+    } catch (_) {}
+  }
 
   @override
   Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: _showStreetMap ? _buildFlutterMap() : _buildCanvasMap(),
+        ),
+
+        // Mode switch pill: Streets vs Offline Canvas
+        Positioned(
+          top: 14,
+          left: 14,
+          child: Container(
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              boxShadow: const [
+                BoxShadow(color: Color(0x1F000000), blurRadius: 6, offset: Offset(0, 2)),
+              ],
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _buildModeTab(
+                  label: 'Streets',
+                  icon: Icons.map_rounded,
+                  active: _showStreetMap,
+                  onTap: () => setState(() => _showStreetMap = true),
+                ),
+                _buildModeTab(
+                  label: 'Offline Canvas',
+                  icon: Icons.palette_outlined,
+                  active: !_showStreetMap,
+                  onTap: () => setState(() => _showStreetMap = false),
+                ),
+              ],
+            ),
+          ),
+        ),
+
+        // Zoom & Recenter controls (Streets mode only)
+        if (_showStreetMap)
+          Positioned(
+            top: 70,
+            right: 14,
+            child: Column(
+              children: [
+                _buildControlButton(
+                  icon: Icons.add,
+                  tooltip: 'Zoom in',
+                  onTap: _zoomIn,
+                ),
+                const SizedBox(height: 6),
+                _buildControlButton(
+                  icon: Icons.remove,
+                  tooltip: 'Zoom out',
+                  onTap: _zoomOut,
+                ),
+                const SizedBox(height: 6),
+                _buildControlButton(
+                  icon: Icons.my_location_rounded,
+                  tooltip: 'Recenter',
+                  onTap: _recenter,
+                ),
+              ],
+            ),
+          ),
+
+        // OpenStreetMap Attribution (Legal requirement for OSM)
+        if (_showStreetMap)
+          Positioned(
+            bottom: 6,
+            right: 10,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                '© OpenStreetMap contributors',
+                style: TextStyle(fontSize: 9, color: Color(0xFF64748B), fontWeight: FontWeight.w600),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildModeTab({
+    required String label,
+    required IconData icon,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? const Color(0xFF116B78) : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: active ? Colors.white : const Color(0xFF64748B)),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+                color: active ? Colors.white : const Color(0xFF64748B),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildControlButton({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: Colors.white,
+      shape: const CircleBorder(),
+      elevation: 2.5,
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(8),
+          child: Icon(icon, size: 18, color: const Color(0xFF116B78)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFlutterMap() {
+    return FlutterMap(
+      mapController: _mapController,
+      options: MapOptions(
+        initialCenter: LatLng(widget.selectedPoint.latitude, widget.selectedPoint.longitude),
+        initialZoom: 14.2,
+        minZoom: 11.0,
+        maxZoom: 18.0,
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'org.padcare.app',
+        ),
+        MarkerLayer(
+          markers: [
+            // User location pin (Blue Dot in Arua Center)
+            const Marker(
+              point: LatLng(3.0215, 30.9115),
+              width: 28,
+              height: 28,
+              child: _UserLocationMarker(),
+            ),
+            // Facility pins
+            ...widget.points.map((pt) {
+              final isSelected = pt.id == widget.selectedPoint.id;
+              final icon = pt.category == 'Clinics'
+                  ? Icons.local_hospital_rounded
+                  : (pt.category == 'Schools' ? Icons.school_rounded : Icons.volunteer_activism_rounded);
+
+              final pinColor = isSelected
+                  ? const Color(0xFF116B78)
+                  : (pt.category == 'Schools'
+                      ? const Color(0xFFEA580C)
+                      : (pt.category == 'Clinics' ? const Color(0xFF0D9488) : const Color(0xFF16A34A)));
+
+              return Marker(
+                point: LatLng(pt.latitude, pt.longitude),
+                width: 78,
+                height: 78,
+                alignment: Alignment.topCenter,
+                child: MapTeardropPin(
+                  label: pt.pinLabel,
+                  icon: icon,
+                  isSelected: isSelected,
+                  customColor: pinColor,
+                  onTap: () {
+                    widget.onSelect(pt);
+                    _mapController.move(LatLng(pt.latitude, pt.longitude), 15.0);
+                  },
+                ),
+              );
+            }),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCanvasMap() {
     return LayoutBuilder(
       builder: (context, constraints) {
         final w = constraints.maxWidth;
@@ -28,16 +293,21 @@ class InteractiveAruaMap extends StatelessWidget {
             CustomPaint(
               size: Size(w, h),
               painter: AruaMapPainter(
-                selectedPointId: selectedPoint.id,
+                selectedPointId: widget.selectedPoint.id,
               ),
             ),
-            ...points.map((pt) {
+            ...widget.points.map((pt) {
               final x = pt.mapOffsetPercent.dx * w;
               final y = pt.mapOffsetPercent.dy * h;
-              final isSelected = pt.id == selectedPoint.id;
+              final isSelected = pt.id == widget.selectedPoint.id;
               final icon = pt.category == 'Clinics'
                   ? Icons.local_hospital_rounded
                   : (pt.category == 'Schools' ? Icons.school_rounded : Icons.volunteer_activism_rounded);
+              final pinColor = isSelected
+                  ? const Color(0xFF116B78)
+                  : (pt.category == 'Schools'
+                      ? const Color(0xFFEA580C)
+                      : (pt.category == 'Clinics' ? const Color(0xFF0D9488) : const Color(0xFF16A34A)));
 
               return Positioned(
                 left: x - 35,
@@ -46,7 +316,8 @@ class InteractiveAruaMap extends StatelessWidget {
                   label: pt.pinLabel,
                   icon: icon,
                   isSelected: isSelected,
-                  onTap: () => onSelect(pt),
+                  customColor: pinColor,
+                  onTap: () => widget.onSelect(pt),
                 ),
               );
             }),
@@ -59,6 +330,39 @@ class InteractiveAruaMap extends StatelessWidget {
 
 typedef _InteractiveAruaMap = InteractiveAruaMap;
 
+class _UserLocationMarker extends StatelessWidget {
+  const _UserLocationMarker();
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        Container(
+          width: 28,
+          height: 28,
+          decoration: const BoxDecoration(
+            color: Color(0x332563EB),
+            shape: BoxShape.circle,
+          ),
+        ),
+        Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            color: const Color(0xFF2563EB),
+            shape: BoxShape.circle,
+            border: Border.all(color: Colors.white, width: 2.5),
+            boxShadow: const [
+              BoxShadow(color: Color(0x33000000), blurRadius: 4, offset: Offset(0, 1)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class MapTeardropPin extends StatelessWidget {
   const MapTeardropPin({
     super.key,
@@ -66,17 +370,19 @@ class MapTeardropPin extends StatelessWidget {
     required this.icon,
     required this.isSelected,
     required this.onTap,
+    this.customColor,
   });
 
   final String label;
   final IconData icon;
   final bool isSelected;
   final VoidCallback onTap;
+  final Color? customColor;
 
   @override
   Widget build(BuildContext context) {
-    final pinColor = isSelected ? const Color(0xFF116B78) : const Color(0xFF2EA8B6);
-    final size = isSelected ? 40.0 : 30.0;
+    final pinColor = isSelected ? const Color(0xFF116B78) : (customColor ?? const Color(0xFF2EA8B6));
+    final size = isSelected ? 38.0 : 28.0;
 
     return GestureDetector(
       onTap: onTap,

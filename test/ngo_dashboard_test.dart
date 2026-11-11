@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:padcare/features/ngo/ngo_dashboard_screen.dart';
 import 'package:padcare/services/firebase_service.dart';
-import 'package:padcare/services/sponsor_service.dart';
 
 class _TestHttpOverrides extends HttpOverrides {
   @override

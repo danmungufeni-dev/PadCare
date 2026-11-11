@@ -65,8 +65,8 @@ class LocalRequest {
     'quantity': quantity,
     'createdAt': createdAt,
     'status': status,
-    if (collectedAt != null) 'collectedAt': collectedAt!,
-    if (collectedBy != null) 'collectedBy': collectedBy!,
+    'collectedAt': ?collectedAt,
+    'collectedBy': ?collectedBy,
   };
 
   factory LocalRequest.fromJson(Map<String, dynamic> json) {

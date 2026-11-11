@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/firebase_service.dart';
-import '../../services/inventory_service.dart';
-import '../../services/school_service.dart';
-import '../../services/sponsor_service.dart';
-import '../../services/notification_service.dart';
 import '../../shared/widgets/brand_widgets.dart';
 
 const Color _ngoTeal = Color(0xFF116B78);

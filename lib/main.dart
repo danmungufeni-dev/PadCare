@@ -1,8 +1,5 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:math' as math;
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lottie/lottie.dart';
@@ -13,7 +10,6 @@ import 'services/geo_service.dart';
 import 'services/momo_service.dart';
 import 'services/offline_queue_service.dart';
 import 'services/pwa_service.dart';
-import 'services/school_service.dart';
 import 'services/whatsapp_service.dart';
 import 'services/url_launcher_stub.dart'
     if (dart.library.html) 'services/url_launcher_web.dart';
@@ -24,7 +20,6 @@ import 'features/teacher/teacher_pending_approval_screen.dart';
 import 'features/inventory/dispense_confirmation_dialog.dart';
 import 'features/ngo/ngo_dashboard_screen.dart';
 import 'features/map/arua_map.dart';
-import 'shared/widgets/brand_widgets.dart';
 
 export 'auth/auth_screens.dart';
 export 'info/info_screens.dart';
@@ -613,15 +608,19 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
       );
     } else if (isTeacher) {
       final isAuthorized = MyApp.isTestMode ||
-          ((profile?.authorized ?? false) && profile?.status == 'approved') ||
+          (profile.authorized && profile.status == 'approved') ||
           FirestoreService.isPreverifiedDemoEmail(email) ||
-          FirestoreService.isPreverifiedDemoEmail(profile?.email);
+          FirestoreService.isPreverifiedDemoEmail(profile.email);
       if (isAuthorized) {
+        final school = profile.school ?? _school;
+        final teacherDisplayName = name.isNotEmpty
+            ? name
+            : (profile.displayName.isNotEmpty ? profile.displayName : 'Teacher');
         navigator.pushReplacement(
           MaterialPageRoute<void>(
             builder: (_) => HomeScreen(
-              facility: profile?.school ?? _school,
-              teacherName: name.isNotEmpty ? name : (profile?.displayName ?? 'Teacher'),
+              facility: school,
+              teacherName: teacherDisplayName,
               isVerifiedStaff: true,
               onSignOut: onSignOut,
             ),
@@ -3715,13 +3714,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
 
     // 7. Verify stock availability before showing dialog
+    final reqProduct = match.product;
     final supply = _supplies.firstWhere(
-      (item) => item.name == match!.product,
+      (item) => item.name == reqProduct,
       orElse: () => _Supply(
-        name: match!.product,
+        name: reqProduct,
         onHand: 0,
         lowAt: 0,
-        unit: match!.product.toLowerCase().contains('kit') ? 'kits' : 'packs',
+        unit: reqProduct.toLowerCase().contains('kit') ? 'kits' : 'packs',
       ),
     );
 
@@ -3851,7 +3851,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 const Text('Select Supply', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _ink)),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  value: selectedProduct,
+                  initialValue: selectedProduct,
                   decoration: InputDecoration(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -5017,11 +5017,11 @@ class _OfflineSyncPill extends StatelessWidget {
   Widget build(BuildContext context) {
     return ValueListenableBuilder<int>(
       valueListenable: OfflineQueueService.pendingCount,
-      builder: (context, count, _) {
+      builder: (context, pendingCount, _) {
         return ValueListenableBuilder<bool>(
           valueListenable: OfflineQueueService.isSyncing,
           builder: (context, syncing, _) {
-            final isOffline = count > 0;
+            final isOffline = pendingCount > 0;
             return InkWell(
               onTap: () => _showOfflineQueueModal(context),
               borderRadius: BorderRadius.circular(12),
@@ -5055,7 +5055,7 @@ class _OfflineSyncPill extends StatelessWidget {
                         syncing
                             ? 'Syncing...'
                             : isOffline
-                                ? '$count offline'
+                                ? '$pendingCount offline'
                                 : 'Synced',
                         style: TextStyle(
                           color: isOffline ? const Color(0xFFB45309) : const Color(0xFF16A34A),
@@ -5066,7 +5066,7 @@ class _OfflineSyncPill extends StatelessWidget {
                     ] else if (isOffline) ...[
                       const SizedBox(width: 3),
                       Text(
-                        '$count',
+                        '$pendingCount',
                         style: const TextStyle(
                           color: Color(0xFFB45309),
                           fontSize: 10,
@@ -5187,7 +5187,7 @@ class _OfflineQueueSheetState extends State<_OfflineQueueSheet> {
         builder: (context, syncing, _) {
           return ValueListenableBuilder<int>(
             valueListenable: OfflineQueueService.pendingCount,
-            builder: (context, count, _) {
+            builder: (context, pendingCount, _) {
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -5208,12 +5208,12 @@ class _OfflineQueueSheetState extends State<_OfflineQueueSheet> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: count > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFE4F8F2),
+                          color: pendingCount > 0 ? const Color(0xFFFFFBEB) : const Color(0xFFE4F8F2),
                           borderRadius: BorderRadius.circular(14),
                         ),
                         child: Icon(
-                          count > 0 ? Icons.wifi_off_rounded : Icons.cloud_done_rounded,
-                          color: count > 0 ? const Color(0xFFD97706) : const Color(0xFF116B78),
+                          pendingCount > 0 ? Icons.wifi_off_rounded : Icons.cloud_done_rounded,
+                          color: pendingCount > 0 ? const Color(0xFFD97706) : const Color(0xFF116B78),
                           size: 24,
                         ),
                       ),
@@ -5231,8 +5231,8 @@ class _OfflineQueueSheetState extends State<_OfflineQueueSheet> {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              count > 0
-                                  ? '$count action(s) stored locally on this device'
+                              pendingCount > 0
+                                  ? '$pendingCount action(s) stored locally on this device'
                                   : 'All local changes synchronized with Cloud Firestore',
                               style: const TextStyle(
                                 fontSize: 12,
@@ -5249,7 +5249,7 @@ class _OfflineQueueSheetState extends State<_OfflineQueueSheet> {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  if (count == 0) ...[
+                  if (pendingCount == 0) ...[
                     Container(
                       padding: const EdgeInsets.all(14),
                       decoration: BoxDecoration(
@@ -5348,7 +5348,7 @@ class _OfflineQueueSheetState extends State<_OfflineQueueSheet> {
                             )
                           : const Icon(Icons.cloud_upload_outlined, size: 18),
                       label: Text(
-                        syncing ? 'Syncing to Cloud...' : 'Sync Now ($count)',
+                        syncing ? 'Syncing to Cloud...' : 'Sync Now ($pendingCount)',
                         style: const TextStyle(fontWeight: FontWeight.w800),
                       ),
                     ),

@@ -3,7 +3,6 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_service.dart';
-import 'school_service.dart';
 
 class OfflineTask {
   final String id;

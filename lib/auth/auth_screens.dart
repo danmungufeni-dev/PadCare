@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 import '../services/firebase_service.dart';
-import '../services/school_service.dart';
 import '../info/info_screens.dart';
 import '../services/url_launcher_stub.dart'
     if (dart.library.html) '../services/url_launcher_web.dart';

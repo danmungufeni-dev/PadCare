@@ -15,6 +15,9 @@ class InventoryItemModel {
   final String unit;
   final int lowStockThreshold;
   final DateTime lastUpdated;
+  final String batchNumber;
+  final DateTime? manufactureDate;
+  final DateTime? expiryDate;
 
   const InventoryItemModel({
     required this.id,
@@ -28,9 +31,34 @@ class InventoryItemModel {
     this.unit = 'packs',
     this.lowStockThreshold = 10,
     required this.lastUpdated,
+    this.batchNumber = 'BATCH-2025-08X',
+    this.manufactureDate,
+    this.expiryDate,
   });
 
   bool get isLowStock => availableQuantity <= lowStockThreshold;
+
+  DateTime get effectiveExpiryDate =>
+      expiryDate ?? lastUpdated.add(const Duration(days: 365 * 3));
+
+  bool get isExpired => DateTime.now().isAfter(effectiveExpiryDate);
+
+  bool get isExpiringSoon =>
+      !isExpired && effectiveExpiryDate.difference(DateTime.now()).inDays <= 90;
+
+  int get daysUntilExpiry => effectiveExpiryDate.difference(DateTime.now()).inDays;
+
+  String get shelfLifeStatus {
+    if (isExpired) return 'expired';
+    if (isExpiringSoon) return 'expiring_soon';
+    return 'good';
+  }
+
+  String get shelfLifeLabel {
+    if (isExpired) return 'EXPIRED - DO NOT DISPENSE';
+    if (isExpiringSoon) return 'Expiring in $daysUntilExpiry days (FIFO Priority)';
+    return 'Good (Exp: ${effectiveExpiryDate.year}-${effectiveExpiryDate.month.toString().padLeft(2, '0')})';
+  }
 
   Map<String, dynamic> toJson() => {
     'id': id,
@@ -44,6 +72,9 @@ class InventoryItemModel {
     'unit': unit,
     'lowStockThreshold': lowStockThreshold,
     'lastUpdated': lastUpdated.toIso8601String(),
+    'batchNumber': batchNumber,
+    if (manufactureDate != null) 'manufactureDate': manufactureDate!.toIso8601String(),
+    if (expiryDate != null) 'expiryDate': expiryDate!.toIso8601String(),
   };
 
   factory InventoryItemModel.fromJson(Map<String, dynamic> json) {
@@ -61,6 +92,13 @@ class InventoryItemModel {
       lastUpdated: json['lastUpdated'] != null
           ? (DateTime.tryParse(json['lastUpdated'].toString()) ?? DateTime.now())
           : DateTime.now(),
+      batchNumber: (json['batchNumber'] ?? 'BATCH-2025-08X').toString(),
+      manufactureDate: json['manufactureDate'] != null
+          ? DateTime.tryParse(json['manufactureDate'].toString())
+          : null,
+      expiryDate: json['expiryDate'] != null
+          ? DateTime.tryParse(json['expiryDate'].toString())
+          : null,
     );
   }
 }
@@ -78,6 +116,7 @@ class DistributionRecordModel {
   final String dispensedBy;
   final DateTime dispensedAt;
   final String status;
+  final String batchNumber;
 
   const DistributionRecordModel({
     required this.distributionId,
@@ -91,6 +130,7 @@ class DistributionRecordModel {
     required this.dispensedBy,
     required this.dispensedAt,
     this.status = 'completed',
+    this.batchNumber = 'BATCH-2025-08X',
   });
 
   Map<String, dynamic> toJson() => {
@@ -105,6 +145,7 @@ class DistributionRecordModel {
     'dispensedBy': dispensedBy,
     'dispensedAt': dispensedAt.toIso8601String(),
     'status': status,
+    'batchNumber': batchNumber,
   };
 
   factory DistributionRecordModel.fromJson(Map<String, dynamic> json) {
@@ -122,6 +163,7 @@ class DistributionRecordModel {
           ? (DateTime.tryParse(json['dispensedAt'].toString()) ?? DateTime.now())
           : DateTime.now(),
       status: (json['status'] ?? 'completed').toString(),
+      batchNumber: (json['batchNumber'] ?? 'BATCH-2025-08X').toString(),
     );
   }
 }

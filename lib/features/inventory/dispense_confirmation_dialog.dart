@@ -17,6 +17,8 @@ class DispenseConfirmationDialog extends StatelessWidget {
     required this.availableStock,
     required this.stockUnit,
     required this.school,
+    this.batchNumber = 'BATCH-2025-08X',
+    this.shelfLifeStatus = 'Good (Expires June 2028)',
   });
 
   final String requestId;
@@ -28,6 +30,8 @@ class DispenseConfirmationDialog extends StatelessWidget {
   final int availableStock;
   final String stockUnit;
   final String school;
+  final String batchNumber;
+  final String shelfLifeStatus;
 
   @override
   Widget build(BuildContext context) {
@@ -82,6 +86,8 @@ class DispenseConfirmationDialog extends StatelessWidget {
             _infoRow('Product Requested', product),
             _infoRow('Quantity Requested', '$quantity $stockUnit'),
             _infoRow('Current Request Status', status),
+            _infoRow('Batch Lot (FIFO)', batchNumber, isBold: true),
+            _infoRow('Shelf Life Status', shelfLifeStatus, valueColor: const Color(0xFF16A34A)),
             const Divider(height: 24),
             _infoRow('Stock Available', '$availableStock $stockUnit', valueColor: _dialogDeepTeal, isBold: true),
             _infoRow('Stock Remaining After Dispense', '$remaining $stockUnit', valueColor: remaining < 10 ? const Color(0xFFD97706) : _dialogInk, isBold: true),

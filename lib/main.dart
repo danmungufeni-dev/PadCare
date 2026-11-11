@@ -19,17 +19,37 @@ import 'services/url_launcher_stub.dart'
     if (dart.library.html) 'services/url_launcher_web.dart';
 import 'auth/auth_screens.dart';
 import 'info/info_screens.dart';
+import 'models/local_models.dart';
 import 'features/teacher/teacher_pending_approval_screen.dart';
 import 'features/inventory/dispense_confirmation_dialog.dart';
 import 'features/ngo/ngo_dashboard_screen.dart';
+import 'features/map/arua_map.dart';
 import 'shared/widgets/brand_widgets.dart';
 
 export 'auth/auth_screens.dart';
 export 'info/info_screens.dart';
+export 'models/local_models.dart';
 export 'features/teacher/teacher_pending_approval_screen.dart';
 export 'features/inventory/dispense_confirmation_dialog.dart';
 export 'features/ngo/ngo_dashboard_screen.dart';
+export 'features/map/arua_map.dart';
 export 'shared/widgets/brand_widgets.dart';
+
+typedef _Supply = Supply;
+typedef _LocalRequest = LocalRequest;
+typedef _SupportPoint = SupportPoint;
+typedef _SupportSubTab = SupportSubTab;
+typedef _LocalData = LocalData;
+typedef _LearnArticle = LearnArticle;
+typedef _InteractiveAruaMap = InteractiveAruaMap;
+typedef _MapTeardropPin = MapTeardropPin;
+typedef _TeardropPinPainter = TeardropPinPainter;
+typedef _AruaMapPainter = AruaMapPainter;
+
+const _kSupportPoints = kSupportPoints;
+Future<LocalData> _readLocalData() => readLocalData();
+Future<void> _saveLocalData(LocalData data) => saveLocalData(data);
+String _stockKey(String school, String product) => stockKey(school, product);
 
 void _setupAuthNavigation() {
   PadCareAuthNavigator.testMode = MyApp.isTestMode;
@@ -4969,20 +4989,7 @@ final _primaryButtonStyle = FilledButton.styleFrom(
   textStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
 );
 
-class _Supply {
-  _Supply({
-    required this.name,
-    required this.onHand,
-    required this.lowAt,
-    required this.unit,
-  });
-
-  final String name;
-  int onHand;
-  final int lowAt;
-  final String unit;
-  int reserved = 0;
-}
+// Note: Supply / _Supply is modularized in lib/models/local_models.dart
 
 class _OfflineSyncPill extends StatelessWidget {
   const _OfflineSyncPill({this.compact = false});
@@ -6218,151 +6225,7 @@ class ParentHomeScreen extends StatefulWidget {
   State<ParentHomeScreen> createState() => _ParentHomeScreenState();
 }
 
-class _LocalRequest {
-  const _LocalRequest({
-    required this.id,
-    required this.reference,
-    required this.pickupPin,
-    required this.school,
-    required this.area,
-    required this.product,
-    required this.quantity,
-    required this.createdAt,
-    required this.status,
-    this.collectedAt,
-    this.collectedBy,
-  });
-
-  final String id;
-  final String reference;
-  final String pickupPin;
-  final String school;
-  final String area;
-  final String product;
-  final int quantity;
-  final String createdAt;
-  final String status;
-  final String? collectedAt;
-  final String? collectedBy;
-
-  Map<String, Object> toJson() => {
-    'id': id,
-    'reference': reference,
-    'pickupPin': pickupPin,
-    'school': school,
-    'area': area,
-    'product': product,
-    'quantity': quantity,
-    'createdAt': createdAt,
-    'status': status,
-    if (collectedAt != null) 'collectedAt': collectedAt!,
-    if (collectedBy != null) 'collectedBy': collectedBy!,
-  };
-
-  factory _LocalRequest.fromJson(Map<String, dynamic> json) {
-    final ref = (json['reference'] ?? json['ref'] ?? '').toString();
-
-    // Robust PIN extraction: supports String, int, with or without '#', or fallback to ref
-    String pin = '';
-    if (json['pickupPin'] != null) {
-      pin = json['pickupPin'].toString().replaceAll('#', '').trim();
-    } else if (json['pin'] != null) {
-      pin = json['pin'].toString().replaceAll('#', '').trim();
-    } else if (ref.contains('-')) {
-      pin = ref.split('-').last.trim();
-    } else {
-      final rawId = (json['id'] ?? '').toString();
-      pin = rawId.length >= 4 ? rawId.substring(rawId.length - 4) : '1000';
-    }
-    if (pin.length > 4) {
-      pin = pin.substring(pin.length - 4);
-    } else if (pin.length < 4) {
-      pin = pin.padLeft(4, '0');
-    }
-
-    final rawId = (json['id'] ?? json['requestId'] ?? '').toString();
-    final id = rawId.isNotEmpty ? rawId : 'req-${DateTime.now().microsecondsSinceEpoch}';
-
-    // Quantity safe extraction
-    final dynamic qtyRaw = json['quantity'] ?? json['qty'] ?? 1;
-    final int qty = (qtyRaw is num) ? qtyRaw.toInt() : (int.tryParse(qtyRaw.toString()) ?? 1);
-
-    // School name normalization
-    String school = (json['school'] ?? json['facility'] ?? 'St. Mary\'s Secondary').toString().trim();
-    final lowerSchool = school.toLowerCase();
-    if (lowerSchool.contains('st. mary') || lowerSchool.contains('st mary') || lowerSchool.contains('secondary')) {
-      school = 'St. Mary\'s Secondary';
-    } else if (lowerSchool.contains('oli')) {
-      school = 'Oli Primary School';
-    } else if (lowerSchool.contains('ediofe')) {
-      school = 'Ediofe Girls School';
-    }
-
-    // CreatedAt parsing
-    String createdAtStr = DateTime.now().toIso8601String();
-    final rawCreatedAt = json['createdAt'];
-    if (rawCreatedAt is String && rawCreatedAt.isNotEmpty) {
-      createdAtStr = rawCreatedAt;
-    } else if (rawCreatedAt != null) {
-      try {
-        if (rawCreatedAt is Timestamp) {
-          createdAtStr = rawCreatedAt.toDate().toIso8601String();
-        } else {
-          createdAtStr = DateTime.tryParse(rawCreatedAt.toString())?.toIso8601String() ?? createdAtStr;
-        }
-      } catch (_) {}
-    }
-
-    return _LocalRequest(
-      id: id,
-      reference: ref.isNotEmpty ? ref : 'PH-$pin',
-      pickupPin: pin,
-      school: school,
-      area: (json['area'] ?? 'Arua Hill').toString(),
-      product: (json['product'] ?? 'Disposable pads').toString(),
-      quantity: qty > 0 ? qty : 1,
-      createdAt: createdAtStr,
-      status: (json['status'] ?? 'Pending review').toString(),
-      collectedAt: json['collectedAt']?.toString(),
-      collectedBy: json['collectedBy']?.toString(),
-    );
-  }
-
-  _LocalRequest withStatus(String status, {String? collectedBy}) => _LocalRequest(
-    id: id,
-    reference: reference,
-    pickupPin: pickupPin,
-    school: school,
-    area: area,
-    product: product,
-    quantity: quantity,
-    createdAt: createdAt,
-    status: status,
-    collectedAt: status == 'Collected' ? DateTime.now().toIso8601String() : collectedAt,
-    collectedBy: collectedBy ?? this.collectedBy,
-  );
-}
-
-class PinService {
-  /// Generates a unique 4-digit PIN (1000-9999) guaranteed not to collide
-  /// with any active (non-collected) request.
-  static String generateUniquePin(Iterable<_LocalRequest> existingRequests) {
-    final activePins = existingRequests
-        .where((r) => r.status != 'Collected' && r.status != 'Declined')
-        .map((r) => r.pickupPin.replaceAll('#', '').trim())
-        .toSet();
-
-    final rand = math.Random.secure();
-    for (int attempts = 0; attempts < 1000; attempts++) {
-      final candidate = (1000 + rand.nextInt(9000)).toString();
-      if (!activePins.contains(candidate)) {
-        return candidate;
-      }
-    }
-    final secureFallback = 1000 + math.Random.secure().nextInt(9000);
-    return secureFallback.toString();
-  }
-}
+// Note: LocalRequest, _LocalRequest, and PinService are modularized in lib/models/local_models.dart
 
 class _DispenseConfirmationDialog extends StatelessWidget {
   const _DispenseConfirmationDialog({
@@ -6393,227 +6256,8 @@ class _DispenseConfirmationDialog extends StatelessWidget {
   }
 }
 
-const _localStateKey = 'padcare.localState.v1';
-const _legacyLocalRequestsKey = 'padcare.localRequests.v1';
-
-class _LocalData {
-  const _LocalData({required this.requests, required this.stock});
-
-  final List<_LocalRequest> requests;
-  final Map<String, int> stock;
-
-  Map<String, Object> toJson() => {
-    'requests': requests.map((request) => request.toJson()).toList(),
-    'stock': stock,
-  };
-}
-
-String _stockKey(String school, String product) => '$school::$product';
-
-Future<_LocalData> _readLocalData() async {
-  final preferences = await SharedPreferences.getInstance();
-  final current = preferences.getString(_localStateKey) ??
-      preferences.getString('padher.localState.v1');
-  final legacy = preferences.getString(_legacyLocalRequestsKey) ??
-      preferences.getString('padher.localRequests.v1');
-  final Object? decoded = current != null
-      ? jsonDecode(current)
-      : legacy == null
-      ? null
-      : jsonDecode(legacy);
-  final data = decoded is Map
-      ? decoded
-      : <String, dynamic>{'requests': decoded, 'stock': <String, int>{}};
-  final requestData = data['requests'];
-  final requests = requestData is List
-      ? requestData
-            .map(
-              (request) => _LocalRequest.fromJson(
-                Map<String, dynamic>.from(request as Map),
-              ),
-            )
-            .toList()
-      : <_LocalRequest>[];
-  final stockData = data['stock'];
-  final stock = stockData is Map
-      ? stockData.map<String, int>(
-          (key, value) => MapEntry(key.toString(), (value as num).toInt()),
-        )
-      : <String, int>{};
-  final retentionCutoff = DateTime.now().subtract(const Duration(days: 30));
-  final retainedRequests = requests.where((request) {
-    final created = DateTime.tryParse(request.createdAt);
-    return created != null && created.isAfter(retentionCutoff);
-  }).toList();
-  final localData = _LocalData(requests: retainedRequests, stock: stock);
-  if (current == null || retainedRequests.length != requests.length) {
-    final saved = await preferences.setString(
-      _localStateKey,
-      jsonEncode(localData.toJson()),
-    );
-    if (!saved) throw StateError('Local data could not be migrated or cleaned');
-  }
-  if (legacy != null) {
-    await preferences.remove(_legacyLocalRequestsKey);
-    await preferences.remove('padher.localRequests.v1');
-  }
-  if (current == null && preferences.containsKey('padher.localState.v1')) {
-    await preferences.remove('padher.localState.v1');
-  }
-  return localData;
-}
-
-Future<void> _saveLocalData(_LocalData data) async {
-  final preferences = await SharedPreferences.getInstance();
-  final saved = await preferences.setString(
-    _localStateKey,
-    jsonEncode(data.toJson()),
-  );
-  if (!saved) throw StateError('Local data could not be saved');
-}
-
-enum _SupportSubTab { requestForm, activity, donate }
-
-class _SupportPoint {
-  const _SupportPoint({
-    required this.id,
-    required this.name,
-    required this.category,
-    required this.area,
-    required this.distanceKm,
-    required this.hours,
-    required this.inStock,
-    required this.isVerified,
-    required this.directions,
-    required this.mapOffsetPercent,
-    required this.pinLabel,
-    this.supplies = 'Pads & kits',
-    this.instructions = 'Walk in and ask for adolescent health or matron desk. Confidential and free.',
-    this.phone = '+256 772 100 200',
-    this.lastUpdated = 'Today at 09:00 AM',
-  });
-
-  final String id;
-  final String name;
-  final String category;
-  final String area;
-  final double distanceKm;
-  final String hours;
-  final bool inStock;
-  final bool isVerified;
-  final String directions;
-  final Offset mapOffsetPercent;
-  final String pinLabel;
-  final String supplies;
-  final String instructions;
-  final String phone;
-  final String lastUpdated;
-}
-
-const _kSupportPoints = <_SupportPoint>[
-  _SupportPoint(
-    id: 'muni-clinic',
-    name: 'Muni Health Centre IV',
-    category: 'Clinics',
-    area: 'Muni',
-    distanceKm: 0.8,
-    hours: 'Open until 5:00 PM',
-    inStock: true,
-    isVerified: true,
-    directions: 'Muni Junction, Rhinocamp Rd',
-    mapOffsetPercent: Offset(0.42, 0.42),
-    pinLabel: 'Clinic',
-    supplies: 'Disposable & Reusable pads',
-    instructions: 'Report to outpatient clinic room 3. Supplies provided immediately with discretion.',
-    phone: '+256 772 450 119',
-    lastUpdated: 'Today at 08:30 AM',
-  ),
-  _SupportPoint(
-    id: 'arua-hospital',
-    name: 'Arua Regional Referral Hospital',
-    category: 'Clinics',
-    area: 'Arua Central',
-    distanceKm: 1.1,
-    hours: 'Open 24/7',
-    inStock: true,
-    isVerified: true,
-    directions: 'Hospital Road, Arua Central',
-    mapOffsetPercent: Offset(0.50, 0.48),
-    pinLabel: 'Clinic',
-    supplies: 'Emergency hospital stock',
-    instructions: 'Maternity & Youth Friendly Corner. Open 24/7 with trained female nursing staff.',
-    phone: '+256 476 420 021',
-    lastUpdated: 'Today at 09:15 AM',
-  ),
-  _SupportPoint(
-    id: 'ediofe-school',
-    name: 'Ediofe Girls School',
-    category: 'Schools',
-    area: 'Ediofe',
-    distanceKm: 1.4,
-    hours: 'Open until 4:30 PM',
-    inStock: true,
-    isVerified: true,
-    directions: 'Ediofe Mission Road',
-    mapOffsetPercent: Offset(0.63, 0.42),
-    pinLabel: 'School',
-    supplies: 'Reusable pad kits & disposable',
-    instructions: 'Senior Woman Teacher office near the administration block.',
-    phone: '+256 782 300 812',
-    lastUpdated: 'Yesterday at 04:00 PM',
-  ),
-  _SupportPoint(
-    id: 'st-marys-school',
-    name: 'St. Mary\'s Secondary',
-    category: 'Schools',
-    area: 'Arua Hill',
-    distanceKm: 2.0,
-    hours: 'Open until 5:00 PM',
-    inStock: true,
-    isVerified: true,
-    directions: 'Arua Hill Avenue',
-    mapOffsetPercent: Offset(0.42, 0.55),
-    pinLabel: 'School',
-    supplies: 'Kits & packs for pickup',
-    instructions: 'School health liaison office. Parent & student collections welcome.',
-    phone: '+256 774 912 345',
-    lastUpdated: 'Today at 10:00 AM',
-  ),
-  _SupportPoint(
-    id: 'ceford-ngo',
-    name: 'CEFORD Community Centre',
-    category: 'NGOs',
-    area: 'Arua Central',
-    distanceKm: 1.8,
-    hours: 'Open until 5:00 PM',
-    inStock: true,
-    isVerified: true,
-    directions: 'Catholic Diocese, Central',
-    mapOffsetPercent: Offset(0.61, 0.55),
-    pinLabel: 'Collect',
-    supplies: 'Emergency distribution hub',
-    instructions: 'Community empowerment desk, ground floor reception.',
-    phone: '+256 476 422 555',
-    lastUpdated: 'Today at 11:30 AM',
-  ),
-  _SupportPoint(
-    id: 'oli-primary',
-    name: 'Oli Primary School',
-    category: 'Schools',
-    area: 'Oli',
-    distanceKm: 2.5,
-    hours: 'Open until 4:00 PM',
-    inStock: true,
-    isVerified: true,
-    directions: 'Oli Division Road',
-    mapOffsetPercent: Offset(0.61, 0.60),
-    pinLabel: 'School',
-    supplies: 'School stock & parent pickups',
-    instructions: 'Staffroom counseling corner, ask for Senior Woman Teacher.',
-    phone: '+256 752 118 900',
-    lastUpdated: 'Today at 07:45 AM',
-  ),
-];
+// Note: LocalData, readLocalData, saveLocalData, SupportPoint, kSupportPoints, SupportSubTab
+// are modularized in lib/models/local_models.dart
 
 class _ParentHomeScreenState extends State<ParentHomeScreen> {
   int _selectedIndex = 0;
@@ -10621,356 +10265,8 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   }
 }
 
-class _LearnArticle {
-  const _LearnArticle({
-    required this.tag,
-    required this.category,
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.content,
-  });
-
-  final String tag;
-  final String category;
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final List<String> content;
-}
-
-class _InteractiveAruaMap extends StatelessWidget {
-  const _InteractiveAruaMap({
-    required this.points,
-    required this.selectedPoint,
-    required this.onSelect,
-  });
-
-  final List<_SupportPoint> points;
-  final _SupportPoint selectedPoint;
-  final ValueChanged<_SupportPoint> onSelect;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final w = constraints.maxWidth;
-        final h = constraints.maxHeight;
-
-        return Stack(
-          children: [
-            CustomPaint(
-              size: Size(w, h),
-              painter: _AruaMapPainter(
-                selectedPointId: selectedPoint.id,
-              ),
-            ),
-            ...points.map((pt) {
-              final x = pt.mapOffsetPercent.dx * w;
-              final y = pt.mapOffsetPercent.dy * h;
-              final isSelected = pt.id == selectedPoint.id;
-              final icon = pt.category == 'Clinics'
-                  ? Icons.local_hospital_rounded
-                  : (pt.category == 'Schools' ? Icons.school_rounded : Icons.volunteer_activism_rounded);
-
-              return Positioned(
-                left: x - 35,
-                top: y - 55,
-                child: _MapTeardropPin(
-                  label: pt.pinLabel,
-                  icon: icon,
-                  isSelected: isSelected,
-                  onTap: () => onSelect(pt),
-                ),
-              );
-            }),
-          ],
-        );
-      },
-    );
-  }
-}
-
-class _MapTeardropPin extends StatelessWidget {
-  const _MapTeardropPin({
-    required this.label,
-    required this.icon,
-    required this.isSelected,
-    required this.onTap,
-  });
-
-  final String label;
-  final IconData icon;
-  final bool isSelected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final pinColor = isSelected ? const Color(0xFF116B78) : const Color(0xFF2EA8B6);
-    final size = isSelected ? 40.0 : 30.0;
-
-    return GestureDetector(
-      onTap: onTap,
-      behavior: HitTestBehavior.opaque,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(10),
-              boxShadow: const [
-                BoxShadow(
-                  color: Color(0x28000000),
-                  blurRadius: 6,
-                  offset: Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('📍', style: TextStyle(fontSize: 9)),
-                const SizedBox(width: 3),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: isSelected ? const Color(0xFF116B78) : _ink,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 2),
-          CustomPaint(
-            size: Size(size, size * 1.25),
-            painter: _TeardropPinPainter(
-              color: pinColor,
-              isSelected: isSelected,
-            ),
-            child: SizedBox(
-              width: size,
-              height: size * 1.25,
-              child: Padding(
-                padding: EdgeInsets.only(bottom: size * 0.25),
-                child: Center(
-                  child: Icon(
-                    icon,
-                    size: isSelected ? 18 : 14,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _TeardropPinPainter extends CustomPainter {
-  final Color color;
-  final bool isSelected;
-  const _TeardropPinPainter({required this.color, this.isSelected = false});
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final w = size.width;
-    final h = size.height;
-    final r = w / 2;
-
-    final path = Path()
-      ..moveTo(r, h)
-      ..cubicTo(w * 0.12, h * 0.65, 0, h * 0.45, 0, r)
-      ..arcToPoint(Offset(w, r), radius: Radius.circular(r))
-      ..cubicTo(w, h * 0.45, w * 0.88, h * 0.65, r, h)
-      ..close();
-
-    final shadowPaint = Paint()
-      ..color = const Color(0x38000000)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
-    canvas.drawPath(path.shift(const Offset(0, 2)), shadowPaint);
-
-    final fillPaint = Paint()..color = color;
-    canvas.drawPath(path, fillPaint);
-
-    final borderPaint = Paint()
-      ..color = Colors.white
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = isSelected ? 2.5 : 1.8;
-    canvas.drawPath(path, borderPaint);
-  }
-
-  @override
-  bool shouldRepaint(covariant _TeardropPinPainter oldDelegate) =>
-      oldDelegate.color != color || oldDelegate.isSelected != isSelected;
-}
-
-class _AruaMapPainter extends CustomPainter {
-  const _AruaMapPainter({
-    required this.selectedPointId,
-  });
-
-  final String selectedPointId;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final basePaint = Paint()..color = const Color(0xFFE4F3EE);
-    canvas.drawRect(Offset.zero & size, basePaint);
-
-    final parkPaint = Paint()..color = const Color(0xFFD2EADB);
-    final park1 = Path()
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width * 0.04, size.height * 0.08, size.width * 0.36, size.height * 0.24),
-        const Radius.circular(36),
-      ));
-    canvas.drawPath(park1, parkPaint);
-
-    final park2 = Path()
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width * 0.65, size.height * 0.12, size.width * 0.35, size.height * 0.28),
-        const Radius.circular(46),
-      ));
-    canvas.drawPath(park2, parkPaint);
-
-    final park3 = Path()
-      ..addRRect(RRect.fromRectAndRadius(
-        Rect.fromLTWH(size.width * 0.42, size.height * 0.64, size.width * 0.52, size.height * 0.32),
-        const Radius.circular(44),
-      ));
-    canvas.drawPath(park3, parkPaint);
-
-    final riverPaint = Paint()
-      ..color = const Color(0xFFA6D9D0)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 13
-      ..strokeCap = StrokeCap.round;
-
-    final riverPath = Path()
-      ..moveTo(size.width * 0.12, 0)
-      ..cubicTo(
-        size.width * 0.28, size.height * 0.32,
-        size.width * 0.14, size.height * 0.62,
-        size.width * 0.46, size.height,
-      );
-    canvas.drawPath(riverPath, riverPaint);
-
-    final roadBorderPaint = Paint()
-      ..color = const Color(0xFFDFD7C2)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 18
-      ..strokeCap = StrokeCap.round;
-
-    final roadFillPaint = Paint()
-      ..color = const Color(0xFFFBF6EB)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 14
-      ..strokeCap = StrokeCap.round;
-
-    final center = Offset(size.width * 0.50, size.height * 0.48);
-
-    final roadPaths = Path()
-      ..moveTo(center.dx, center.dy)
-      ..lineTo(size.width * 0.72, size.height * 0.28)
-      ..lineTo(size.width * 0.86, 0)
-      ..moveTo(center.dx, center.dy)
-      ..lineTo(size.width * 0.24, size.height * 0.38)
-      ..lineTo(0, size.height * 0.34)
-      ..moveTo(center.dx, center.dy)
-      ..lineTo(size.width * 0.28, size.height * 0.68)
-      ..lineTo(0, size.height * 0.86)
-      ..moveTo(center.dx, center.dy)
-      ..lineTo(size.width * 0.62, size.height * 0.68)
-      ..lineTo(size.width * 0.84, size.height)
-      ..moveTo(center.dx, center.dy)
-      ..lineTo(size.width, size.height * 0.54)
-      ..moveTo(center.dx, center.dy)
-      ..lineTo(size.width * 0.44, 0);
-
-    canvas.drawPath(roadPaths, roadBorderPaint);
-    canvas.drawPath(roadPaths, roadFillPaint);
-
-    final minorBorderPaint = Paint()
-      ..color = const Color(0xFFE5DEC8)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 9;
-    final minorFillPaint = Paint()
-      ..color = const Color(0xFFFBF6EB)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 6;
-
-    final minorPaths = Path()
-      ..moveTo(size.width * 0.24, size.height * 0.38)
-      ..lineTo(size.width * 0.42, size.height * 0.16)
-      ..lineTo(size.width * 0.72, size.height * 0.28)
-      ..moveTo(size.width * 0.28, size.height * 0.68)
-      ..lineTo(size.width * 0.62, size.height * 0.68);
-
-    canvas.drawPath(minorPaths, minorBorderPaint);
-    canvas.drawPath(minorPaths, minorFillPaint);
-
-    canvas.drawCircle(center, 13, Paint()..color = const Color(0xFFDFD7C2));
-    canvas.drawCircle(center, 10, Paint()..color = const Color(0xFFFBF6EB));
-    canvas.drawCircle(center, 4, Paint()..color = const Color(0xFF498877));
-
-    _drawTree(canvas, Offset(size.width * 0.15, size.height * 0.15));
-    _drawTree(canvas, Offset(size.width * 0.24, size.height * 0.13));
-    _drawTree(canvas, Offset(size.width * 0.78, size.height * 0.21));
-    _drawTree(canvas, Offset(size.width * 0.74, size.height * 0.36));
-    _drawTree(canvas, Offset(size.width * 0.12, size.height * 0.53));
-    _drawTree(canvas, Offset(size.width * 0.58, size.height * 0.83));
-
-    _drawHighwayBadge(canvas, Offset(size.width * 0.22, size.height * 0.24), '18');
-  }
-
-  void _drawTree(Canvas canvas, Offset pos) {
-    final foliage = Paint()..color = const Color(0xFF3F7F70);
-    final trunk = Paint()..color = const Color(0xFF8D735C)..strokeWidth = 2;
-    canvas.drawLine(pos, Offset(pos.dx, pos.dy + 8), trunk);
-
-    final path = Path()
-      ..moveTo(pos.dx, pos.dy - 6)
-      ..lineTo(pos.dx - 6, pos.dy + 2)
-      ..lineTo(pos.dx + 6, pos.dy + 2)
-      ..close()
-      ..moveTo(pos.dx, pos.dy - 2)
-      ..lineTo(pos.dx - 8, pos.dy + 6)
-      ..lineTo(pos.dx + 8, pos.dy + 6)
-      ..close();
-    canvas.drawPath(path, foliage);
-  }
-
-  void _drawHighwayBadge(Canvas canvas, Offset pos, String number) {
-    final rect = Rect.fromCenter(center: pos, width: 22, height: 16);
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(4)),
-      Paint()..color = const Color(0xFF2E7D32),
-    );
-    final textPainter = TextPainter(
-      text: TextSpan(
-        text: number,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 9,
-          fontWeight: FontWeight.w800,
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    textPainter.paint(
-      canvas,
-      Offset(pos.dx - textPainter.width / 2, pos.dy - textPainter.height / 2),
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant _AruaMapPainter oldDelegate) =>
-      oldDelegate.selectedPointId != selectedPointId;
-}
+// Note: LearnArticle, _LearnArticle are in lib/models/local_models.dart
+// InteractiveAruaMap, AruaMapPainter, MapTeardropPin are in lib/features/map/arua_map.dart
 
 class _PadCareSplashScreen extends StatelessWidget {
   const _PadCareSplashScreen({this.onClose});
@@ -12055,6 +11351,20 @@ class _StockManagementCard extends StatelessWidget {
                     Text(
                       'Restock alert at ${supply.lowAt} ${supply.unit}',
                       style: const TextStyle(color: _muted, fontSize: 12),
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        const Icon(Icons.qr_code_2_rounded, size: 12, color: _deepTeal),
+                        const SizedBox(width: 4),
+                        Expanded(
+                          child: Text(
+                            'Lot: ${supply.batchNumber}  ·  ${supply.shelfLife}',
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(color: _deepTeal, fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),

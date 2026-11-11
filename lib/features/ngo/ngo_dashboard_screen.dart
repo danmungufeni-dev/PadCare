@@ -4,6 +4,7 @@ import '../../services/firebase_service.dart';
 import '../../services/inventory_service.dart';
 import '../../services/school_service.dart';
 import '../../services/sponsor_service.dart';
+import '../../services/notification_service.dart';
 import '../../shared/widgets/brand_widgets.dart';
 
 const Color _ngoTeal = Color(0xFF116B78);
@@ -118,12 +119,13 @@ class _NgoDashboardScreenState extends State<NgoDashboardScreen>
     );
   }
 
-  void _showPledgeGrantModal() {
+  void _showPledgeGrantModal({String? initialSchool, String? initialAmount}) {
     final donorController = TextEditingController(text: widget.ngoName);
-    final amountController = TextEditingController(text: '5000000');
-    String selectedSchool = _selectedSchoolFilter == 'All Schools'
-        ? "St. Mary's Secondary"
-        : _selectedSchoolFilter;
+    final amountController = TextEditingController(text: initialAmount ?? '5000000');
+    String selectedSchool = initialSchool ??
+        (_selectedSchoolFilter == 'All Schools'
+            ? "St. Mary's Secondary"
+            : _selectedSchoolFilter);
     String selectedMethod = 'Bank Wire';
 
     showModalBottomSheet<void>(
@@ -701,6 +703,111 @@ Official Audit Verification Signed by PadCare Arua HQ
     );
   }
 
+  Widget _buildActiveRestockAlertBanner() {
+    return StreamBuilder<List<NotificationItemModel>>(
+      stream: NotificationService.streamRestockAlerts(),
+      builder: (context, snapshot) {
+        final alerts = snapshot.data ?? [];
+        if (alerts.isEmpty) return const SizedBox.shrink();
+
+        final topAlert = alerts.first;
+        final isUrgent = topAlert.urgency == 'urgent';
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isUrgent ? const Color(0xFFFEF2F2) : const Color(0xFFFFFBEB),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isUrgent ? const Color(0xFFFECACA) : const Color(0xFFFDE68A),
+              width: 1.2,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: isUrgent ? const Color(0xFFFEE2E2) : const Color(0xFFFEF3C7),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  isUrgent ? Icons.warning_rounded : Icons.notifications_active_rounded,
+                  color: isUrgent ? const Color(0xFFDC2626) : const Color(0xFFD97706),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          isUrgent ? 'URGENT RESTOCK ALERT' : 'INVENTORY NOTICE',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.5,
+                            color: isUrgent ? const Color(0xFFDC2626) : const Color(0xFFD97706),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color: isUrgent ? const Color(0xFFDC2626) : const Color(0xFFD97706),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            '${topAlert.currentStock ?? 18} packs left',
+                            style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      topAlert.title,
+                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: _ngoInk),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      topAlert.body,
+                      style: const TextStyle(fontSize: 11.5, color: _ngoMuted, height: 1.3),
+                    ),
+                    const SizedBox(height: 8),
+                    ElevatedButton.icon(
+                      key: const ValueKey('sponsor-alert-restock-btn'),
+                      onPressed: () => _showPledgeGrantModal(
+                        initialSchool: topAlert.schoolName ?? 'Logiri Girls Secondary',
+                        initialAmount: '1500000',
+                      ),
+                      icon: const Icon(Icons.volunteer_activism_rounded, size: 14),
+                      label: Text(
+                        'Sponsor Restock for ${topAlert.schoolName ?? "School"} (UGX 1.5M)',
+                        style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: isUrgent ? const Color(0xFFDC2626) : _ngoTeal,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // TAB 1: OVERVIEW & KEY IMPACT METRICS
   // ---------------------------------------------------------------------------
@@ -714,6 +821,9 @@ Official Audit Verification Signed by PadCare Arua HQ
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Automated Low Stock Restock Alert Banner
+          _buildActiveRestockAlertBanner(),
+
           // High Level Metric Grid
           Wrap(
             spacing: 12,
@@ -1279,7 +1389,7 @@ Official Audit Verification Signed by PadCare Arua HQ
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'PIN Verification: #${d.pickupPin}',
+                        'PIN: #${d.pickupPin} • Lot: ${d.batchNumber}',
                         style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _ngoMuted),
                       ),
                       Text(
@@ -1582,6 +1692,8 @@ Official Audit Verification Signed by PadCare Arua HQ
     required int kitsOnHand,
     required int lowThreshold,
     required String status,
+    String batchNumber = 'BATCH-2025-08X',
+    String shelfLifeStatus = 'Good (Expires June 2028)',
   }) {
     final isLow = packsOnHand <= lowThreshold;
 
@@ -1676,6 +1788,37 @@ Official Audit Verification Signed by PadCare Arua HQ
                 ),
               ],
             ),
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.qr_code_2_rounded, size: 14, color: _ngoTeal),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Lot: $batchNumber',
+                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _ngoInk, fontFamily: 'monospace'),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isLow ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'Shelf Life: $shelfLifeStatus',
+                  style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: isLow ? const Color(0xFFDC2626) : const Color(0xFF16A34A),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),

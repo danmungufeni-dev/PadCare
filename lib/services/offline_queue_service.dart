@@ -142,6 +142,23 @@ class OfflineQueueService {
               await SchoolService.saveSchool(school, enqueueOffline: false);
               success = true;
               break;
+            case 'offline_dispensation':
+              final reqId = task.payload['requestId']?.toString() ?? '';
+              final school = task.payload['school']?.toString() ?? '';
+              final product = task.payload['product']?.toString() ?? 'regular-pads';
+              final qty = (task.payload['quantity'] as num?)?.toInt() ?? 1;
+              final pin = task.payload['pin']?.toString() ?? '';
+              final dispensedBy = task.payload['dispensedBy']?.toString() ?? 'Staff';
+              final res = await FirestoreService.dispenseRequestAtomic(
+                requestId: reqId,
+                school: school,
+                product: product,
+                quantity: qty,
+                dispensedBy: dispensedBy,
+                pin: pin,
+              );
+              success = res['success'] == true;
+              break;
             default:
               success = true;
           }
@@ -261,6 +278,36 @@ class OfflineQueueService {
     }
   }
 
+  /// Records an offline dispensation directly, decrements local stock cache, and queues task.
+  static Future<void> recordOfflineDispensation({
+    required String requestId,
+    required String school,
+    required String product,
+    required int quantity,
+    required String pin,
+    required String dispensedBy,
+    String? batchNumber,
+  }) async {
+    // 1. Immediately decrement local offline stock in SharedPreferences
+    await OfflineCacheService.decrementLocalStock(school, product, quantity);
+
+    // 2. Enqueue the mutation task
+    await enqueue(
+      type: 'offline_dispensation',
+      payload: {
+        'id': 'disp_${DateTime.now().millisecondsSinceEpoch}',
+        'requestId': requestId,
+        'school': school,
+        'product': product,
+        'quantity': quantity,
+        'pin': pin,
+        'dispensedBy': dispensedBy,
+        'batchNumber': batchNumber ?? 'BATCH-2025-08X',
+        'timestamp': DateTime.now().toIso8601String(),
+      },
+    );
+  }
+
   /// Cancels background timer (e.g. on test dispose).
   static void dispose() {
     _syncTimer?.cancel();
@@ -363,5 +410,54 @@ class OfflineCacheService {
       }
     } catch (_) {}
     return null;
+  }
+
+  // --- Offline School Stock & Distribution Cache for Rural Connectivity ---
+  static const String _kStockPrefix = 'padcare.offline.stock.';
+
+  /// Caches the current stock level for a school facility.
+  static Future<void> cacheSchoolStock(String school, Map<String, dynamic> stockData) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = '$_kStockPrefix${school.toLowerCase().replaceAll(RegExp(r'\s+'), '_')}';
+      await prefs.setString(key, jsonEncode(stockData));
+    } catch (e) {
+      debugPrint('Error caching school stock: $e');
+    }
+  }
+
+  /// Retrieves the cached stock level for a school facility when offline.
+  static Future<Map<String, dynamic>?> getCachedSchoolStock(String school) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = '$_kStockPrefix${school.toLowerCase().replaceAll(RegExp(r'\s+'), '_')}';
+      final raw = prefs.getString(key);
+      if (raw != null) {
+        return Map<String, dynamic>.from(jsonDecode(raw) as Map);
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Decrements stock in local cache when an offline dispensation takes place.
+  static Future<void> decrementLocalStock(String school, String product, int quantity) async {
+    try {
+      final current = await getCachedSchoolStock(school) ?? {
+        'kitsOnHand': 60,
+        'packsOnHand': 200,
+        'lastUpdated': DateTime.now().toIso8601String(),
+      };
+      if (product.toLowerCase().contains('kit')) {
+        final existing = (current['kitsOnHand'] as num?)?.toInt() ?? 0;
+        current['kitsOnHand'] = (existing - quantity).clamp(0, 999999);
+      } else {
+        final existing = (current['packsOnHand'] as num?)?.toInt() ?? 0;
+        current['packsOnHand'] = (existing - quantity).clamp(0, 999999);
+      }
+      current['lastUpdated'] = DateTime.now().toIso8601String();
+      await cacheSchoolStock(school, current);
+    } catch (e) {
+      debugPrint('Error decrementing local stock: $e');
+    }
   }
 }

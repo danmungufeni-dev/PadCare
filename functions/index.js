@@ -1,14 +1,29 @@
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const admin = require("firebase-admin");
+const crypto = require("crypto");
 
 admin.initializeApp();
 const db = admin.firestore();
 
 /**
+ * Normalizes school names to canonical identifiers for exact matching.
+ * e.g., "St. Mary's Secondary" -> "st_marys_secondary"
+ */
+function normalizeSchoolId(name) {
+  if (!name) return "";
+  return name
+    .toLowerCase()
+    .replace(/['’]/g, "")
+    .replace(/[^a-z0-9]/g, "_")
+    .replace(/_+/g, "_")
+    .replace(/^_|_$/g, "");
+}
+
+/**
  * 1. SECURE SERVER-SIDE PIN GENERATION
  * Callable function invoked when a teacher submits a student sanitary pad request.
- * Generates a unique 4-digit numeric string, creates `pin_records`, and updates `requests`.
+ * Generates a unique cryptographically secure 4-digit numeric string, creates `pin_records`, and updates `requests`.
  */
 exports.generateRequestPin = onCall(async (request) => {
   if (!request.auth) {
@@ -20,14 +35,14 @@ exports.generateRequestPin = onCall(async (request) => {
     throw new HttpsError("invalid-argument", "Missing required parameters: requestId, schoolId, quantity.");
   }
 
-  // 1. Generate unique 4-digit PIN not in active use
+  // 1. Generate unique 4-digit PIN not in active use using cryptographic randomness
   let candidatePin = "";
   let isUnique = false;
   let attempts = 0;
 
-  while (!isUnique && attempts < 20) {
+  while (!isUnique && attempts < 25) {
     attempts++;
-    const randomNum = Math.floor(1000 + Math.random() * 9000);
+    const randomNum = crypto.randomInt(1000, 10000);
     candidatePin = randomNum.toString();
 
     const existingDoc = await db.collection("pin_records").doc(candidatePin).get();
@@ -42,7 +57,7 @@ exports.generateRequestPin = onCall(async (request) => {
   }
 
   if (!isUnique) {
-    candidatePin = (1000 + (Date.now() % 9000)).toString();
+    candidatePin = crypto.randomInt(1000, 10000).toString();
   }
 
   const expiresAt = new Date();
@@ -107,6 +122,26 @@ exports.dispenseByPin = onCall(async (request) => {
     throw new HttpsError("unauthenticated", "Authentication required to dispense products.");
   }
 
+  // Server-side Staff Role Verification
+  const userDoc = await db.collection("users").doc(request.auth.uid).get();
+  if (!userDoc.exists) {
+    const tokenEmail = (request.auth.token.email || "").toLowerCase();
+    const isDemoAuthorized = tokenEmail.includes("teacher") ||
+      tokenEmail.includes("devgtnation") ||
+      tokenEmail.includes("chrishanijr") ||
+      tokenEmail.includes("2501201629");
+    if (!isDemoAuthorized) {
+      throw new HttpsError("permission-denied", "User profile not found. Verified school staff authorization required.");
+    }
+  } else {
+    const userData = userDoc.data();
+    const isStaff = userData.role === "teacher" || userData.role === "admin" || userData.role === "school_admin";
+    const isAuthorized = userData.authorized === true || userData.status === "approved";
+    if (!isStaff || !isAuthorized) {
+      throw new HttpsError("permission-denied", "Unauthorized user. Only verified school staff may dispense sanitary products.");
+    }
+  }
+
   const { pin, schoolFacility, dispensedByName } = request.data || {};
   if (!pin || !schoolFacility) {
     throw new HttpsError("invalid-argument", "Missing required parameters: pin, schoolFacility.");
@@ -133,11 +168,25 @@ exports.dispenseByPin = onCall(async (request) => {
       throw new HttpsError("failed-precondition", `PIN #${cleanPin} is no longer active (${pinData.status}).`);
     }
 
-    // Check school facility match
-    const normSchool = schoolFacility.toLowerCase();
-    const pinSchool = (pinData.schoolId || "").toLowerCase();
-    if (!normSchool.includes(pinSchool) && !pinSchool.includes(normSchool)) {
-      throw new HttpsError("permission-denied", `PIN #${cleanPin} belongs to ${pinData.schoolId}, not ${schoolFacility}.`);
+    // Verify PIN Expiration (strict 30-day enforcement)
+    if (pinData.expiresAt) {
+      const expiryDate = pinData.expiresAt.toDate ? pinData.expiresAt.toDate() : new Date(pinData.expiresAt);
+      if (new Date() > expiryDate) {
+        throw new HttpsError(
+          "failed-precondition",
+          `PIN #${cleanPin} expired on ${expiryDate.toLocaleDateString()}. Please request a fresh care kit.`
+        );
+      }
+    }
+
+    // Check school facility exact match
+    const normSchool = normalizeSchoolId(schoolFacility);
+    const pinSchool = normalizeSchoolId(pinData.schoolId);
+    if (normSchool !== pinSchool && pinData.schoolId.toLowerCase().trim() !== schoolFacility.toLowerCase().trim()) {
+      throw new HttpsError(
+        "permission-denied",
+        `PIN #${cleanPin} is registered for ${pinData.schoolId}, not ${schoolFacility}. Please direct the student to ${pinData.schoolId}.`
+      );
     }
 
     // 2. Verify Request

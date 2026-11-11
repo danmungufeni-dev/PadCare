@@ -3,6 +3,12 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'firebase_service.dart';
 
+/// PadCare Mobile Money & Community Sponsorship Service.
+/// 
+/// Note: Currently configured for Community Sponsorship Simulation & Free Tier Sandbox.
+/// Records sponsor donations, updates live community impact counters, and logs transactions in Firestore.
+/// Architecture is pre-structured for production MTN MoMo and Airtel Money IPN webhook callbacks
+/// once production merchant credentials and webhook servers are provisioned.
 class MoMoDonation {
   final String id;
   final String donorName;

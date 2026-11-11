@@ -125,12 +125,32 @@ void main() {
 
       // Verify the add school form fields appear
       expect(find.byKey(const ValueKey('new-school-name-field')), findsOneWidget);
+      expect(find.byKey(const ValueKey('new-school-passkey-field')), findsOneWidget);
       expect(find.byKey(const ValueKey('save-new-school-btn')), findsOneWidget);
 
       // Enter new school name
       await tester.enterText(
         find.byKey(const ValueKey('new-school-name-field')),
         'Jiako Primary School',
+      );
+      await tester.pumpAndSettle();
+
+      // Attempt to save with invalid admin passkey
+      await tester.enterText(
+        find.byKey(const ValueKey('new-school-passkey-field')),
+        'WrongPassword123',
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const ValueKey('save-new-school-btn')));
+      await tester.pumpAndSettle();
+
+      // Expect rejection error
+      expect(find.textContaining('Incorrect admin password'), findsOneWidget);
+
+      // Now enter valid admin passkey
+      await tester.enterText(
+        find.byKey(const ValueKey('new-school-passkey-field')),
+        'PadCare2026!',
       );
       await tester.pumpAndSettle();
 

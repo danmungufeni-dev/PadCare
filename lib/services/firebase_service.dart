@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
 import '../firebase_options.dart';
+import 'school_service.dart';
 
 export 'auth_service.dart';
 export 'school_service.dart';
@@ -1438,6 +1439,27 @@ class FirestoreService {
           throw Exception('This request has already been collected/dispensed.');
         }
 
+        // Strict school affiliation verification
+        final reqSchool = (reqData['school'] ?? reqData['facility'] ?? '').toString();
+        if (reqSchool.isNotEmpty) {
+          final idReq = SchoolService.generateSchoolId(reqSchool);
+          final idSchool = SchoolService.generateSchoolId(school);
+          if (idReq != idSchool && reqSchool.toLowerCase().trim() != school.toLowerCase().trim()) {
+            throw Exception('Request belongs to $reqSchool, not $school.');
+          }
+        }
+
+        // Strict 30-day expiration verification
+        final createdAtVal = reqData['createdAt'];
+        if (createdAtVal != null) {
+          DateTime? createdDate;
+          if (createdAtVal is Timestamp) createdDate = createdAtVal.toDate();
+          if (createdAtVal is String) createdDate = DateTime.tryParse(createdAtVal);
+          if (createdDate != null && DateTime.now().difference(createdDate).inDays > 30) {
+            throw Exception('This request has expired (>30 days). Please generate a fresh request.');
+          }
+        }
+
         final schoolRef = _db!.collection('schools').doc(school);
         final schoolSnap = await transaction.get(schoolRef);
 
@@ -1478,10 +1500,26 @@ class FirestoreService {
           'updatedAt': FieldValue.serverTimestamp(),
         });
 
-        // Mark associated PIN record as redeemed
+        // Mark associated PIN record as redeemed with expiration and double-redemption guard
         final cleanPin = pin.replaceAll('#', '').replaceFirst(RegExp(r'^(PH-|REQ-)', caseSensitive: false), '').trim();
         if (cleanPin.isNotEmpty) {
           final pinDocRef = _db!.collection('pin_records').doc(cleanPin);
+          final pinSnap = await transaction.get(pinDocRef);
+          if (pinSnap.exists) {
+            final pData = pinSnap.data() ?? {};
+            if (pData['status'] == 'redeemed') {
+              throw Exception('PIN #$cleanPin has already been redeemed.');
+            }
+            final expVal = pData['expiresAt'];
+            if (expVal != null) {
+              DateTime? expDate;
+              if (expVal is Timestamp) expDate = expVal.toDate();
+              if (expVal is String) expDate = DateTime.tryParse(expVal);
+              if (expDate != null && DateTime.now().isAfter(expDate)) {
+                throw Exception('PIN #$cleanPin has expired (valid for 30 days).');
+              }
+            }
+          }
           transaction.set(pinDocRef, {
             'status': 'redeemed',
             'redeemedAt': FieldValue.serverTimestamp(),

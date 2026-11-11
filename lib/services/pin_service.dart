@@ -136,19 +136,21 @@ class SecurePinService {
         };
       }
 
-      if (record.status == 'revoked' || record.status == 'expired') {
+      if (record.status == 'revoked' || record.status == 'expired' || !record.isActive || DateTime.now().isAfter(record.expiresAt)) {
         return {
           'valid': false,
-          'error': 'PIN #$cleanPin is no longer active (${record.status}).',
+          'error': 'PIN #$cleanPin has expired (valid for 30 days). Please generate a fresh request.',
         };
       }
 
-      // School match
-      if (record.schoolId != schoolFacility &&
-          !schoolFacility.toLowerCase().contains(record.schoolId.toLowerCase())) {
+      // School exact match
+      final schoolA = SchoolService.generateSchoolId(record.schoolId);
+      final schoolB = SchoolService.generateSchoolId(schoolFacility);
+      if (schoolA != schoolB &&
+          record.schoolId.toLowerCase().trim() != schoolFacility.toLowerCase().trim()) {
         return {
           'valid': false,
-          'error': 'PIN #$cleanPin belongs to another school (${record.schoolId}).',
+          'error': 'PIN #$cleanPin is registered for ${record.schoolId}, not $schoolFacility.',
         };
       }
 

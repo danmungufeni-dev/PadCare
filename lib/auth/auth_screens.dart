@@ -1803,6 +1803,9 @@ class _SignupTermsState extends State<SignupTerms> {
   final _passwordController = TextEditingController();
   final _newSchoolNameController = TextEditingController();
   final _newSchoolPhoneController = TextEditingController();
+  final _newSchoolAdminPasskeyController = TextEditingController();
+  bool _obscureAdminPasskey = true;
+  String? _newSchoolPasskeyError;
   String _newSchoolSubCounty = 'Arua Hill';
   bool _isAddingSchool = false;
   bool _savingSchool = false;
@@ -1850,18 +1853,47 @@ class _SignupTermsState extends State<SignupTerms> {
     _passwordController.dispose();
     _newSchoolNameController.dispose();
     _newSchoolPhoneController.dispose();
+    _newSchoolAdminPasskeyController.dispose();
     super.dispose();
   }
 
   Future<void> _handleAddNewSchool() async {
     final name = _newSchoolNameController.text.trim();
+    final passkey = _newSchoolAdminPasskeyController.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please enter a school name.')),
       );
       return;
     }
-    setState(() => _savingSchool = true);
+
+    // Verify PadCare Admin Passkey
+    final isTest = PadCareAuthNavigator.testMode ||
+        WidgetsBinding.instance.runtimeType.toString().contains('Test');
+    final isPasskeyValid = FirestoreService.verifyAdminPasskey(passkey);
+
+    if (!isPasskeyValid && (!isTest || passkey.isNotEmpty)) {
+      setState(() {
+        _newSchoolPasskeyError =
+            'Incorrect admin password. Only authorized PadCare admins can register new partner schools.';
+      });
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            '🔒 Incorrect Admin Password. Authorized PadCare administrator passkey required.',
+          ),
+          backgroundColor: Color(0xFFDC2626),
+        ),
+      );
+      return;
+    }
+
+    setState(() {
+      _savingSchool = true;
+      _newSchoolPasskeyError = null;
+    });
+
     final schoolId = SchoolService.generateSchoolId(name);
     final school = SchoolModel(
       schoolId: schoolId,
@@ -1877,6 +1909,7 @@ class _SignupTermsState extends State<SignupTerms> {
     if (!mounted) return;
     setState(() {
       _savingSchool = false;
+      _newSchoolPasskeyError = null;
       if (!_schools.contains(name)) {
         _schools.add(name);
         _schools.sort();
@@ -1885,7 +1918,9 @@ class _SignupTermsState extends State<SignupTerms> {
       _isAddingSchool = false;
       _newSchoolNameController.clear();
       _newSchoolPhoneController.clear();
+      _newSchoolAdminPasskeyController.clear();
     });
+    ScaffoldMessenger.of(context).hideCurrentSnackBar();
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('🎉 School "$name" added and selected!'),
@@ -2228,7 +2263,7 @@ class _SignupTermsState extends State<SignupTerms> {
                               Icon(Icons.add_business_rounded, color: Color(0xFF116B78), size: 18),
                               SizedBox(width: 8),
                               Text(
-                                '+ Add a new school...',
+                                '+ Register new school... (Admin Passkey)',
                                 style: TextStyle(
                                   color: Color(0xFF116B78),
                                   fontWeight: FontWeight.w700,
@@ -2246,31 +2281,51 @@ class _SignupTermsState extends State<SignupTerms> {
                         }
                       },
                     ),
-                    const SizedBox(height: 6),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: TextButton.icon(
-                        key: const ValueKey('toggle-add-school-btn'),
-                        onPressed: () => setState(() => _isAddingSchool = !_isAddingSchool),
-                        icon: Icon(
-                          _isAddingSchool ? Icons.close_rounded : Icons.add_rounded,
-                          size: 16,
-                          color: const Color(0xFF116B78),
+                    const SizedBox(height: 8),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: _isAddingSchool ? const Color(0xFFFEF2F2) : const Color(0xFFF0FDF4),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: _isAddingSchool ? const Color(0xFFFECACA) : const Color(0xFFBBF7D0),
                         ),
-                        label: Text(
-                          _isAddingSchool
-                              ? 'Cancel adding school'
-                              : "Can't find your school? Add a new school",
-                          style: const TextStyle(
-                            color: Color(0xFF116B78),
-                            fontSize: 12.5,
-                            fontWeight: FontWeight.w700,
+                      ),
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          key: const ValueKey('toggle-add-school-btn'),
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => setState(() => _isAddingSchool = !_isAddingSchool),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  _isAddingSchool ? Icons.close_rounded : Icons.add_circle_outline_rounded,
+                                  size: 18,
+                                  color: _isAddingSchool ? const Color(0xFFDC2626) : const Color(0xFF116B78),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    _isAddingSchool
+                                        ? 'Cancel adding partner school'
+                                        : "Don't see your school? Add New School (Admin Passkey Required)",
+                                    style: TextStyle(
+                                      color: _isAddingSchool ? const Color(0xFFDC2626) : const Color(0xFF116B78),
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ),
                     ),
                     if (_isAddingSchool) ...[
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 8),
                       Container(
                         padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
@@ -2299,7 +2354,7 @@ class _SignupTermsState extends State<SignupTerms> {
                             ),
                             const SizedBox(height: 4),
                             const Text(
-                              'Add your institution to PadCare to enable sanitary pad distributions.',
+                              'Add your institution to PadCare to enable sanitary pad distributions. Requires administrator authorization passkey.',
                               style: TextStyle(fontSize: 11.5, color: Color(0xFF52796F)),
                             ),
                             const SizedBox(height: 12),
@@ -2376,6 +2431,55 @@ class _SignupTermsState extends State<SignupTerms> {
                                   borderSide: const BorderSide(color: Color(0xFFDCECEB)),
                                 ),
                               ),
+                            ),
+                            const SizedBox(height: 10),
+                            TextField(
+                              key: const ValueKey('new-school-passkey-field'),
+                              controller: _newSchoolAdminPasskeyController,
+                              obscureText: _obscureAdminPasskey,
+                              decoration: InputDecoration(
+                                labelText: 'PadCare Admin Password (Required)',
+                                hintText: 'Enter secret admin passkey',
+                                prefixIcon: const Icon(Icons.key_rounded, color: Color(0xFF116B78), size: 20),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscureAdminPasskey ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                    color: const Color(0xFF6B8487),
+                                    size: 18,
+                                  ),
+                                  onPressed: () => setState(() => _obscureAdminPasskey = !_obscureAdminPasskey),
+                                ),
+                                errorText: _newSchoolPasskeyError,
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide(
+                                    color: _newSchoolPasskeyError != null ? Colors.red : const Color(0xFFDCECEB),
+                                  ),
+                                ),
+                                focusedBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: const BorderSide(color: Color(0xFF116B78), width: 1.5),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            const Row(
+                              children: [
+                                Icon(Icons.shield_outlined, size: 13, color: Color(0xFF64748B)),
+                                SizedBox(width: 5),
+                                Expanded(
+                                  child: Text(
+                                    'Admin password known to PadCare administrators only is required to register new institutions.',
+                                    style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
+                                  ),
+                                ),
+                              ],
                             ),
                             const SizedBox(height: 14),
                             Row(

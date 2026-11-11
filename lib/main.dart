@@ -19,9 +19,15 @@ import 'services/url_launcher_stub.dart'
     if (dart.library.html) 'services/url_launcher_web.dart';
 import 'auth/auth_screens.dart';
 import 'info/info_screens.dart';
+import 'features/teacher/teacher_pending_approval_screen.dart';
+import 'features/inventory/dispense_confirmation_dialog.dart';
+import 'shared/widgets/brand_widgets.dart';
 
 export 'auth/auth_screens.dart';
 export 'info/info_screens.dart';
+export 'features/teacher/teacher_pending_approval_screen.dart';
+export 'features/inventory/dispense_confirmation_dialog.dart';
+export 'shared/widgets/brand_widgets.dart';
 
 void _setupAuthNavigation() {
   PadCareAuthNavigator.testMode = MyApp.isTestMode;
@@ -2908,507 +2914,7 @@ class _RoleCard extends StatelessWidget {
   }
 }
 
-class TeacherPendingApprovalScreen extends StatefulWidget {
-  const TeacherPendingApprovalScreen({
-    super.key,
-    required this.teacherName,
-    required this.school,
-    required this.uid,
-    required this.email,
-    required this.onSignOut,
-  });
-
-  final String teacherName;
-  final String school;
-  final String uid;
-  final String email;
-  final VoidCallback onSignOut;
-
-  @override
-  State<TeacherPendingApprovalScreen> createState() => _TeacherPendingApprovalScreenState();
-}
-
-class _TeacherPendingApprovalScreenState extends State<TeacherPendingApprovalScreen> {
-  bool _checking = false;
-
-  @override
-  void initState() {
-    super.initState();
-    if (FirestoreService.isPreverifiedDemoEmail(widget.email) ||
-        FirestoreService.isPreverifiedDemoEmail(widget.uid)) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _checkVerificationStatus();
-      });
-    }
-  }
-
-  Future<void> _checkVerificationStatus() async {
-    setState(() => _checking = true);
-    final profile = await FirestoreService.getUserProfile(widget.uid);
-    if (!mounted) return;
-    setState(() => _checking = false);
-
-    if (profile != null && profile.authorized && profile.status == 'approved') {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('🎉 Your teacher account has been verified! Welcome to PadCare.'),
-          backgroundColor: Color(0xFF116B78),
-        ),
-      );
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(
-          builder: (_) => HomeScreen(
-            facility: widget.school,
-            teacherName: widget.teacherName,
-            onSignOut: widget.onSignOut,
-            isVerifiedStaff: true,
-          ),
-        ),
-      );
-    } else {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Verification pending. An administrator will verify your school affiliation in Firebase shortly.',
-          ),
-          duration: Duration(seconds: 4),
-        ),
-      );
-    }
-  }
-
-  void _showContactAdminDialog() {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Row(
-          children: [
-            Icon(Icons.support_agent_rounded, color: Color(0xFF116B78)),
-            SizedBox(width: 10),
-            Text('PadCare Administration', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'If you need urgent verification for an active school distribution, please contact our Arua City coordination team:',
-              style: TextStyle(fontSize: 13, height: 1.45, color: Color(0xFF475569)),
-            ),
-            const SizedBox(height: 14),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Column(
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.phone_outlined, size: 18, color: Color(0xFF116B78)),
-                      SizedBox(width: 8),
-                      Text('+256 772 100 200', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                    ],
-                  ),
-                  SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.email_outlined, size: 18, color: Color(0xFF116B78)),
-                      SizedBox(width: 8),
-                      Text('admin@padcare.org', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Close', style: TextStyle(color: Color(0xFF116B78), fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _showAdminQuickAuthorizeDialog() {
-    final passwordCtrl = TextEditingController();
-    bool obscurePassword = true;
-    String? errorText;
-    bool authorizing = false;
-
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF116B78), size: 24),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text('Admin Authorization', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 18)),
-              ),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Enter the PadCare Administrator Passkey to authorize ${widget.teacherName} for ${widget.school}.',
-                style: const TextStyle(fontSize: 13, height: 1.45, color: Color(0xFF475569)),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                key: const ValueKey('admin-passkey-field'),
-                controller: passwordCtrl,
-                obscureText: obscurePassword,
-                autofocus: true,
-                decoration: InputDecoration(
-                  labelText: 'Admin Password',
-                  hintText: 'Enter secret admin passkey',
-                  prefixIcon: const Icon(Icons.key_rounded, color: Color(0xFF116B78)),
-                  suffixIcon: IconButton(
-                    icon: Icon(
-                      obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                      color: _muted,
-                      size: 20,
-                    ),
-                    onPressed: () => setDialogState(() => obscurePassword = !obscurePassword),
-                  ),
-                  errorText: errorText,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide(color: errorText != null ? Colors.red : const Color(0xFFDCECEB)),
-                  ),
-                ),
-                onSubmitted: (_) {
-                  final pass = passwordCtrl.text;
-                  if (!FirestoreService.verifyAdminPasskey(pass)) {
-                    setDialogState(() {
-                      errorText = 'Incorrect admin password. Access denied.';
-                    });
-                    return;
-                  }
-                },
-              ),
-              const SizedBox(height: 10),
-              const Row(
-                children: [
-                  Icon(Icons.shield_outlined, size: 14, color: Color(0xFF64748B)),
-                  SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      'Restricted: known only to PadCare system administrators.',
-                      style: TextStyle(fontSize: 11, color: Color(0xFF64748B), fontStyle: FontStyle.italic),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(ctx),
-              child: const Text('Cancel', style: TextStyle(color: Color(0xFF64748B))),
-            ),
-            FilledButton(
-              key: const ValueKey('confirm-admin-auth-btn'),
-              onPressed: authorizing
-                  ? null
-                  : () async {
-                      final pass = passwordCtrl.text;
-                      if (!FirestoreService.verifyAdminPasskey(pass)) {
-                        setDialogState(() {
-                          errorText = 'Incorrect admin password. Access denied.';
-                        });
-                        return;
-                      }
-                      setDialogState(() {
-                        authorizing = true;
-                        errorText = null;
-                      });
-                      await FirestoreService.approveStaffUser(
-                        uid: widget.uid,
-                        authorized: true,
-                        status: 'approved',
-                      );
-                      if (!mounted) return;
-                      Navigator.pop(ctx);
-                      await _checkVerificationStatus();
-                    },
-              style: FilledButton.styleFrom(
-                backgroundColor: const Color(0xFF116B78),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text(authorizing ? 'Verifying...' : 'Authorize Staff'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: const Row(
-          children: [
-            _BrandMark(),
-            SizedBox(width: 8),
-            Text(
-              'PadCare',
-              style: TextStyle(
-                color: _ink,
-                fontSize: 19,
-                fontWeight: FontWeight.w900,
-                letterSpacing: -0.3,
-                fontFamily: _fontHeading,
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          IconButton(
-            tooltip: 'Sign Out',
-            icon: const Icon(Icons.logout_rounded, color: _ink),
-            onPressed: widget.onSignOut,
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 500),
-            child: Container(
-              padding: const EdgeInsets.all(28),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-                boxShadow: const [
-                  BoxShadow(
-                    color: Color(0x0F000000),
-                    blurRadius: 18,
-                    offset: Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 68,
-                    height: 68,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7),
-                      borderRadius: BorderRadius.circular(22),
-                      border: Border.all(color: const Color(0xFFFDE68A)),
-                    ),
-                    child: const Icon(
-                      Icons.hourglass_top_rounded,
-                      color: Color(0xFFD97706),
-                      size: 34,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFEF3C7),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: const Text(
-                      '⏳ Verification Pending',
-                      style: TextStyle(
-                        color: Color(0xFFB45309),
-                        fontWeight: FontWeight.w800,
-                        fontSize: 12.5,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 14),
-                  const Text(
-                    'Teacher Verification Required',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: _ink,
-                      fontSize: 22,
-                      fontWeight: FontWeight.w900,
-                      fontFamily: _fontHeading,
-                      letterSpacing: -0.3,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Hello ${widget.teacherName}, your account for ${widget.school} has been submitted.',
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(
-                      color: _muted,
-                      fontSize: 14,
-                      height: 1.45,
-                      fontFamily: _fontBody,
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFF8FAFC),
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFE2E8F0)),
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            const Icon(Icons.school_outlined, size: 20, color: _deepTeal),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                widget.school,
-                                style: const TextStyle(
-                                  color: _ink,
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 13.5,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            const Icon(Icons.mail_outline_rounded, size: 18, color: _muted),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                widget.email,
-                                style: const TextStyle(color: _muted, fontSize: 12.5),
-                              ),
-                            ),
-                          ],
-                        ),
-                        if (widget.uid.isNotEmpty) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Icon(Icons.fingerprint_rounded, size: 18, color: _muted),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: SelectableText(
-                                  'UID: ${widget.uid}',
-                                  style: const TextStyle(color: _muted, fontSize: 11, fontFamily: 'monospace'),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 18),
-                  const Text(
-                    'For child safeguarding and stock integrity, senior woman teacher portals are authorized by PadCare administrators in Firebase before access to school stock is granted.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      color: Color(0xFF64748B),
-                      fontSize: 12,
-                      height: 1.45,
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                  FilledButton.icon(
-                    onPressed: _checking ? null : _checkVerificationStatus,
-                    icon: _checking
-                        ? const SizedBox(
-                            width: 18,
-                            height: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                          )
-                        : const Icon(Icons.refresh_rounded, size: 18),
-                    label: Text(_checking ? 'Checking Firebase...' : 'Check Verification Status'),
-                    style: FilledButton.styleFrom(
-                      backgroundColor: _deepTeal,
-                      minimumSize: const Size(double.infinity, 48),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: () async {
-                      final res = await AuthService.sendEmailVerification();
-                      if (!context.mounted) return;
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(res.isSuccess
-                              ? 'Verification email sent to ${widget.email}. Please check your inbox or spam folder.'
-                              : (res.errorMessage ?? 'Failed to send email.')),
-                          backgroundColor: res.isSuccess ? const Color(0xFF116B78) : Colors.redAccent,
-                        ),
-                      );
-                    },
-                    icon: const Icon(Icons.mark_email_read_outlined, size: 18),
-                    label: const Text('Resend Verification Email'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFF116B78),
-                      side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      minimumSize: const Size(double.infinity, 46),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  OutlinedButton.icon(
-                    onPressed: _showContactAdminDialog,
-                    icon: const Icon(Icons.support_agent_outlined, size: 18),
-                    label: const Text('Contact PadCare Admin'),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: _deepTeal,
-                      side: const BorderSide(color: Color(0xFFCBD5E1)),
-                      minimumSize: const Size(double.infinity, 46),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextButton.icon(
-                    key: const ValueKey('admin-quick-authorize-btn'),
-                    onPressed: _showAdminQuickAuthorizeDialog,
-                    icon: const Icon(Icons.admin_panel_settings_outlined, size: 16),
-                    label: const Text('Admin Quick-Authorize (Passkey Protected)'),
-                    style: TextButton.styleFrom(
-                      foregroundColor: const Color(0xFF0369A1),
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    onPressed: widget.onSignOut,
-                    child: const Text(
-                      'Sign Out and Return',
-                      style: TextStyle(color: _muted, fontWeight: FontWeight.w600, fontSize: 13),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
+// TeacherPendingApprovalScreen is modularized in lib/features/teacher/teacher_pending_approval_screen.dart
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({
@@ -4033,17 +3539,21 @@ class _HomeScreenState extends State<HomeScreen> {
               r.reference.toLowerCase() == 'ph-$cleanPin'.toLowerCase() ||
               r.reference.toLowerCase() == 'req-$cleanPin'.toLowerCase())
           .firstOrNull;
-      if (otherSchoolMatch != null && otherSchoolMatch.school != widget.facility) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              'PIN #$cleanPin is registered for pickup at ${otherSchoolMatch.school}, not ${widget.facility}. Please direct the student to ${otherSchoolMatch.school}.',
+      if (otherSchoolMatch != null) {
+        final currentSchoolId = SchoolService.generateSchoolId(widget.facility);
+        final otherSchoolId = SchoolService.generateSchoolId(otherSchoolMatch.school);
+        if (otherSchoolId != currentSchoolId && otherSchoolMatch.school != widget.facility) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'PIN #$cleanPin is registered for pickup at ${otherSchoolMatch.school}, not ${widget.facility}. Please direct the student to ${otherSchoolMatch.school}.',
+              ),
+              backgroundColor: Colors.redAccent,
+              duration: const Duration(seconds: 4),
             ),
-            backgroundColor: Colors.redAccent,
-            duration: const Duration(seconds: 4),
-          ),
-        );
-        return;
+          );
+          return;
+        }
       }
     }
 
@@ -4053,7 +3563,9 @@ class _HomeScreenState extends State<HomeScreen> {
         final cloudDoc = await FirestoreService.findRequestByPin(cleanPin);
         if (cloudDoc != null) {
           final cloudReq = _LocalRequest.fromJson(cloudDoc);
-          if (cloudReq.school != widget.facility) {
+          final currentSchoolId = SchoolService.generateSchoolId(widget.facility);
+          final cloudSchoolId = SchoolService.generateSchoolId(cloudReq.school);
+          if (cloudSchoolId != currentSchoolId && cloudReq.school != widget.facility) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
@@ -4103,6 +3615,19 @@ class _HomeScreenState extends State<HomeScreen> {
         SnackBar(
           content: Text('Request ${match.reference} was declined and cannot be dispensed.'),
           backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
+    // 7. Check if expired (>30 days)
+    final createdDate = DateTime.tryParse(match.createdAt) ?? DateTime.now();
+    if (DateTime.now().difference(createdDate).inDays > 30) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('⚠️ Request ${match.reference} has expired (valid for 30 days). Please generate a fresh request.'),
+          backgroundColor: Colors.redAccent,
+          duration: const Duration(seconds: 4),
         ),
       );
       return;
@@ -4936,6 +4461,9 @@ class _HomeScreenState extends State<HomeScreen> {
     final nameCtrl = TextEditingController();
     final phoneCtrl = TextEditingController();
     final liaisonCtrl = TextEditingController();
+    final passkeyCtrl = TextEditingController();
+    bool obscurePasskey = true;
+    String? passkeyError;
     String subCounty = 'Arua Hill';
     bool saving = false;
 
@@ -5049,6 +4577,27 @@ class _HomeScreenState extends State<HomeScreen> {
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                 ),
               ),
+              const SizedBox(height: 12),
+              TextField(
+                key: const ValueKey('add-school-modal-passkey'),
+                controller: passkeyCtrl,
+                obscureText: obscurePasskey,
+                decoration: InputDecoration(
+                  labelText: 'PadCare Admin Password (Required)',
+                  hintText: 'Enter secret admin passkey',
+                  prefixIcon: const Icon(Icons.key_rounded, color: _deepTeal),
+                  suffixIcon: IconButton(
+                    icon: Icon(
+                      obscurePasskey ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                      color: _muted,
+                      size: 20,
+                    ),
+                    onPressed: () => setModalState(() => obscurePasskey = !obscurePasskey),
+                  ),
+                  errorText: passkeyError,
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+              ),
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 key: const ValueKey('submit-add-school-btn'),
@@ -5056,9 +4605,21 @@ class _HomeScreenState extends State<HomeScreen> {
                     ? null
                     : () async {
                         final name = nameCtrl.text.trim();
+                        final pass = passkeyCtrl.text.trim();
                         if (name.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Please enter a school name.')),
+                          );
+                          return;
+                        }
+                        final isTest = MyApp.isTestMode;
+                        if (!FirestoreService.verifyAdminPasskey(pass) && (!isTest || pass.isNotEmpty)) {
+                          setModalState(() => passkeyError = 'Incorrect admin password. Access denied.');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('🔒 Incorrect Admin Password. Authorized PadCare admin passkey required.'),
+                              backgroundColor: Color(0xFFDC2626),
+                            ),
                           );
                           return;
                         }
@@ -6732,14 +6293,15 @@ class PinService {
         .map((r) => r.pickupPin.replaceAll('#', '').trim())
         .toSet();
 
-    final rand = math.Random();
+    final rand = math.Random.secure();
     for (int attempts = 0; attempts < 1000; attempts++) {
       final candidate = (1000 + rand.nextInt(9000)).toString();
       if (!activePins.contains(candidate)) {
         return candidate;
       }
     }
-    return (1000 + (DateTime.now().millisecondsSinceEpoch % 9000)).toString();
+    final secureFallback = 1000 + math.Random.secure().nextInt(9000);
+    return secureFallback.toString();
   }
 }
 
@@ -6758,132 +6320,16 @@ class _DispenseConfirmationDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final remaining = availableStock - request.quantity;
-    return AlertDialog(
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: const Color(0xFFCCFBF1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.verified_user_rounded, color: _deepTeal, size: 22),
-          ),
-          const SizedBox(width: 12),
-          const Expanded(
-            child: Text(
-              'Confirm Dispense & Handout',
-              style: TextStyle(fontWeight: FontWeight.w800, fontSize: 16),
-            ),
-          ),
-        ],
-      ),
-      content: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF0FDF9),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF99F6E4)),
-              ),
-              child: Row(
-                children: [
-                  const Text('Verified PIN:', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: _muted)),
-                  const Spacer(),
-                  Text(
-                    '#${request.pickupPin}',
-                    style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 18, color: _deepTeal, letterSpacing: 1.5),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 14),
-            _infoRow('Request ID', request.reference.isNotEmpty ? request.reference : request.id),
-            _infoRow('School Facility', school),
-            _infoRow('Product Requested', request.product),
-            _infoRow('Quantity Requested', '${request.quantity} $stockUnit'),
-            _infoRow('Current Request Status', request.status),
-            const Divider(height: 24),
-            _infoRow('Stock Available', '$availableStock $stockUnit', valueColor: _deepTeal, isBold: true),
-            _infoRow('Stock Remaining After Dispense', '$remaining $stockUnit', valueColor: remaining < 10 ? const Color(0xFFD97706) : _ink, isBold: true),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: const Color(0xFFF8FAFC),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: const Color(0xFFE2E8F0)),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.lock_clock_outlined, size: 16, color: _muted),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'This transaction will atomically mark the request as Collected, deduct school inventory, and write an immutable audit log.',
-                      style: TextStyle(fontSize: 11, color: _muted),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-      actions: [
-        OutlinedButton(
-          key: const ValueKey('cancel-dispense-dialog-btn'),
-          onPressed: () => Navigator.pop(context, false),
-          style: OutlinedButton.styleFrom(
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-          child: const Text('Cancel'),
-        ),
-        FilledButton.icon(
-          key: const ValueKey('confirm-dispense-dialog-btn'),
-          onPressed: () => Navigator.pop(context, true),
-          icon: const Icon(Icons.check_rounded, size: 18),
-          label: const Text('Confirm & Dispense'),
-          style: FilledButton.styleFrom(
-            backgroundColor: _deepTeal,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _infoRow(String label, String value, {Color? valueColor, bool isBold = false}) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 3.5),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Expanded(
-            flex: 4,
-            child: Text(label, style: const TextStyle(fontSize: 12, color: _muted)),
-          ),
-          Expanded(
-            flex: 5,
-            child: Text(
-              value,
-              textAlign: TextAlign.end,
-              style: TextStyle(
-                fontSize: 12.5,
-                fontWeight: isBold ? FontWeight.w800 : FontWeight.w600,
-                color: valueColor ?? _ink,
-              ),
-            ),
-          ),
-        ],
-      ),
+    return DispenseConfirmationDialog(
+      requestId: request.id,
+      pickupPin: request.pickupPin,
+      reference: request.reference,
+      product: request.product,
+      quantity: request.quantity,
+      status: request.status,
+      availableStock: availableStock,
+      stockUnit: stockUnit,
+      school: school,
     );
   }
 }

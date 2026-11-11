@@ -331,53 +331,18 @@ class AuthService {
 
     // Demo account bypass for evaluations, tests, and offline field demos
     final lowerEmail = cleanEmail.toLowerCase();
-    String? demoPhotoUrl;
-    String? demoDisplayName;
-    String demoRole = 'parent';
-    String? demoSchool;
-
-    if (lowerEmail == 'devgtnation@gmail.com') {
-      demoPhotoUrl =
-          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80';
-      demoDisplayName = 'Dan Mungufeni (Lead Dev)';
-      demoRole = 'teacher';
-      demoSchool = 'St. Mary\'s Secondary';
-    } else if (lowerEmail == 'abetinichlas@gmail.com') {
-      demoPhotoUrl =
-          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80';
-      demoDisplayName = 'Abeti Acadri Nicholas';
-      demoRole = 'parent';
-    } else if (lowerEmail == 'teacher@padcare.org' ||
-        lowerEmail == 'teacher@stmarys.org') {
-      demoDisplayName = 'Sister Agnes (Head Teacher)';
-      demoRole = 'teacher';
-      demoSchool = 'St. Mary\'s Secondary';
-    } else if (lowerEmail == 'parent@padcare.org' ||
-        lowerEmail == 'demo@padcare.org') {
-      demoDisplayName = 'Amina N. (Parent Demo)';
-      demoRole = 'parent';
-    }
-
-    if (demoDisplayName != null) {
-      final demoProfile = UserProfile(
-        uid: 'demo-$cleanEmail',
-        email: cleanEmail,
-        displayName: demoDisplayName,
-        role: demoRole,
-        school: demoSchool,
-        authorized: true,
-        status: 'approved',
-        photoUrl: demoPhotoUrl,
-      );
+    if (FirestoreService.isPreverifiedDemoEmail(lowerEmail)) {
+      final demoProfile = FirestoreService.getPreverifiedDemoProfile(lowerEmail)!;
       await FirestoreService.saveUserProfile(demoProfile);
-      if (demoPhotoUrl != null) {
-        StorageService.setCachedAvatar(cleanEmail, demoPhotoUrl);
-        StorageService.setCachedAvatar('demo-$cleanEmail', demoPhotoUrl);
+      if (demoProfile.photoUrl != null) {
+        StorageService.setCachedAvatar(cleanEmail, demoProfile.photoUrl!);
+        StorageService.setCachedAvatar(demoProfile.uid, demoProfile.photoUrl!);
+        StorageService.setCachedAvatar('demo-$cleanEmail', demoProfile.photoUrl!);
       }
       return AuthResult(
         isSuccess: true,
         fallbackEmail: cleanEmail,
-        photoUrl: demoPhotoUrl,
+        photoUrl: demoProfile.photoUrl,
         profile: demoProfile,
       );
     }
@@ -395,6 +360,11 @@ class AuthService {
         if (user != null) {
           profile = await FirestoreService.getUserProfile(user.uid) ??
               await FirestoreService.getUserProfile(cleanEmail);
+          if (FirestoreService.isPreverifiedDemoEmail(cleanEmail) ||
+              FirestoreService.isPreverifiedDemoEmail(user.email)) {
+            profile = (profile ?? FirestoreService.getPreverifiedDemoProfile(cleanEmail))
+                ?.copyWith(authorized: true, status: 'approved');
+          }
           photoUrl ??= profile?.photoUrl;
           photoUrl ??= await StorageService.getProfileAvatarUrl(user.uid);
         }
@@ -494,14 +464,15 @@ class AuthService {
           debugPrint('sendEmailVerification notice: $e');
         }
 
+        final isPreverified = isParent || FirestoreService.isPreverifiedDemoEmail(cleanEmail);
         final profile = UserProfile(
           uid: uid,
           email: cleanEmail,
           displayName: displayName?.trim() ?? '',
           role: role,
           school: school,
-          authorized: isParent, // Teachers require backend authorization in Firebase
-          status: isParent ? 'approved' : 'pending_approval',
+          authorized: isPreverified,
+          status: isPreverified ? 'approved' : 'pending_approval',
           photoUrl: finalPhotoUrl,
           phoneNumber: phoneNumber,
         );
@@ -535,14 +506,15 @@ class AuthService {
       );
     }
 
+    final isPreverified = isParent || FirestoreService.isPreverifiedDemoEmail(cleanEmail);
     final localProfile = UserProfile(
       uid: localUid,
       email: cleanEmail,
       displayName: displayName?.trim() ?? '',
       role: role,
       school: school,
-      authorized: isParent,
-      status: isParent ? 'approved' : 'pending_approval',
+      authorized: isPreverified,
+      status: isPreverified ? 'approved' : 'pending_approval',
       photoUrl: localPhotoUrl,
       phoneNumber: phoneNumber,
     );
@@ -613,11 +585,18 @@ class AuthService {
   }
 
   /// Reloads the current user and checks whether their email is verified in Firebase Auth.
-  static Future<bool> isEmailVerified() async {
+  static Future<bool> isEmailVerified([String? email]) async {
+    final targetEmail = email ?? _auth?.currentUser?.email;
+    if (targetEmail != null && FirestoreService.isPreverifiedDemoEmail(targetEmail)) {
+      return true;
+    }
     if (FirebaseService.isFirebaseAvailable && _auth != null) {
       try {
         final user = _auth!.currentUser;
         if (user != null) {
+          if (FirestoreService.isPreverifiedDemoEmail(user.email)) {
+            return true;
+          }
           await user.reload();
           return _auth!.currentUser?.emailVerified ?? false;
         }
@@ -916,6 +895,148 @@ class FirestoreService {
 
   static final Map<String, UserProfile> _offlineProfiles = {};
 
+  /// Official pre-verified demo and administrator email accounts
+  static const List<String> preverifiedDemoEmails = [
+    'chrishanijr@gmail.com',
+    '2501201629@muni.ac.ug',
+    'devgtnation@gmail.com',
+    'abetinichlas@gmail.com',
+    'teacher@stmarys.org',
+    'teacher@padcare.org',
+    'parent@padcare.org',
+    'demo@padcare.org',
+    'admin@padcare.org',
+  ];
+
+  /// Checks if an email belongs to the pre-verified demo / core team accounts.
+  static bool isPreverifiedDemoEmail(String? email) {
+    if (email == null) return false;
+    final clean = email.trim().toLowerCase();
+    if (clean.isEmpty) return false;
+    return preverifiedDemoEmails.contains(clean) ||
+        clean.contains('devgtnation') ||
+        clean.contains('chrishanijr');
+  }
+
+  /// Builds a fully-verified UserProfile for demo and core team accounts
+  static UserProfile? getPreverifiedDemoProfile(String email) {
+    final clean = email.trim().toLowerCase();
+    if (!isPreverifiedDemoEmail(clean)) return null;
+
+    if (clean == 'chrishanijr@gmail.com' || clean.contains('chrishanijr')) {
+      return const UserProfile(
+        uid: 'demo-chrishanijr@gmail.com',
+        email: 'chrishanijr@gmail.com',
+        displayName: 'Chris Hani Junior',
+        role: 'teacher',
+        school: "St. Mary's Secondary",
+        authorized: true,
+        status: 'approved',
+        photoUrl:
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+      );
+    }
+    if (clean == '2501201629@muni.ac.ug' || clean.contains('2501201629')) {
+      return const UserProfile(
+        uid: 'demo-2501201629@muni.ac.ug',
+        email: '2501201629@muni.ac.ug',
+        displayName: 'Muni University Staff',
+        role: 'teacher',
+        school: 'Muni Girls Secondary',
+        authorized: true,
+        status: 'approved',
+        photoUrl:
+            'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
+      );
+    }
+    if (clean == 'devgtnation@gmail.com' || clean.contains('devgtnation')) {
+      return const UserProfile(
+        uid: 'demo-devgtnation@gmail.com',
+        email: 'devgtnation@gmail.com',
+        displayName: 'Dan Mungufeni (Lead Dev)',
+        role: 'teacher',
+        school: "St. Mary's Secondary",
+        authorized: true,
+        status: 'approved',
+        photoUrl:
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+      );
+    }
+    if (clean == 'abetinichlas@gmail.com' || clean.contains('abetinichlas')) {
+      return const UserProfile(
+        uid: 'demo-abetinichlas@gmail.com',
+        email: 'abetinichlas@gmail.com',
+        displayName: 'Abeti Acadri Nicholas',
+        role: 'parent',
+        school: null,
+        authorized: true,
+        status: 'approved',
+        photoUrl:
+            'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+      );
+    }
+    if (clean == 'teacher@padcare.org' || clean == 'teacher@stmarys.org') {
+      return const UserProfile(
+        uid: 'demo-teacher@stmarys.org',
+        email: 'teacher@stmarys.org',
+        displayName: 'Sister Agnes (Head Teacher)',
+        role: 'teacher',
+        school: "St. Mary's Secondary",
+        authorized: true,
+        status: 'approved',
+        photoUrl:
+            'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
+      );
+    }
+    if (clean == 'admin@padcare.org') {
+      return const UserProfile(
+        uid: 'demo-admin@padcare.org',
+        email: 'admin@padcare.org',
+        displayName: 'PadCare Admin',
+        role: 'admin',
+        school: 'Arua Regional HQ',
+        authorized: true,
+        status: 'approved',
+        photoUrl:
+            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+      );
+    }
+    return const UserProfile(
+      uid: 'demo-parent@padcare.org',
+      email: 'parent@padcare.org',
+      displayName: 'Amina N. (Parent Demo)',
+      role: 'parent',
+      school: null,
+      authorized: true,
+      status: 'approved',
+      photoUrl:
+          'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80',
+    );
+  }
+
+  /// Seeds all pre-verified demo accounts in local cache and Firestore
+  static Future<void> seedVerifiedDemoAccounts() async {
+    for (final email in preverifiedDemoEmails) {
+      final profile = getPreverifiedDemoProfile(email);
+      if (profile != null) {
+        _offlineProfiles[profile.uid] = profile;
+        _offlineProfiles[profile.email] = profile;
+        if (profile.photoUrl != null) {
+          StorageService.setCachedAvatar(profile.email, profile.photoUrl!);
+          StorageService.setCachedAvatar(profile.uid, profile.photoUrl!);
+        }
+        if (FirebaseService.isFirebaseAvailable && _db != null) {
+          try {
+            await _db!.collection('users').doc(profile.uid).set({
+              ...profile.toJson(),
+              'updatedAt': FieldValue.serverTimestamp(),
+            }, SetOptions(merge: true));
+          } catch (_) {}
+        }
+      }
+    }
+  }
+
   /// Official admin master passkeys accepted for on-site administrative approvals.
   static const List<String> adminPasskeys = [
     'PadCareAdmin@2026',
@@ -973,14 +1094,34 @@ class FirestoreService {
 
   /// Fetches user profile from Firestore `users/{uid}` or offline cache
   static Future<UserProfile?> getUserProfile(String uidOrEmail) async {
+    if (isPreverifiedDemoEmail(uidOrEmail)) {
+      final demoProf = getPreverifiedDemoProfile(uidOrEmail);
+      if (demoProf != null) {
+        _offlineProfiles[uidOrEmail] = demoProf;
+        return demoProf;
+      }
+    }
     if (_offlineProfiles.containsKey(uidOrEmail)) {
-      return _offlineProfiles[uidOrEmail];
+      final cached = _offlineProfiles[uidOrEmail]!;
+      if (isPreverifiedDemoEmail(cached.email) &&
+          (!cached.authorized || cached.status != 'approved')) {
+        final approved = cached.copyWith(authorized: true, status: 'approved');
+        _offlineProfiles[uidOrEmail] = approved;
+        return approved;
+      }
+      return cached;
     }
     if (!FirebaseService.isFirebaseAvailable || _db == null) return null;
     try {
       final doc = await _db!.collection('users').doc(uidOrEmail).get();
       if (doc.exists && doc.data() != null) {
-        return UserProfile.fromJson(doc.data()!);
+        final profile = UserProfile.fromJson(doc.data()!);
+        if (isPreverifiedDemoEmail(profile.email)) {
+          final approved = profile.copyWith(authorized: true, status: 'approved');
+          _offlineProfiles[uidOrEmail] = approved;
+          return approved;
+        }
+        return profile;
       }
       final query = await _db!
           .collection('users')
@@ -988,7 +1129,13 @@ class FirestoreService {
           .limit(1)
           .get();
       if (query.docs.isNotEmpty) {
-        return UserProfile.fromJson(query.docs.first.data());
+        final profile = UserProfile.fromJson(query.docs.first.data());
+        if (isPreverifiedDemoEmail(profile.email)) {
+          final approved = profile.copyWith(authorized: true, status: 'approved');
+          _offlineProfiles[uidOrEmail] = approved;
+          return approved;
+        }
+        return profile;
       }
     } catch (e) {
       debugPrint('Firestore getUserProfile error: $e');

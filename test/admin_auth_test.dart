@@ -159,5 +159,53 @@ void main() {
       expect(find.text('STAFF DASHBOARD'), findsOneWidget);
       expect(find.textContaining('Verified School Staff: Tr. Agnes'), findsOneWidget);
     });
+
+    test('Demo accounts are automatically pre-verified and approved', () async {
+      final demoEmails = [
+        'chrishanijr@gmail.com',
+        '2501201629@muni.ac.ug',
+        'devgtnation@gmail.com',
+        'abetinichlas@gmail.com',
+        'teacher@stmarys.org',
+        'teacher@padcare.org',
+        'parent@padcare.org',
+        'admin@padcare.org',
+      ];
+
+      for (final email in demoEmails) {
+        expect(FirestoreService.isPreverifiedDemoEmail(email), isTrue);
+        final profile = await FirestoreService.getUserProfile(email);
+        expect(profile, isNotNull);
+        expect(profile!.authorized, isTrue);
+        expect(profile.status, 'approved');
+        final isVerified = await AuthService.isEmailVerified(email);
+        expect(isVerified, isTrue);
+      }
+    });
+
+    testWidgets('Demo teacher Chris Hani Jr logs in directly as verified staff', (tester) async {
+      final result = await AuthService.signIn(
+        email: 'chrishanijr@gmail.com',
+        password: 'anyPassword123',
+      );
+      expect(result.isSuccess, isTrue);
+      expect(result.profile?.authorized, isTrue);
+      expect(result.profile?.status, 'approved');
+      expect(result.profile?.school, "St. Mary's Secondary");
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: HomeScreen(
+            facility: result.profile!.school!,
+            teacherName: result.profile!.displayName,
+            isVerifiedStaff: true,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('Verified School Staff: Chris Hani Junior'), findsOneWidget);
+      expect(find.textContaining('Identity not yet confirmed'), findsNothing);
+    });
   });
 }

@@ -46,7 +46,10 @@ void _setupAuthNavigation() {
     final lowerEmail = email?.toLowerCase() ?? '';
     final isTeacher = role == 'teacher' ||
         lowerEmail.contains('teacher') ||
-        lowerEmail.contains('stmarys');
+        lowerEmail.contains('stmarys') ||
+        lowerEmail.contains('chrishanijr') ||
+        lowerEmail.contains('2501201629') ||
+        lowerEmail.contains('devgtnation');
 
     if (isTeacher) {
       final effectiveUid = uid ?? AuthService.currentUser?.uid ?? email ?? '';
@@ -54,7 +57,9 @@ void _setupAuthNavigation() {
       if (effectiveUid.isNotEmpty) {
         profile = await FirestoreService.getUserProfile(effectiveUid);
       }
-      final isAuthorized = profile?.authorized ?? false;
+      final isAuthorized = (profile?.authorized ?? false) ||
+          FirestoreService.isPreverifiedDemoEmail(lowerEmail) ||
+          FirestoreService.isPreverifiedDemoEmail(profile?.email);
 
       if (!isAuthorized && !MyApp.isTestMode) {
         navigator.pushAndRemoveUntil(
@@ -75,7 +80,8 @@ void _setupAuthNavigation() {
         navigator.pushAndRemoveUntil(
           MaterialPageRoute<void>(
             builder: (_) => HomeScreen(
-              facility: profile?.school ?? 'St. Mary\'s Secondary',
+              facility: profile?.school ??
+                  (lowerEmail.contains('muni') ? 'Muni Girls Secondary' : 'St. Mary\'s Secondary'),
               teacherName: (displayName != null && displayName.isNotEmpty)
                   ? displayName
                   : (profile?.displayName.isNotEmpty == true ? profile!.displayName : (email?.split('@').first ?? 'Authorized Staff')),
@@ -110,6 +116,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   _setupAuthNavigation();
   await FirebaseService.initialize();
+  await FirestoreService.seedVerifiedDemoAccounts();
   await OfflineQueueService.init();
   await OfflineCacheService.init();
   runApp(const MyApp());
@@ -452,12 +459,20 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
 
     if (isTeacher) {
       final profile = await FirestoreService.getUserProfile(uid);
-      final isAuthorized = MyApp.isTestMode || (profile?.authorized ?? false);
+      final isAuthorized = MyApp.isTestMode ||
+          (profile?.authorized ?? false) ||
+          FirestoreService.isPreverifiedDemoEmail(email) ||
+          FirestoreService.isPreverifiedDemoEmail(profile?.email);
 
       if (isAuthorized) {
         navigator.pushReplacement(
           MaterialPageRoute<void>(
-            builder: (_) => HomeScreen(facility: _school, onSignOut: onSignOut),
+            builder: (_) => HomeScreen(
+              facility: profile?.school ?? _school,
+              teacherName: name.isNotEmpty ? name : (profile?.displayName ?? 'Teacher'),
+              isVerifiedStaff: true,
+              onSignOut: onSignOut,
+            ),
           ),
         );
       } else {
@@ -517,11 +532,19 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
     }
 
     if (isTeacher) {
-      final isAuthorized = MyApp.isTestMode || (profile.authorized && profile.status == 'approved');
+      final isAuthorized = MyApp.isTestMode ||
+          ((profile?.authorized ?? false) && profile?.status == 'approved') ||
+          FirestoreService.isPreverifiedDemoEmail(email) ||
+          FirestoreService.isPreverifiedDemoEmail(profile?.email);
       if (isAuthorized) {
         navigator.pushReplacement(
           MaterialPageRoute<void>(
-            builder: (_) => HomeScreen(facility: _school, onSignOut: onSignOut),
+            builder: (_) => HomeScreen(
+              facility: profile?.school ?? _school,
+              teacherName: name.isNotEmpty ? name : (profile?.displayName ?? 'Teacher'),
+              isVerifiedStaff: true,
+              onSignOut: onSignOut,
+            ),
           ),
         );
       } else {
@@ -1428,11 +1451,21 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
     final school = profile?.school ?? _school;
 
     if (isTeacher) {
-      final isAuthorized = MyApp.isTestMode || (profile?.authorized ?? false);
+      final isAuthorized = MyApp.isTestMode ||
+          (profile?.authorized ?? false) ||
+          FirestoreService.isPreverifiedDemoEmail(email) ||
+          FirestoreService.isPreverifiedDemoEmail(profile?.email);
       if (isAuthorized) {
         navigator.pushReplacement(
           MaterialPageRoute<void>(
-            builder: (_) => HomeScreen(facility: school, onSignOut: onSignOut),
+            builder: (_) => HomeScreen(
+              facility: school,
+              teacherName: profile?.displayName.isNotEmpty == true
+                  ? profile!.displayName
+                  : (email.isNotEmpty ? email.split('@').first : 'Authorized Staff'),
+              isVerifiedStaff: true,
+              onSignOut: onSignOut,
+            ),
           ),
         );
       } else {
@@ -2898,6 +2931,17 @@ class TeacherPendingApprovalScreen extends StatefulWidget {
 class _TeacherPendingApprovalScreenState extends State<TeacherPendingApprovalScreen> {
   bool _checking = false;
 
+  @override
+  void initState() {
+    super.initState();
+    if (FirestoreService.isPreverifiedDemoEmail(widget.email) ||
+        FirestoreService.isPreverifiedDemoEmail(widget.uid)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _checkVerificationStatus();
+      });
+    }
+  }
+
   Future<void> _checkVerificationStatus() async {
     setState(() => _checking = true);
     final profile = await FirestoreService.getUserProfile(widget.uid);
@@ -3388,6 +3432,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  late bool _isVerifiedStaff = widget.isVerifiedStaff;
   final List<_Supply> _supplies = [
     _Supply(name: 'Reusable pads', onHand: 42, lowAt: 20, unit: 'kits'),
     _Supply(name: 'Disposable pads', onHand: 12, lowAt: 25, unit: 'packs'),
@@ -3407,8 +3452,29 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void initState() {
     super.initState();
+    _checkStaffVerification();
     _loadSchoolData();
     _subscribeToCloudSync();
+  }
+
+  Future<void> _checkStaffVerification() async {
+    if (_isVerifiedStaff || MyApp.isTestMode) {
+      if (!_isVerifiedStaff && mounted) setState(() => _isVerifiedStaff = true);
+      return;
+    }
+    final email = AuthService.currentUser?.email;
+    if (email != null && FirestoreService.isPreverifiedDemoEmail(email)) {
+      if (mounted) setState(() => _isVerifiedStaff = true);
+      return;
+    }
+    final uid = AuthService.currentUser?.uid;
+    if (uid != null) {
+      final profile = await FirestoreService.getUserProfile(uid);
+      if (profile != null &&
+          (profile.authorized == true || FirestoreService.isPreverifiedDemoEmail(profile.email))) {
+        if (mounted) setState(() => _isVerifiedStaff = true);
+      }
+    }
   }
 
   @override
@@ -3700,7 +3766,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildStaffVerificationBanner() {
-    if (widget.isVerifiedStaff) {
+    if (_isVerifiedStaff) {
       return Container(
         margin: const EdgeInsets.only(bottom: 14),
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),

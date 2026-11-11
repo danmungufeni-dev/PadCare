@@ -81,12 +81,14 @@ class _EmailVerificationState extends State<EmailVerification> {
     });
 
     try {
-      final verified = await AuthService.isEmailVerified();
+      final emailToCheck = widget.email ?? AuthService.currentUser?.email;
+      final isPreverified = emailToCheck != null && FirestoreService.isPreverifiedDemoEmail(emailToCheck);
+      final verified = isPreverified || await AuthService.isEmailVerified(emailToCheck);
       final canProceed = verified || PadCareAuthNavigator.testMode;
 
       if (!canProceed) {
         if (!mounted) return;
-        final displayEmail = widget.email ?? AuthService.currentUser?.email ?? 'your email';
+        final displayEmail = emailToCheck ?? 'your email';
         setState(() {
           _checking = false;
           _statusError =
@@ -386,7 +388,8 @@ class _LoginHeroState extends State<LoginHero> {
       if (widget.onLoginSuccess != null) {
         widget.onLoginSuccess!();
       } else {
-        final isVerified = AuthService.currentUser?.emailVerified ?? true;
+        final isVerified = (AuthService.currentUser?.emailVerified ?? true) ||
+            FirestoreService.isPreverifiedDemoEmail(email);
         final role = result.profile?.role ?? (email.toLowerCase().contains('teacher') ? 'teacher' : 'parent');
 
         if (!isVerified && !PadCareAuthNavigator.testMode) {
@@ -529,6 +532,76 @@ class _LoginHeroState extends State<LoginHero> {
                                 fontSize: 11,
                                 fontWeight: FontWeight.w800,
                                 color: Color(0xFF116B78),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: InkWell(
+                                onTap: () {
+                                  _emailController.text = 'chrishanijr@gmail.com';
+                                  _passwordController.text = 'PadCare2026!';
+                                  _handleSignIn();
+                                },
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFDCECEB)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.school_outlined, size: 13, color: Color(0xFF116B78)),
+                                      SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          'Chris Hani Jr. (Staff)',
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF172B36)),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: InkWell(
+                                onTap: () {
+                                  _emailController.text = '2501201629@muni.ac.ug';
+                                  _passwordController.text = 'PadCare2026!';
+                                  _handleSignIn();
+                                },
+                                borderRadius: BorderRadius.circular(8),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
+                                  decoration: BoxDecoration(
+                                    color: Colors.white,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(color: const Color(0xFFDCECEB)),
+                                  ),
+                                  child: const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(Icons.school_outlined, size: 13, color: Color(0xFF116B78)),
+                                      SizedBox(width: 4),
+                                      Flexible(
+                                        child: Text(
+                                          'Muni Staff (Teacher)',
+                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF172B36)),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
                               ),
                             ),
                           ],
@@ -859,6 +932,32 @@ class _LoginHeroState extends State<LoginHero> {
                           spacing: 6,
                           children: [
                             ActionChip(
+                              label: const Text('Fill Chris Hani Jr.', style: TextStyle(fontSize: 10.5, color: Color(0xFF116B78))),
+                              avatar: const Icon(Icons.school, size: 14, color: Color(0xFF116B78)),
+                              backgroundColor: const Color(0xFFE4F8F2),
+                              side: const BorderSide(color: Color(0xFFA5EAC5)),
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () {
+                                setState(() {
+                                  _emailController.text = 'chrishanijr@gmail.com';
+                                  _passwordController.text = 'PadCare2026!';
+                                });
+                              },
+                            ),
+                            ActionChip(
+                              label: const Text('Fill Muni Staff', style: TextStyle(fontSize: 10.5, color: Color(0xFF116B78))),
+                              avatar: const Icon(Icons.school, size: 14, color: Color(0xFF116B78)),
+                              backgroundColor: const Color(0xFFE4F8F2),
+                              side: const BorderSide(color: Color(0xFFA5EAC5)),
+                              visualDensity: VisualDensity.compact,
+                              onPressed: () {
+                                setState(() {
+                                  _emailController.text = '2501201629@muni.ac.ug';
+                                  _passwordController.text = 'PadCare2026!';
+                                });
+                              },
+                            ),
+                            ActionChip(
                               label: const Text('Fill Dan (devgtnation)', style: TextStyle(fontSize: 10.5, color: Color(0xFF116B78))),
                               avatar: const Icon(Icons.edit_note, size: 14, color: Color(0xFF116B78)),
                               backgroundColor: const Color(0xFFE4F8F2),
@@ -867,7 +966,7 @@ class _LoginHeroState extends State<LoginHero> {
                               onPressed: () {
                                 setState(() {
                                   _emailController.text = 'devgtnation@gmail.com';
-                                  _passwordController.text = 'padcare2026';
+                                  _passwordController.text = 'PadCare2026!';
                                 });
                               },
                             ),
@@ -880,7 +979,7 @@ class _LoginHeroState extends State<LoginHero> {
                               onPressed: () {
                                 setState(() {
                                   _emailController.text = 'abetinichlas@gmail.com';
-                                  _passwordController.text = 'padcare2026';
+                                  _passwordController.text = 'PadCare2026!';
                                 });
                               },
                             ),
@@ -2904,6 +3003,50 @@ class Welcome extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                PadCareAuthNavigator.openApp(
+                                  context,
+                                  email: 'chrishanijr@gmail.com',
+                                  role: 'teacher',
+                                  displayName: 'Chris Hani Junior',
+                                );
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: scheme.onPrimary,
+                                side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Chris Hani Jr. (Teacher)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: OutlinedButton(
+                              onPressed: () {
+                                PadCareAuthNavigator.openApp(
+                                  context,
+                                  email: '2501201629@muni.ac.ug',
+                                  role: 'teacher',
+                                  displayName: 'Muni University Staff',
+                                );
+                              },
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: scheme.onPrimary,
+                                side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
+                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Muni Staff (Teacher)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
                       Row(
                         children: [
                           Expanded(

@@ -40,7 +40,7 @@ class UserProfile {
   final String uid;
   final String email;
   final String displayName;
-  final String role; // 'teacher' | 'parent' | 'admin'
+  final String role; // 'teacher' | 'parent' | 'admin' | 'ngo'
   final String? school;
   final bool authorized;
   final String status; // 'pending' | 'approved' | 'rejected'
@@ -101,8 +101,8 @@ class UserProfile {
     displayName: json['displayName'] as String? ?? '',
     role: json['role'] as String? ?? 'parent',
     school: json['school'] as String?,
-    authorized: json['authorized'] as bool? ?? (json['role'] == 'parent'),
-    status: json['status'] as String? ?? ((json['role'] == 'parent') ? 'approved' : 'pending'),
+    authorized: json['authorized'] as bool? ?? (json['role'] == 'parent' || json['role'] == 'ngo'),
+    status: json['status'] as String? ?? ((json['role'] == 'parent' || json['role'] == 'ngo') ? 'approved' : 'pending'),
     photoUrl: json['photoUrl'] as String?,
     phoneNumber: json['phoneNumber'] as String?,
   );
@@ -900,6 +900,7 @@ class FirestoreService {
   static const List<String> preverifiedDemoEmails = [
     'devgtnation@gmail.com',
     'abetinichlas@gmail.com',
+    'ngo@padcare.org',
     'admin@padcare.org',
   ];
 
@@ -910,7 +911,10 @@ class FirestoreService {
     if (clean.isEmpty) return false;
     return preverifiedDemoEmails.contains(clean) ||
         clean.contains('devgtnation') ||
-        clean.contains('abetinichlas');
+        clean.contains('abetinichlas') ||
+        clean.contains('ngo') ||
+        clean.contains('unfpa') ||
+        clean.contains('partner');
   }
 
   /// Builds a fully-verified UserProfile for demo and core team accounts
@@ -942,6 +946,19 @@ class FirestoreService {
         status: 'approved',
         photoUrl:
             'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+      );
+    }
+    if (clean == 'ngo@padcare.org' || clean.contains('ngo') || clean.contains('unfpa') || clean.contains('partner')) {
+      return const UserProfile(
+        uid: 'demo-ngo@padcare.org',
+        email: 'ngo@padcare.org',
+        displayName: 'UNFPA Uganda / NGO Partner',
+        role: 'ngo',
+        school: null,
+        authorized: true,
+        status: 'approved',
+        photoUrl:
+            'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
       );
     }
     return const UserProfile(

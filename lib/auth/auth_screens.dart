@@ -606,6 +606,39 @@ class _LoginHeroState extends State<LoginHero> {
                             ),
                           ],
                         ),
+                        const SizedBox(height: 8),
+                        InkWell(
+                          key: const ValueKey('demo-ngo-chip'),
+                          onTap: () {
+                            _emailController.text = 'ngo@padcare.org';
+                            _passwordController.text = 'PadCare2026!';
+                            _handleSignIn();
+                          },
+                          borderRadius: BorderRadius.circular(10),
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE4F8F2),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: const Color(0xFF35B9B4).withValues(alpha: 0.4)),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.handshake_outlined, size: 15, color: Color(0xFF116B78)),
+                                SizedBox(width: 6),
+                                Flexible(
+                                  child: Text(
+                                    'UNFPA / NGO Partner (Dashboard)',
+                                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF116B78)),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       ],
                     ),
                   ),
@@ -2125,6 +2158,11 @@ class _SignupTermsState extends State<SignupTerms> {
                         label: Text('Teacher', style: TextStyle(fontWeight: FontWeight.w700)),
                         icon: Icon(Icons.school_outlined),
                       ),
+                      ButtonSegment(
+                        value: 'ngo',
+                        label: Text('NGO Partner', style: TextStyle(fontWeight: FontWeight.w700)),
+                        icon: Icon(Icons.handshake_outlined),
+                      ),
                     ],
                     selected: {_role},
                     onSelectionChanged: (set) {
@@ -2426,6 +2464,45 @@ class _SignupTermsState extends State<SignupTerms> {
                         ),
                       ),
                     ],
+                  ],
+                  if (_role == 'ngo') ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE4F8F2),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFF35B9B4).withValues(alpha: 0.35)),
+                      ),
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.insights_rounded, color: Color(0xFF116B78), size: 20),
+                              SizedBox(width: 8),
+                              Text(
+                                'NGO & Development Partner Access',
+                                style: TextStyle(
+                                  color: Color(0xFF116B78),
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          SizedBox(height: 6),
+                          Text(
+                            'Your partner account grants instant dashboard access to track real-time pad distribution performance, regional dignity kit allocations, stock alerts, and verified donation streams across all partner schools.',
+                            style: TextStyle(
+                              color: Color(0xFF172B36),
+                              fontSize: 12,
+                              height: 1.4,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ],
                   const SizedBox(height: 18),
                   const Text(
@@ -3053,6 +3130,28 @@ class Welcome extends StatelessWidget {
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 8),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            PadCareAuthNavigator.openApp(
+                              context,
+                              email: 'ngo@padcare.org',
+                              role: 'ngo',
+                              displayName: 'UNFPA Uganda / NGO Partner',
+                            );
+                          },
+                          icon: const Icon(Icons.handshake_outlined, size: 15),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: scheme.onPrimary,
+                            side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
+                            padding: const EdgeInsets.symmetric(vertical: 9),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          label: const Text('UNFPA / NGO Partner (Dashboard)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                        ),
                       ),
                     ],
                   ),

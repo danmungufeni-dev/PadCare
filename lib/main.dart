@@ -21,12 +21,14 @@ import 'auth/auth_screens.dart';
 import 'info/info_screens.dart';
 import 'features/teacher/teacher_pending_approval_screen.dart';
 import 'features/inventory/dispense_confirmation_dialog.dart';
+import 'features/ngo/ngo_dashboard_screen.dart';
 import 'shared/widgets/brand_widgets.dart';
 
 export 'auth/auth_screens.dart';
 export 'info/info_screens.dart';
 export 'features/teacher/teacher_pending_approval_screen.dart';
 export 'features/inventory/dispense_confirmation_dialog.dart';
+export 'features/ngo/ngo_dashboard_screen.dart';
 export 'shared/widgets/brand_widgets.dart';
 
 void _setupAuthNavigation() {
@@ -50,12 +52,40 @@ void _setupAuthNavigation() {
     }
 
     final lowerEmail = email?.toLowerCase() ?? '';
-    final isTeacher = role == 'teacher' ||
+    final isNgo = role == 'ngo' ||
+        lowerEmail.contains('ngo') ||
+        lowerEmail.contains('unfpa') ||
+        lowerEmail.contains('donor') ||
+        lowerEmail.contains('partner');
+    final isTeacher = !isNgo && (role == 'teacher' ||
         lowerEmail.contains('teacher') ||
         lowerEmail.contains('stmarys') ||
-        lowerEmail.contains('devgtnation');
+        lowerEmail.contains('devgtnation'));
 
-    if (isTeacher) {
+    if (isNgo) {
+      final effectiveUid = uid ?? AuthService.currentUser?.uid ?? email ?? '';
+      UserProfile? profile;
+      if (effectiveUid.isNotEmpty) {
+        profile = await FirestoreService.getUserProfile(effectiveUid);
+      }
+      navigator.pushAndRemoveUntil(
+        MaterialPageRoute<void>(
+          builder: (_) => NgoDashboardScreen(
+            ngoName: (displayName != null && displayName.isNotEmpty)
+                ? displayName
+                : (profile?.displayName.isNotEmpty == true
+                    ? profile!.displayName
+                    : (lowerEmail.contains('unfpa')
+                        ? 'UNFPA Uganda'
+                        : 'UNFPA / NGO Partner')),
+            email: email ?? profile?.email ?? 'ngo@padcare.org',
+            onSignOut: onSignOut,
+            photoUrl: photoUrl ?? profile?.photoUrl,
+          ),
+        ),
+        (route) => false,
+      );
+    } else if (isTeacher) {
       final effectiveUid = uid ?? AuthService.currentUser?.uid ?? email ?? '';
       UserProfile? profile;
       if (effectiveUid.isNotEmpty) {
@@ -343,7 +373,7 @@ class _WhatsAppLogoPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
-enum _PortalRole { teacher, parent }
+enum _PortalRole { teacher, parent, ngo }
 
 enum _AuthTab { signUp, login, guest }
 
@@ -419,6 +449,8 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
     final email = _signUpEmailController.text.trim();
     final password = _signUpPasswordController.text.trim();
     final isTeacher = _role == _PortalRole.teacher;
+    final isNgo = _role == _PortalRole.ngo;
+    final roleStr = isNgo ? 'ngo' : (isTeacher ? 'teacher' : 'parent');
 
     String uid = 'local-${DateTime.now().millisecondsSinceEpoch}';
 
@@ -427,7 +459,7 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
         email: email,
         password: password,
         displayName: name.isNotEmpty ? name : null,
-        role: isTeacher ? 'teacher' : 'parent',
+        role: roleStr,
         school: isTeacher ? _school : null,
       );
       if (!mounted) return;
@@ -460,7 +492,17 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
       );
     }
 
-    if (isTeacher) {
+    if (isNgo) {
+      navigator.pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => NgoDashboardScreen(
+            ngoName: name.isNotEmpty ? name : 'UNFPA / NGO Partner',
+            email: email.isNotEmpty ? email : 'ngo@padcare.org',
+            onSignOut: onSignOut,
+          ),
+        ),
+      );
+    } else if (isTeacher) {
       final profile = await FirestoreService.getUserProfile(uid);
       final isAuthorized = MyApp.isTestMode ||
           (profile?.authorized ?? false) ||
@@ -509,13 +551,16 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
     required String uid,
   }) async {
     final isTeacher = _role == _PortalRole.teacher;
+    final isNgo = _role == _PortalRole.ngo;
+    final roleStr = isNgo ? 'ngo' : (isTeacher ? 'teacher' : 'parent');
+
     UserProfile? profile = await FirestoreService.getUserProfile(uid);
     if (profile == null) {
       profile = UserProfile(
         uid: uid,
         email: email,
         displayName: name,
-        role: isTeacher ? 'teacher' : 'parent',
+        role: roleStr,
         school: isTeacher ? _school : null,
         authorized: !isTeacher,
         status: !isTeacher ? 'approved' : 'pending_approval',
@@ -534,7 +579,17 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
       );
     }
 
-    if (isTeacher) {
+    if (isNgo) {
+      navigator.pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => NgoDashboardScreen(
+            ngoName: name.isNotEmpty ? name : 'UNFPA / NGO Partner',
+            email: email,
+            onSignOut: onSignOut,
+          ),
+        ),
+      );
+    } else if (isTeacher) {
       final isAuthorized = MyApp.isTestMode ||
           ((profile?.authorized ?? false) && profile?.status == 'approved') ||
           FirestoreService.isPreverifiedDemoEmail(email) ||
@@ -1759,6 +1814,13 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
           title: 'Parent or guardian',
           subtitle: 'Submit a local request and choose a school pickup point',
           onTap: () => setState(() => _role = _PortalRole.parent),
+        ),
+        const SizedBox(height: 12),
+        _RoleCard(
+          icon: Icons.corporate_fare_rounded,
+          title: 'NGO / Donor Partner',
+          subtitle: 'Monitor distribution performance, regional metrics, and donations',
+          onTap: () => setState(() => _role = _PortalRole.ngo),
         ),
         const SizedBox(height: 18),
         const _PrivacyNote(

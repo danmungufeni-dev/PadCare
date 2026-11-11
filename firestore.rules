@@ -9,26 +9,27 @@ service cloud.firestore {
     // Collection: users
     // Document ID: {userId} (Firebase Auth UID)
     // Fields:
-    //   - uid: string (required, 1..128 chars) - Firebase Auth UID
+    //   - uid: string (required, 1..128 chars) - Firebase Auth UID (immutable)
     //   - email: string (required, valid email, <= 128 chars) - User email address
-    //   - role: string (required, 'teacher' | 'school_admin' | 'sponsor' | 'super_admin' | 'parent' | 'admin' | 'staff' | 'matron')
+    //   - role: string (required, 'teacher' | 'school_admin' | 'sponsor' | 'super_admin' | 'parent' | 'admin' | 'staff' | 'matron' | 'ngo')
     //   - displayName: string (optional, <= 100 chars)
     //   - fullName: string (optional, <= 100 chars)
     //   - name: string (optional, <= 100 chars)
     //   - school: string (optional, <= 120 chars) - Associated school facility
     //   - schoolId: string (optional, <= 120 chars) - Associated school identifier
     //   - schoolName: string (optional, <= 120 chars) - School display name
-    //   - authorized: bool (optional) - Verification/authorization status
-    //   - status: string (optional, <= 50 chars)
-    //   - accountStatus: string (optional, <= 50 chars)
+    //   - authorized: bool (optional) - Verification/authorization status (admin-managed)
+    //   - status: string (optional, <= 50 chars) - Account status (admin-managed)
+    //   - accountStatus: string (optional, <= 50 chars) - Lifecycle state (admin-managed)
     //   - photoUrl: string (optional, <= 500 chars) - User avatar URL
     //   - phoneNumber: string (optional, <= 30 chars)
     //   - fcmToken: string (optional, <= 256 chars) - Push notification device token
     //   - tokenUpdatedAt: timestamp (optional)
-    //   - createdAt: timestamp or string (optional)
+    //   - createdAt: timestamp or string (optional, immutable)
     //   - updatedAt: timestamp (optional)
     //   - lastLoginAt: timestamp or string (optional)
     //   - notificationPreferences: map (optional)
+    //   - approvedAt: timestamp or string (optional, admin-managed)
     //
     // Collection: schools
     // Document ID: {schoolId} (School Facility ID e.g. 'st-marys-secondary')
@@ -230,21 +231,24 @@ service cloud.firestore {
       return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
     }
 
-    // Check if user is a platform super administrator
+    // Check if user is a platform super administrator.
+    // Derived strictly from verified claims, explicit email whitelist, or pre-existing admin profile doc.
+    // Arbitrary regex backdoors (e.g. .*admin.*@padcare.org) are strictly forbidden.
     function isSuperAdmin() {
       return isAuthenticated() && (
         request.auth.token.get('role', '') in ['super_admin', 'admin'] ||
         request.auth.token.get('super_admin', false) == true ||
         request.auth.token.get('admin', false) == true ||
-        (request.auth.token.email != null && (
-          request.auth.token.email in ['admin@padcare.org', 'devgtnation@gmail.com', 'abetinichlas@gmail.com'] ||
-          request.auth.token.email.matches('.*admin.*@padcare\\.org$')
-        )) ||
+        (
+          request.auth.token.email != null &&
+          request.auth.token.email in ['admin@padcare.org', 'devgtnation@gmail.com', 'abetinichlas@gmail.com']
+        ) ||
         (hasUserDoc() && getUserData().get('role', '') in ['super_admin', 'admin'])
       );
     }
 
-    // Check if user is an authorized school administrator for the given schoolId
+    // Check if user is an authorized school administrator for the given schoolId.
+    // Requires authorized == true and accountStatus/status in active/approved (defaults to unapproved).
     function isSchoolAdmin(schoolId) {
       return isAuthenticated() && schoolId != null && schoolId != '' && (
         isSuperAdmin() ||
@@ -256,12 +260,14 @@ service cloud.firestore {
           hasUserDoc() &&
           getUserData().get('role', '') in ['school_admin', 'admin'] &&
           (getUserData().get('schoolId', '') == schoolId || getUserData().get('school', '') == schoolId || getUserData().get('schoolName', '') == schoolId) &&
-          (getUserData().get('authorized', true) == true && getUserData().get('accountStatus', 'active') in ['active', 'approved'])
+          getUserData().get('authorized', false) == true &&
+          (getUserData().get('status', 'pending') in ['active', 'approved'] || getUserData().get('accountStatus', 'pending') in ['active', 'approved'])
         )
       );
     }
 
-    // Check if user is an authorized teacher for the given schoolId
+    // Check if user is an authorized teacher for the given schoolId.
+    // Requires authorized == true and status in active/approved (defaults to unapproved).
     function isTeacher(schoolId) {
       return isAuthenticated() && schoolId != null && schoolId != '' && (
         (
@@ -272,7 +278,8 @@ service cloud.firestore {
           hasUserDoc() &&
           getUserData().get('role', '') == 'teacher' &&
           (getUserData().get('schoolId', '') == schoolId || getUserData().get('school', '') == schoolId || getUserData().get('schoolName', '') == schoolId) &&
-          (getUserData().get('authorized', true) == true && getUserData().get('accountStatus', 'active') in ['active', 'approved'])
+          getUserData().get('authorized', false) == true &&
+          (getUserData().get('status', 'pending') in ['active', 'approved'] || getUserData().get('accountStatus', 'pending') in ['active', 'approved'])
         )
       );
     }
@@ -288,7 +295,12 @@ service cloud.firestore {
       return isAuthenticated() && (
         isSuperAdmin() ||
         request.auth.token.get('role', '') in ['teacher', 'school_admin', 'staff', 'matron', 'admin'] ||
-        (hasUserDoc() && getUserData().get('role', '') in ['teacher', 'school_admin', 'staff', 'matron', 'admin'])
+        (
+          hasUserDoc() &&
+          getUserData().get('role', '') in ['teacher', 'school_admin', 'staff', 'matron', 'admin'] &&
+          getUserData().get('authorized', false) == true &&
+          (getUserData().get('status', 'pending') in ['active', 'approved'] || getUserData().get('accountStatus', 'pending') in ['active', 'approved'])
+        )
       );
     }
 
@@ -332,12 +344,13 @@ service cloud.firestore {
         'uid', 'email', 'displayName', 'fullName', 'name', 'role',
         'school', 'schoolId', 'schoolName', 'authorized', 'status', 'accountStatus',
         'photoUrl', 'phoneNumber', 'fcmToken', 'tokenUpdatedAt',
-        'createdAt', 'updatedAt', 'lastLoginAt', 'notificationPreferences'
+        'createdAt', 'updatedAt', 'lastLoginAt', 'notificationPreferences',
+        'approvedAt'
       ];
       return data.keys().hasOnly(allowedFields) &&
              ('uid' in data && data.uid is string && data.uid.size() >= 1 && data.uid.size() <= 128) &&
              ('email' in data && data.email is string && data.email.size() <= 128 && isValidEmail(data.email)) &&
-             ('role' in data && data.role is string && data.role in ['teacher', 'school_admin', 'sponsor', 'super_admin', 'parent', 'admin', 'staff', 'matron']) &&
+             ('role' in data && data.role is string && data.role in ['teacher', 'school_admin', 'sponsor', 'super_admin', 'parent', 'admin', 'staff', 'matron', 'ngo']) &&
              (!('displayName' in data) || (data.displayName is string && data.displayName.size() <= 100)) &&
              (!('fullName' in data) || (data.fullName is string && data.fullName.size() <= 100)) &&
              (!('name' in data) || (data.name is string && data.name.size() <= 100)) &&
@@ -354,7 +367,8 @@ service cloud.firestore {
              (!('createdAt' in data) || data.createdAt is timestamp || data.createdAt is string) &&
              (!('updatedAt' in data) || data.updatedAt is timestamp) &&
              (!('lastLoginAt' in data) || data.lastLoginAt is timestamp || data.lastLoginAt is string) &&
-             (!('notificationPreferences' in data) || data.notificationPreferences is map);
+             (!('notificationPreferences' in data) || data.notificationPreferences is map) &&
+             (!('approvedAt' in data) || data.approvedAt is timestamp || data.approvedAt is string);
     }
 
     // Validates School Facility Schema
@@ -602,8 +616,12 @@ service cloud.firestore {
     // ===============================================================
 
     // 1. User Profiles
-    // Read: user himself, super_admin, or staff from the same schoolId.
-    // Create/Update: user himself (uid == userId), or super_admin. Cannot elevate own role to 'super_admin'.
+    // Read: document owner, super_admin, or staff from the same school facility.
+    // Create: super_admin, or self-registration for non-privileged roles (parent, teacher, sponsor).
+    //         New teachers must have authorized == false and status != 'approved'.
+    // Update: super_admin, or document owner updating ONLY non-privileged personal profile fields.
+    //         role, authorized, status, accountStatus, schoolId, school, uid, createdAt are strictly immutable for normal users.
+    // Delete: super_admin only.
     match /users/{userId} {
       allow read: if isAuthenticated() && (
         request.auth.uid == userId ||
@@ -618,21 +636,33 @@ service cloud.firestore {
           (
             request.auth.uid == userId &&
             request.resource.data.uid == request.auth.uid &&
-            request.resource.data.get('role', 'parent') != 'super_admin' &&
-            request.resource.data.get('role', '') != 'admin'
+            request.resource.data.get('role', 'parent') in ['parent', 'teacher', 'sponsor'] &&
+            (
+              request.resource.data.get('role', 'parent') != 'teacher' ||
+              (
+                (!('authorized' in request.resource.data) || request.resource.data.authorized == false) &&
+                request.resource.data.get('status', 'pending') != 'approved' &&
+                request.resource.data.get('accountStatus', 'pending') != 'active'
+              )
+            )
           )
         );
 
       allow update: if isAuthenticated() &&
         isValidUser(request.resource.data) &&
         (
-          isSuperAdmin() ||
+          (
+            isSuperAdmin() &&
+            areImmutableFieldsUnchanged(['uid'])
+          ) ||
           (
             request.auth.uid == userId &&
-            areImmutableFieldsUnchanged(['uid', 'createdAt']) &&
-            request.resource.data.get('role', resource.data.role) != 'super_admin' &&
-            request.resource.data.get('role', resource.data.role) != 'admin' &&
-            (request.resource.data.role == resource.data.role || request.resource.data.role in ['teacher', 'school_admin', 'sponsor', 'parent'])
+            request.resource.data.uid == resource.data.uid &&
+            areImmutableFieldsUnchanged(['role', 'authorized', 'status', 'accountStatus', 'schoolId', 'school', 'schoolName', 'uid', 'createdAt', 'email', 'approvedAt']) &&
+            request.resource.data.diff(resource.data).affectedKeys().hasOnly([
+              'displayName', 'fullName', 'name', 'phoneNumber', 'photoUrl',
+              'fcmToken', 'tokenUpdatedAt', 'notificationPreferences', 'updatedAt', 'lastLoginAt'
+            ])
           )
         );
 
@@ -640,18 +670,27 @@ service cloud.firestore {
     }
 
     // 2. Schools Information & Facilities
-    // Read: all authenticated or public read for active schools.
-    // Write: only users with role == 'super_admin'.
+    // Read: authenticated users or public read for active schools.
+    // Create/Delete: super_admin only.
+    // Update: super_admin or authorized school_admin for this schoolId.
     match /schools/{schoolId} {
       allow read: if isAuthenticated() || resource.data.get('status', 'active') == 'active';
       allow create: if isSuperAdmin() && isValidSchool(request.resource.data);
-      allow update: if isSuperAdmin() && isValidSchool(request.resource.data);
+      allow update: if isValidSchool(request.resource.data) && (
+        isSuperAdmin() ||
+        (
+          isSchoolAdmin(schoolId) &&
+          areImmutableFieldsUnchanged(['schoolId', 'id', 'registrationNumber', 'createdAt'])
+        )
+      );
       allow delete: if isSuperAdmin();
     }
 
     // 3. School Inventory & Stock Levels
     // Read: authenticated users.
-    // Write: school_admin of that schoolId or super_admin.
+    // Create: super_admin or authorized school_admin for that school.
+    // Update: super_admin or authorized school_admin for that school with schoolId and productId locked.
+    // Delete: super_admin or authorized school_admin for that school.
     match /inventory/{inventoryId} {
       allow read: if isAuthenticated();
 
@@ -659,7 +698,14 @@ service cloud.firestore {
         (isSuperAdmin() || isSchoolAdmin(request.resource.data.get('schoolId', '')));
 
       allow update: if isValidInventory(request.resource.data) &&
-        (isSuperAdmin() || (isSchoolAdmin(resource.data.get('schoolId', '')) && areImmutableFieldsUnchanged(['schoolId'])));
+        (
+          isSuperAdmin() ||
+          (
+            isSchoolAdmin(resource.data.get('schoolId', '')) &&
+            areImmutableFieldsUnchanged(['schoolId', 'id', 'productId']) &&
+            request.resource.data.get('schoolId', '') == resource.data.get('schoolId', '')
+          )
+        );
 
       allow delete: if isSuperAdmin() || isSchoolAdmin(resource.data.get('schoolId', ''));
     }
@@ -668,6 +714,7 @@ service cloud.firestore {
     // Read: request's teacherUid, school_admin of that school, or super_admin.
     // Create: authenticated teacher of that school.
     // Update: school_admin of that school (for status 'Approved', 'Ready for collection', 'Collected'), or creator teacher (for 'Cancelled').
+    // Delete: super_admin only.
     match /requests/{requestId} {
       allow read: if isAuthenticated() && (
         request.auth.uid == resource.data.get('teacherUid', '') ||
@@ -766,7 +813,7 @@ service cloud.firestore {
 
     // 7. Community Donations
     // Read: donor sponsorUid or super_admin.
-    // Create: authenticated user with amount > 0, currency == 'UGX', valid reference.
+    // Create: authenticated user with amount > 0, currency == 'UGX', valid reference. Immutable (no update/delete).
     match /donations/{donationId} {
       allow read: if isAuthenticated() && (
         isSuperAdmin() ||
@@ -786,8 +833,8 @@ service cloud.firestore {
     }
 
     // 8. Fundraising Campaigns
-    // Read: all users.
-    // Write: super_admin.
+    // Read: all users (public campaigns display).
+    // Write: super_admin only.
     match /campaigns/{campaignId} {
       allow read: if true;
       allow create: if isSuperAdmin() && isValidCampaign(request.resource.data);
@@ -813,7 +860,7 @@ service cloud.firestore {
 
     // 10. Audit Logs
     // Read: super_admin only.
-    // Create: authenticated staff. Immutable.
+    // Create: authenticated staff. Immutable (no update/delete).
     match /audit_logs/{logId} {
       allow read: if isSuperAdmin();
       allow create: if isStaff() && isValidAuditLog(request.resource.data);

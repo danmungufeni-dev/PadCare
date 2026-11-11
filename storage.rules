@@ -8,6 +8,17 @@ service firebase.storage {
       return request.auth != null;
     }
 
+    function isSuperAdmin() {
+      return isAuthenticated() && (
+        request.auth.token.get('role', '') in ['super_admin', 'admin'] ||
+        request.auth.token.get('super_admin', false) == true ||
+        request.auth.token.get('admin', false) == true ||
+        (request.auth.token.email != null &&
+          request.auth.token.email in ['admin@padcare.org', 'devgtnation@gmail.com', 'abetinichlas@gmail.com']
+        )
+      );
+    }
+
     function isOwner(userId) {
       return isAuthenticated() && request.auth.uid == userId;
     }
@@ -20,34 +31,43 @@ service firebase.storage {
       return request.resource.size < maxSizeMB * 1024 * 1024;
     }
 
-    // User profile avatars
+    // User profile avatars (Readable by all, writeable only by avatar owner)
     match /users/{userId}/{fileName} {
       allow read: if true;
       allow write: if isOwner(userId) && isImage() && isUnderSizeLimit(5);
     }
 
-    // School logos and branding
+    // School logos and branding (Readable by all, writeable only by authorized staff or admins)
     match /schools/{schoolId}/{fileName} {
       allow read: if true;
-      allow write: if isAuthenticated() && isImage() && isUnderSizeLimit(5);
+      allow write: if (
+        isSuperAdmin() ||
+        (isAuthenticated() && (
+          request.auth.token.get('schoolId', '') == schoolId ||
+          request.auth.token.get('school', '') == schoolId
+        ))
+      ) && isImage() && isUnderSizeLimit(5);
     }
 
-    // Campaign banners and educational media
+    // Campaign banners and educational media (Readable by all, writeable by admins or verified sponsors)
     match /campaigns/{campaignId}/{fileName} {
       allow read: if true;
-      allow write: if isAuthenticated() && isImage() && isUnderSizeLimit(10);
+      allow write: if (
+        isSuperAdmin() ||
+        (isAuthenticated() && request.auth.token.get('role', '') in ['sponsor', 'ngo'])
+      ) && isImage() && isUnderSizeLimit(10);
     }
 
-    // Verification and official school accreditation documents
+    // Verification and official school accreditation documents (strictly private)
     match /verification/{userId}/{fileName} {
-      allow read: if isOwner(userId);
+      allow read: if isOwner(userId) || isSuperAdmin();
       allow write: if isOwner(userId) && isUnderSizeLimit(10);
     }
 
-    // Offline app assets or APK packages
+    // Offline app assets or APK packages (strictly deployable via admin backend)
     match /packages/{fileName} {
       allow read: if true;
-      allow write: if false; // Only deployable via admin
+      allow write: if isSuperAdmin();
     }
   }
 }

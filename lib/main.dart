@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lottie/lottie.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/firebase_service.dart';
@@ -20,6 +19,7 @@ import 'features/teacher/teacher_pending_approval_screen.dart';
 import 'features/inventory/dispense_confirmation_dialog.dart';
 import 'features/ngo/ngo_dashboard_screen.dart';
 import 'features/map/arua_map.dart';
+import 'features/splash/splash_screen.dart';
 
 export 'auth/auth_screens.dart';
 export 'info/info_screens.dart';
@@ -28,6 +28,7 @@ export 'features/teacher/teacher_pending_approval_screen.dart';
 export 'features/inventory/dispense_confirmation_dialog.dart';
 export 'features/ngo/ngo_dashboard_screen.dart';
 export 'features/map/arua_map.dart';
+export 'features/splash/splash_screen.dart';
 export 'shared/widgets/brand_widgets.dart';
 
 typedef _Supply = Supply;
@@ -40,6 +41,7 @@ typedef _InteractiveAruaMap = InteractiveAruaMap;
 typedef _MapTeardropPin = MapTeardropPin;
 typedef _TeardropPinPainter = TeardropPinPainter;
 typedef _AruaMapPainter = AruaMapPainter;
+typedef _PadCareSplashScreen = PadCareSplashScreen;
 
 const _kSupportPoints = kSupportPoints;
 Future<LocalData> _readLocalData() => readLocalData();
@@ -10244,130 +10246,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
 // Note: LearnArticle, _LearnArticle are in lib/models/local_models.dart
 // InteractiveAruaMap, AruaMapPainter, MapTeardropPin are in lib/features/map/arua_map.dart
 
-class _PadCareSplashScreen extends StatelessWidget {
-  const _PadCareSplashScreen({this.onClose});
-
-  final VoidCallback? onClose;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: _greenPale,
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [_greenPale, _paper],
-          ),
-        ),
-        child: SafeArea(
-          child: Stack(
-            children: [
-              if (onClose != null)
-                Positioned(
-                  top: 14,
-                  right: 14,
-                  child: IconButton(
-                    icon: const Icon(Icons.close_rounded, color: _ink),
-                    onPressed: onClose,
-                  ),
-                ),
-              Center(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 140,
-                      height: 140,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(32),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x33116B78),
-                            blurRadius: 28,
-                            offset: Offset(0, 14),
-                          ),
-                        ],
-                      ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(32),
-                        child: Image.asset(
-                          'assets/padcare_icon.png',
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) => Image.asset(
-                            'assets/icon/app_icon.png',
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) => Image.asset(
-                              'assets/padcare_icon.png',
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 26),
-                    const Text(
-                      'PadCare',
-                      style: TextStyle(
-                        color: _ink,
-                        fontSize: 34,
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: -0.5,
-                        fontFamily: _fontHeading,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    const Text(
-                      'PadCare Network • Menstrual Health & Dignity',
-                      style: TextStyle(
-                        color: _deepTeal,
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.w700,
-                        fontFamily: _fontSubheading,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    const Text(
-                      'Dignity, Freedom & Care within reach.',
-                      style: TextStyle(
-                        color: Color(0xFF881337),
-                        fontSize: 15,
-                        fontWeight: FontWeight.w500,
-                        letterSpacing: 0.1,
-                        fontFamily: _fontSubheading,
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    SizedBox(
-                      width: 90,
-                      height: 90,
-                      child: Lottie.asset(
-                        'assets/loading-transparent.json',
-                        repeat: true,
-                        errorBuilder: (context, error, stackTrace) => const SizedBox(
-                          width: 36,
-                          height: 36,
-                          child: CircularProgressIndicator(
-                            strokeWidth: 3.5,
-                            valueColor: AlwaysStoppedAnimation<Color>(_green),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
+// Note: PadCareSplashScreen and _PadCareSplashScreen are modularized in lib/features/splash/splash_screen.dart
 
 
 class _LocalOnlyNotice extends StatelessWidget {

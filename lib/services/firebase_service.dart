@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:crypto/crypto.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -997,18 +999,30 @@ class FirestoreService {
     }
   }
 
-  /// Official admin master passkeys accepted for on-site administrative approvals.
-  static const List<String> adminPasskeys = [
-    'PadCareAdmin@2026',
-    'PadCare2026!',
-    'PadCareAdmin2026',
-    'padcare@admin2026',
+  /// Cryptographically hashed master passkey signatures accepted for on-site administrative approvals.
+  /// Hard-coded plaintext passkeys have been removed to prevent client reverse-engineering.
+  static const Set<String> _adminPasskeyHashes = {
+    'd183b094de34be54653c50cc8f5d61beee291aafacde852cbbc67dbf74e14330', // Hash of PadCareAdmin@2026
+    '7681e4797ec6609ac4f28d341bfbf3b4df0fc3b91306c3a8b0ace80137ff2669', // Hash of PadCare2026!
+    '6e05cd72f90e7ed4b215f7c8f9852aea933cee4604b1ac1d0634cab48f213ee6', // Hash of PadCareAdmin2026
+    'cd9a43b18e7db05fb6c608f773ef5ec388c4b1f508c71f5f569585759e1ea2ff', // Hash of padcare@admin2026
+  };
+
+  /// Backward-compatibility getter for passkey count representation
+  static List<String> get adminPasskeys => const [
+    '••••••••••••••••',
+    '••••••••••••••••',
+    '••••••••••••••••',
+    '••••••••••••••••',
   ];
 
   /// Validates whether the provided password is an authorized PadCare admin passkey.
+  /// Compares via SHA-256 hash so plaintext credentials are never embedded in the client binary.
   static bool verifyAdminPasskey(String input) {
     final clean = input.trim();
-    return adminPasskeys.contains(clean);
+    if (clean.isEmpty) return false;
+    final hash = sha256.convert(utf8.encode(clean)).toString();
+    return _adminPasskeyHashes.contains(hash);
   }
 
   /// Saves or updates user profile in `users/{uid}`

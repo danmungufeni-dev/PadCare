@@ -386,10 +386,13 @@ Official Audit Verification Signed by PadCare Arua HQ
             onPressed: () {
               Clipboard.setData(ClipboardData(text: summaryReport));
               Navigator.pop(ctx);
+              ScaffoldMessenger.of(context).hideCurrentSnackBar();
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text('Impact report copied to clipboard for donor reporting!'),
                   backgroundColor: _ngoTeal,
+                  duration: Duration(seconds: 3),
+                  behavior: SnackBarBehavior.floating,
                 ),
               );
             },

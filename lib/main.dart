@@ -61,8 +61,10 @@ void _setupAuthNavigation() {
     String? photoUrl,
     String? uid,
   }) async {
+    ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
     final navigator = Navigator.of(context);
     void onSignOut() {
+      ScaffoldMessenger.maybeOf(context)?.clearSnackBars();
       navigator.pushAndRemoveUntil(
         MaterialPageRoute<void>(
           builder: (_) => MyApp.isTestMode ? const _LegacyTestAccessGate() : const Welcome(),
@@ -4053,8 +4055,15 @@ class _HomeScreenState extends State<HomeScreen> {
 
     downloadCsvFile(filename, csvContent);
 
-    ScaffoldMessenger.of(context).showSnackBar(
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
       SnackBar(
+        duration: const Duration(seconds: 4),
+        behavior: SnackBarBehavior.floating,
+        showCloseIcon: true,
+        closeIconColor: Colors.white70,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         content: Row(
           children: [
             const Icon(Icons.download_done_rounded, color: Colors.white, size: 20),
@@ -4073,6 +4082,14 @@ class _HomeScreenState extends State<HomeScreen> {
           textColor: const Color(0xFFA5EAC5),
           onPressed: () {
             Clipboard.setData(ClipboardData(text: csvContent));
+            messenger.hideCurrentSnackBar();
+            messenger.showSnackBar(
+              const SnackBar(
+                content: Text('CSV copied to clipboard!'),
+                duration: Duration(seconds: 2),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
           },
         ),
       ),

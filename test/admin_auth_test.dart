@@ -162,13 +162,8 @@ void main() {
 
     test('Demo accounts are automatically pre-verified and approved', () async {
       final demoEmails = [
-        'chrishanijr@gmail.com',
-        '2501201629@muni.ac.ug',
         'devgtnation@gmail.com',
         'abetinichlas@gmail.com',
-        'teacher@stmarys.org',
-        'teacher@padcare.org',
-        'parent@padcare.org',
         'admin@padcare.org',
       ];
 
@@ -183,9 +178,9 @@ void main() {
       }
     });
 
-    testWidgets('Demo teacher Chris Hani Jr logs in directly as verified staff', (tester) async {
+    testWidgets('Demo teacher Dan Mungufeni logs in directly as verified staff', (tester) async {
       final result = await AuthService.signIn(
-        email: 'chrishanijr@gmail.com',
+        email: 'devgtnation@gmail.com',
         password: 'anyPassword123',
       );
       expect(result.isSuccess, isTrue);
@@ -204,7 +199,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(find.textContaining('Verified School Staff: Chris Hani Junior'), findsOneWidget);
+      expect(find.textContaining('Verified School Staff: Dan Mungufeni'), findsOneWidget);
       expect(find.textContaining('Identity not yet confirmed'), findsNothing);
     });
   });

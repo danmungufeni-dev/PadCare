@@ -536,33 +536,33 @@ class _LoginHeroState extends State<LoginHero> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 6),
+                        const SizedBox(height: 8),
                         Row(
                           children: [
                             Expanded(
                               child: InkWell(
                                 onTap: () {
-                                  _emailController.text = 'chrishanijr@gmail.com';
+                                  _emailController.text = 'devgtnation@gmail.com';
                                   _passwordController.text = 'PadCare2026!';
                                   _handleSignIn();
                                 },
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
+                                  padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(10),
                                     border: Border.all(color: const Color(0xFFDCECEB)),
                                   ),
                                   child: const Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.school_outlined, size: 13, color: Color(0xFF116B78)),
-                                      SizedBox(width: 4),
+                                      Icon(Icons.school_outlined, size: 14, color: Color(0xFF116B78)),
+                                      SizedBox(width: 6),
                                       Flexible(
                                         child: Text(
-                                          'Chris Hani Jr. (Staff)',
-                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF172B36)),
+                                          'Dan M. (Teacher)',
+                                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF172B36)),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -575,97 +575,27 @@ class _LoginHeroState extends State<LoginHero> {
                             Expanded(
                               child: InkWell(
                                 onTap: () {
-                                  _emailController.text = '2501201629@muni.ac.ug';
+                                  _emailController.text = 'abetinichlas@gmail.com';
                                   _passwordController.text = 'PadCare2026!';
                                   _handleSignIn();
                                 },
-                                borderRadius: BorderRadius.circular(8),
+                                borderRadius: BorderRadius.circular(10),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
+                                  padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
                                   decoration: BoxDecoration(
                                     color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
+                                    borderRadius: BorderRadius.circular(10),
                                     border: Border.all(color: const Color(0xFFDCECEB)),
                                   ),
                                   child: const Row(
                                     mainAxisAlignment: MainAxisAlignment.center,
                                     children: [
-                                      Icon(Icons.school_outlined, size: 13, color: Color(0xFF116B78)),
-                                      SizedBox(width: 4),
+                                      Icon(Icons.family_restroom_outlined, size: 14, color: Color(0xFF116B78)),
+                                      SizedBox(width: 6),
                                       Flexible(
                                         child: Text(
-                                          'Muni Staff (Teacher)',
-                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF172B36)),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: InkWell(
-                                onTap: () {
-                                  _emailController.text = 'teacher@stmarys.org';
-                                  _passwordController.text = 'PadCare2026!';
-                                  _handleSignIn();
-                                },
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: const Color(0xFFDCECEB)),
-                                  ),
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.school_outlined, size: 13, color: Color(0xFF116B78)),
-                                      SizedBox(width: 4),
-                                      Flexible(
-                                        child: Text(
-                                          'Teacher (St. Mary\'s)',
-                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF172B36)),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: InkWell(
-                                onTap: () {
-                                  _emailController.text = 'parent@padcare.org';
-                                  _passwordController.text = 'PadCare2026!';
-                                  _handleSignIn();
-                                },
-                                borderRadius: BorderRadius.circular(8),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 7, horizontal: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: const Color(0xFFDCECEB)),
-                                  ),
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.person_outline_rounded, size: 13, color: Color(0xFF116B78)),
-                                      SizedBox(width: 4),
-                                      Flexible(
-                                        child: Text(
-                                          'Parent (Amina N.)',
-                                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF172B36)),
+                                          'Nicholas A. (Parent)',
+                                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF172B36)),
                                           overflow: TextOverflow.ellipsis,
                                         ),
                                       ),
@@ -932,34 +862,8 @@ class _LoginHeroState extends State<LoginHero> {
                           spacing: 6,
                           children: [
                             ActionChip(
-                              label: const Text('Fill Chris Hani Jr.', style: TextStyle(fontSize: 10.5, color: Color(0xFF116B78))),
-                              avatar: const Icon(Icons.school, size: 14, color: Color(0xFF116B78)),
-                              backgroundColor: const Color(0xFFE4F8F2),
-                              side: const BorderSide(color: Color(0xFFA5EAC5)),
-                              visualDensity: VisualDensity.compact,
-                              onPressed: () {
-                                setState(() {
-                                  _emailController.text = 'chrishanijr@gmail.com';
-                                  _passwordController.text = 'PadCare2026!';
-                                });
-                              },
-                            ),
-                            ActionChip(
-                              label: const Text('Fill Muni Staff', style: TextStyle(fontSize: 10.5, color: Color(0xFF116B78))),
-                              avatar: const Icon(Icons.school, size: 14, color: Color(0xFF116B78)),
-                              backgroundColor: const Color(0xFFE4F8F2),
-                              side: const BorderSide(color: Color(0xFFA5EAC5)),
-                              visualDensity: VisualDensity.compact,
-                              onPressed: () {
-                                setState(() {
-                                  _emailController.text = '2501201629@muni.ac.ug';
-                                  _passwordController.text = 'PadCare2026!';
-                                });
-                              },
-                            ),
-                            ActionChip(
                               label: const Text('Fill Dan (devgtnation)', style: TextStyle(fontSize: 10.5, color: Color(0xFF116B78))),
-                              avatar: const Icon(Icons.edit_note, size: 14, color: Color(0xFF116B78)),
+                              avatar: const Icon(Icons.school, size: 14, color: Color(0xFF116B78)),
                               backgroundColor: const Color(0xFFE4F8F2),
                               side: const BorderSide(color: Color(0xFFA5EAC5)),
                               visualDensity: VisualDensity.compact,
@@ -972,7 +876,7 @@ class _LoginHeroState extends State<LoginHero> {
                             ),
                             ActionChip(
                               label: const Text('Fill Nicholas (abeti)', style: TextStyle(fontSize: 10.5, color: Color(0xFF116B78))),
-                              avatar: const Icon(Icons.edit_note, size: 14, color: Color(0xFF116B78)),
+                              avatar: const Icon(Icons.family_restroom, size: 14, color: Color(0xFF116B78)),
                               backgroundColor: const Color(0xFFE4F8F2),
                               side: const BorderSide(color: Color(0xFFA5EAC5)),
                               visualDensity: VisualDensity.compact,
@@ -3114,62 +3018,18 @@ class Welcome extends StatelessWidget {
                               onPressed: () {
                                 PadCareAuthNavigator.openApp(
                                   context,
-                                  email: 'chrishanijr@gmail.com',
-                                  role: 'teacher',
-                                  displayName: 'Chris Hani Junior',
-                                );
-                              },
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: scheme.onPrimary,
-                                side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
-                                padding: const EdgeInsets.symmetric(vertical: 8),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              child: const Text('Chris Hani Jr. (Teacher)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                PadCareAuthNavigator.openApp(
-                                  context,
-                                  email: '2501201629@muni.ac.ug',
-                                  role: 'teacher',
-                                  displayName: 'Muni University Staff',
-                                );
-                              },
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: scheme.onPrimary,
-                                side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
-                                padding: const EdgeInsets.symmetric(vertical: 8),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                              ),
-                              child: const Text('Muni Staff (Teacher)', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 6),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                PadCareAuthNavigator.openApp(
-                                  context,
                                   email: 'devgtnation@gmail.com',
                                   role: 'teacher',
-                                  displayName: 'Dan Mungufeni (Lead Dev)',
+                                  displayName: 'Dan Mungufeni',
                                 );
                               },
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: scheme.onPrimary,
                                 side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding: const EdgeInsets.symmetric(vertical: 9),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
-                              child: const Text('Dan M. (Teacher)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                              child: const Text('Dan M. (Teacher)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                             ),
                           ),
                           const SizedBox(width: 8),
@@ -3180,16 +3040,16 @@ class Welcome extends StatelessWidget {
                                   context,
                                   email: 'abetinichlas@gmail.com',
                                   role: 'parent',
-                                  displayName: 'Abeti Acadri Nicholas',
+                                  displayName: 'Nicholas Acadri',
                                 );
                               },
                               style: OutlinedButton.styleFrom(
                                 foregroundColor: scheme.onPrimary,
                                 side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
-                                padding: const EdgeInsets.symmetric(vertical: 8),
+                                padding: const EdgeInsets.symmetric(vertical: 9),
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
-                              child: const Text('Nicholas A. (Parent)', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                              child: const Text('Nicholas A. (Parent)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                             ),
                           ),
                         ],

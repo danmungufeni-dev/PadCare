@@ -516,15 +516,15 @@ void main() {
       expect(cached.first['title'], equals('Period Hygiene Basics'));
     });
 
-    testWidgets('LoginHero provides 1-Tap Quick Demo Logins chips', (tester) async {
+    testWidgets('LoginHero provides 1-Tap Quick Demo Logins chips for Dan M and Nicholas A', (tester) async {
       await tester.pumpWidget(testWrapper(const LoginHero()));
       expect(find.text('1-Tap Quick Demo Logins'), findsOneWidget);
-      expect(find.text("Teacher (St. Mary's)"), findsOneWidget);
-      expect(find.text('Parent (Amina N.)'), findsOneWidget);
+      expect(find.text('Dan M. (Teacher)'), findsOneWidget);
+      expect(find.text('Nicholas A. (Parent)'), findsOneWidget);
 
-      await tester.tap(find.text("Teacher (St. Mary's)"));
+      await tester.tap(find.text('Dan M. (Teacher)'));
       await tester.pump();
-      expect(find.text('teacher@stmarys.org'), findsOneWidget);
+      expect(find.text('devgtnation@gmail.com'), findsOneWidget);
     });
 
     testWidgets('EmailVerification renders email and blocks unverified progression', (tester) async {

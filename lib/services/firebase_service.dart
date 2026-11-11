@@ -896,16 +896,10 @@ class FirestoreService {
 
   static final Map<String, UserProfile> _offlineProfiles = {};
 
-  /// Official pre-verified demo and administrator email accounts
+  /// Official pre-verified demo and core team email accounts
   static const List<String> preverifiedDemoEmails = [
-    'chrishanijr@gmail.com',
-    '2501201629@muni.ac.ug',
     'devgtnation@gmail.com',
     'abetinichlas@gmail.com',
-    'teacher@stmarys.org',
-    'teacher@padcare.org',
-    'parent@padcare.org',
-    'demo@padcare.org',
     'admin@padcare.org',
   ];
 
@@ -916,7 +910,7 @@ class FirestoreService {
     if (clean.isEmpty) return false;
     return preverifiedDemoEmails.contains(clean) ||
         clean.contains('devgtnation') ||
-        clean.contains('chrishanijr');
+        clean.contains('abetinichlas');
   }
 
   /// Builds a fully-verified UserProfile for demo and core team accounts
@@ -924,37 +918,11 @@ class FirestoreService {
     final clean = email.trim().toLowerCase();
     if (!isPreverifiedDemoEmail(clean)) return null;
 
-    if (clean == 'chrishanijr@gmail.com' || clean.contains('chrishanijr')) {
-      return const UserProfile(
-        uid: 'demo-chrishanijr@gmail.com',
-        email: 'chrishanijr@gmail.com',
-        displayName: 'Chris Hani Junior',
-        role: 'teacher',
-        school: "St. Mary's Secondary",
-        authorized: true,
-        status: 'approved',
-        photoUrl:
-            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
-      );
-    }
-    if (clean == '2501201629@muni.ac.ug' || clean.contains('2501201629')) {
-      return const UserProfile(
-        uid: 'demo-2501201629@muni.ac.ug',
-        email: '2501201629@muni.ac.ug',
-        displayName: 'Muni University Staff',
-        role: 'teacher',
-        school: 'Muni Girls Secondary',
-        authorized: true,
-        status: 'approved',
-        photoUrl:
-            'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
-      );
-    }
     if (clean == 'devgtnation@gmail.com' || clean.contains('devgtnation')) {
       return const UserProfile(
         uid: 'demo-devgtnation@gmail.com',
         email: 'devgtnation@gmail.com',
-        displayName: 'Dan Mungufeni (Lead Dev)',
+        displayName: 'Dan Mungufeni',
         role: 'teacher',
         school: "St. Mary's Secondary",
         authorized: true,
@@ -967,7 +935,7 @@ class FirestoreService {
       return const UserProfile(
         uid: 'demo-abetinichlas@gmail.com',
         email: 'abetinichlas@gmail.com',
-        displayName: 'Abeti Acadri Nicholas',
+        displayName: 'Nicholas Acadri',
         role: 'parent',
         school: null,
         authorized: true,
@@ -976,42 +944,16 @@ class FirestoreService {
             'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
       );
     }
-    if (clean == 'teacher@padcare.org' || clean == 'teacher@stmarys.org') {
-      return const UserProfile(
-        uid: 'demo-teacher@stmarys.org',
-        email: 'teacher@stmarys.org',
-        displayName: 'Sister Agnes (Head Teacher)',
-        role: 'teacher',
-        school: "St. Mary's Secondary",
-        authorized: true,
-        status: 'approved',
-        photoUrl:
-            'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
-      );
-    }
-    if (clean == 'admin@padcare.org') {
-      return const UserProfile(
-        uid: 'demo-admin@padcare.org',
-        email: 'admin@padcare.org',
-        displayName: 'PadCare Admin',
-        role: 'admin',
-        school: 'Arua Regional HQ',
-        authorized: true,
-        status: 'approved',
-        photoUrl:
-            'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
-      );
-    }
     return const UserProfile(
-      uid: 'demo-parent@padcare.org',
-      email: 'parent@padcare.org',
-      displayName: 'Amina N. (Parent Demo)',
-      role: 'parent',
-      school: null,
+      uid: 'demo-admin@padcare.org',
+      email: 'admin@padcare.org',
+      displayName: 'PadCare Admin',
+      role: 'admin',
+      school: 'Arua Regional HQ',
       authorized: true,
       status: 'approved',
       photoUrl:
-          'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80',
+          'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
     );
   }
 

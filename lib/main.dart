@@ -53,8 +53,6 @@ void _setupAuthNavigation() {
     final isTeacher = role == 'teacher' ||
         lowerEmail.contains('teacher') ||
         lowerEmail.contains('stmarys') ||
-        lowerEmail.contains('chrishanijr') ||
-        lowerEmail.contains('2501201629') ||
         lowerEmail.contains('devgtnation');
 
     if (isTeacher) {
@@ -86,8 +84,7 @@ void _setupAuthNavigation() {
         navigator.pushAndRemoveUntil(
           MaterialPageRoute<void>(
             builder: (_) => HomeScreen(
-              facility: profile?.school ??
-                  (lowerEmail.contains('muni') ? 'Muni Girls Secondary' : 'St. Mary\'s Secondary'),
+              facility: profile?.school ?? 'St. Mary\'s Secondary',
               teacherName: (displayName != null && displayName.isNotEmpty)
                   ? displayName
                   : (profile?.displayName.isNotEmpty == true ? profile!.displayName : (email?.split('@').first ?? 'Authorized Staff')),

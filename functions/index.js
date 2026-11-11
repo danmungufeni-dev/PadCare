@@ -128,8 +128,7 @@ exports.dispenseByPin = onCall(async (request) => {
     const tokenEmail = (request.auth.token.email || "").toLowerCase();
     const isDemoAuthorized = tokenEmail.includes("teacher") ||
       tokenEmail.includes("devgtnation") ||
-      tokenEmail.includes("chrishanijr") ||
-      tokenEmail.includes("2501201629");
+      tokenEmail.includes("abetinichlas");
     if (!isDemoAuthorized) {
       throw new HttpsError("permission-denied", "User profile not found. Verified school staff authorization required.");
     }

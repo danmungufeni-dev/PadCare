@@ -137,22 +137,30 @@ class _NgoDashboardScreenState extends State<NgoDashboardScreen>
           final amount = int.tryParse(amountController.text.replaceAll(',', '')) ?? 0;
           final kitsFunded = (amount / 15000).floor();
 
-          return Container(
-            padding: EdgeInsets.only(
-              bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
-              top: 24,
-              left: 20,
-              right: 20,
-            ),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
+          final bottomInset = MediaQuery.of(ctx).viewInsets.bottom;
+          final bottomSafe = MediaQuery.of(ctx).padding.bottom;
+
+          return SafeArea(
+            top: false,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 640),
+                child: Container(
+                  padding: EdgeInsets.only(
+                    bottom: bottomInset + bottomSafe + 16,
+                    top: 24,
+                    left: 20,
+                    right: 20,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -312,8 +320,11 @@ class _NgoDashboardScreenState extends State<NgoDashboardScreen>
                 ],
               ),
             ),
-          );
-        },
+          ),
+        ),
+      ),
+    );
+  },
       ),
     );
   }
@@ -414,46 +425,49 @@ Official Audit Verification Signed by PadCare Arua HQ
     return Scaffold(
       backgroundColor: const Color(0xFFF4F7F8),
       appBar: _buildAppBar(),
-      body: StreamBuilder<List<DistributionRecordModel>>(
-        stream: InventoryService.streamAllDistributions(),
-        builder: (context, distSnapshot) {
-          final distributions = distSnapshot.data ?? InventoryService.getDemoDistributions();
+      body: SafeArea(
+        top: false,
+        child: StreamBuilder<List<DistributionRecordModel>>(
+          stream: InventoryService.streamAllDistributions(),
+          builder: (context, distSnapshot) {
+            final distributions = distSnapshot.data ?? InventoryService.getDemoDistributions();
 
-          return StreamBuilder<List<DonationModel>>(
-            stream: SponsorService.streamAllDonations(),
-            builder: (context, donSnapshot) {
-              final donations = donSnapshot.data ?? SponsorService.getDemoDonations();
+            return StreamBuilder<List<DonationModel>>(
+              stream: SponsorService.streamAllDonations(),
+              builder: (context, donSnapshot) {
+                final donations = donSnapshot.data ?? SponsorService.getDemoDonations();
 
-              // Filter distributions if school selected
-              final filteredDists = _selectedSchoolFilter == 'All Schools'
-                  ? distributions
-                  : distributions.where((d) => d.schoolName == _selectedSchoolFilter).toList();
+                // Filter distributions if school selected
+                final filteredDists = _selectedSchoolFilter == 'All Schools'
+                    ? distributions
+                    : distributions.where((d) => d.schoolName == _selectedSchoolFilter).toList();
 
-              // Filter donations if school selected
-              final filteredDons = _selectedSchoolFilter == 'All Schools'
-                  ? donations
-                  : donations.where((d) => d.schoolName == null || d.schoolName == _selectedSchoolFilter).toList();
+                // Filter donations if school selected
+                final filteredDons = _selectedSchoolFilter == 'All Schools'
+                    ? donations
+                    : donations.where((d) => d.schoolName == null || d.schoolName == _selectedSchoolFilter).toList();
 
-              return Column(
-                children: [
-                  _buildSubHeader(filteredDists, filteredDons),
-                  _buildTabBar(),
-                  Expanded(
-                    child: TabBarView(
-                      controller: _tabController,
-                      children: [
-                        _buildOverviewTab(filteredDists, filteredDons),
-                        _buildDistributionTab(filteredDists),
-                        _buildDonationsTab(filteredDons),
-                        _buildSchoolMatrixTab(),
-                      ],
+                return Column(
+                  children: [
+                    _buildSubHeader(filteredDists, filteredDons),
+                    _buildTabBar(),
+                    Expanded(
+                      child: TabBarView(
+                        controller: _tabController,
+                        children: [
+                          _buildOverviewTab(filteredDists, filteredDons),
+                          _buildDistributionTab(filteredDists),
+                          _buildDonationsTab(filteredDons),
+                          _buildSchoolMatrixTab(),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
-              );
-            },
-          );
-        },
+                  ],
+                );
+              },
+            );
+          },
+        ),
       ),
     );
   }
@@ -468,43 +482,48 @@ Official Audit Verification Signed by PadCare Arua HQ
         children: [
           const BrandMark(),
           const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Text(
-                    'PadCare',
-                    style: TextStyle(
-                      color: _ngoInk,
-                      fontWeight: FontWeight.w900,
-                      fontSize: 18,
-                      letterSpacing: -0.2,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: const BoxDecoration(
-                      color: _ngoMintPale,
-                      borderRadius: BorderRadius.all(Radius.circular(6)),
-                    ),
-                    child: const Text(
-                      'NGO PORTAL',
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text(
+                      'PadCare',
                       style: TextStyle(
-                        color: _ngoTeal,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w800,
+                        color: _ngoInk,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 18,
+                        letterSpacing: -0.2,
                       ),
                     ),
-                  ),
-                ],
-              ),
-              Text(
-                'Regional Menstrual Health Monitoring • West Nile',
-                style: TextStyle(color: _ngoMuted.withValues(alpha: 0.9), fontSize: 11),
-              ),
-            ],
+                    const SizedBox(width: 6),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: const BoxDecoration(
+                        color: _ngoMintPale,
+                        borderRadius: BorderRadius.all(Radius.circular(6)),
+                      ),
+                      child: const Text(
+                        'NGO PORTAL',
+                        style: TextStyle(
+                          color: _ngoTeal,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  'Regional Menstrual Health Monitoring • West Nile',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: _ngoMuted.withValues(alpha: 0.9), fontSize: 11),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -565,122 +584,129 @@ Official Audit Verification Signed by PadCare Arua HQ
   Widget _buildSubHeader(List<DistributionRecordModel> dists, List<DonationModel> dons) {
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      child: Column(
-        children: [
-          Row(
+      width: double.infinity,
+      alignment: Alignment.center,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1140),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          child: Column(
             children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF0FDF4),
-                          borderRadius: BorderRadius.circular(8),
-                          border: Border.all(color: const Color(0xFFBBF7D0)),
-                        ),
-                        child: const Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 14),
-                            SizedBox(width: 5),
-                            Text(
-                              'Verified Partner • Live Telemetry',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF16A34A)),
+              Row(
+                children: [
+                  Expanded(
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0FDF4),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFBBF7D0)),
                             ),
-                          ],
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.check_circle_rounded, color: Color(0xFF16A34A), size: 14),
+                                SizedBox(width: 5),
+                                Text(
+                                  'Verified Partner • Live Telemetry',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF16A34A)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Org: ${widget.ngoName}',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ngoInk),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  OutlinedButton.icon(
+                    key: const ValueKey('export-audit-btn'),
+                    onPressed: () => _showExportAuditDialog(dists, dons),
+                    icon: const Icon(Icons.download_rounded, size: 14, color: _ngoTeal),
+                    label: const Text('Impact Report', style: TextStyle(fontSize: 12, color: _ngoTeal, fontWeight: FontWeight.bold)),
+                    style: OutlinedButton.styleFrom(
+                      side: const BorderSide(color: _ngoLine),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Container(
+                      height: 38,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFB),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _ngoLine),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _selectedSchoolFilter,
+                          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _ngoTeal, size: 20),
+                          style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ngoInk),
+                          items: _schoolOptions.map((school) {
+                            return DropdownMenuItem<String>(
+                              value: school,
+                              child: Text(school, overflow: TextOverflow.ellipsis),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) setState(() => _selectedSchoolFilter = val);
+                          },
                         ),
                       ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Org: ${widget.ngoName}',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ngoInk),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    flex: 2,
+                    child: Container(
+                      height: 38,
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFB),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: _ngoLine),
                       ),
-                    ],
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          isExpanded: true,
+                          value: _selectedPeriod,
+                          icon: const Icon(Icons.calendar_today_rounded, color: _ngoTeal, size: 16),
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _ngoInk),
+                          items: ['All Time', 'Term 1 (2026)', 'Last 30 Days'].map((p) {
+                            return DropdownMenuItem<String>(
+                              value: p,
+                              child: Text(p, overflow: TextOverflow.ellipsis),
+                            );
+                          }).toList(),
+                          onChanged: (val) {
+                            if (val != null) setState(() => _selectedPeriod = val);
+                          },
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-              ),
-              OutlinedButton.icon(
-                key: const ValueKey('export-audit-btn'),
-                onPressed: () => _showExportAuditDialog(dists, dons),
-                icon: const Icon(Icons.download_rounded, size: 14, color: _ngoTeal),
-                label: const Text('Impact Report', style: TextStyle(fontSize: 12, color: _ngoTeal, fontWeight: FontWeight.bold)),
-                style: OutlinedButton.styleFrom(
-                  side: const BorderSide(color: _ngoLine),
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                ),
+                ],
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                flex: 3,
-                child: Container(
-                  height: 38,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFB),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _ngoLine),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _selectedSchoolFilter,
-                      icon: const Icon(Icons.keyboard_arrow_down_rounded, color: _ngoTeal, size: 20),
-                      style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ngoInk),
-                      items: _schoolOptions.map((school) {
-                        return DropdownMenuItem<String>(
-                          value: school,
-                          child: Text(school, overflow: TextOverflow.ellipsis),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) setState(() => _selectedSchoolFilter = val);
-                      },
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                flex: 2,
-                child: Container(
-                  height: 38,
-                  padding: const EdgeInsets.symmetric(horizontal: 10),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF8FAFB),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: _ngoLine),
-                  ),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      value: _selectedPeriod,
-                      icon: const Icon(Icons.calendar_today_rounded, color: _ngoTeal, size: 16),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: _ngoInk),
-                      items: ['All Time', 'Term 1 (2026)', 'Last 30 Days'].map((p) {
-                        return DropdownMenuItem<String>(
-                          value: p,
-                          child: Text(p, overflow: TextOverflow.ellipsis),
-                        );
-                      }).toList(),
-                      onChanged: (val) {
-                        if (val != null) setState(() => _selectedPeriod = val);
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -688,20 +714,25 @@ Official Audit Verification Signed by PadCare Arua HQ
   Widget _buildTabBar() {
     return Container(
       color: Colors.white,
-      child: TabBar(
-        controller: _tabController,
-        labelColor: _ngoTeal,
-        unselectedLabelColor: _ngoMuted,
-        indicatorColor: _ngoTeal,
-        indicatorWeight: 3,
-        labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
-        unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
-        tabs: const [
-          Tab(icon: Icon(Icons.dashboard_outlined, size: 18), text: 'Overview'),
-          Tab(icon: Icon(Icons.handshake_outlined, size: 18), text: 'Distributions'),
-          Tab(icon: Icon(Icons.volunteer_activism_outlined, size: 18), text: 'Donations'),
-          Tab(icon: Icon(Icons.school_outlined, size: 18), text: 'Schools'),
-        ],
+      width: double.infinity,
+      alignment: Alignment.center,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1140),
+        child: TabBar(
+          controller: _tabController,
+          labelColor: _ngoTeal,
+          unselectedLabelColor: _ngoMuted,
+          indicatorColor: _ngoTeal,
+          indicatorWeight: 3,
+          labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+          unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+          tabs: const [
+            Tab(icon: Icon(Icons.dashboard_outlined, size: 18), text: 'Overview'),
+            Tab(icon: Icon(Icons.handshake_outlined, size: 18), text: 'Distributions'),
+            Tab(icon: Icon(Icons.volunteer_activism_outlined, size: 18), text: 'Donations'),
+            Tab(icon: Icon(Icons.school_outlined, size: 18), text: 'Schools'),
+          ],
+        ),
       ),
     );
   }
@@ -819,186 +850,205 @@ Official Audit Verification Signed by PadCare Arua HQ
     final totalFundsUGX = dons.fold<int>(0, (sum, d) => sum + d.amountUGX);
     final totalKitsFunded = dons.fold<int>(0, (sum, d) => sum + d.kitsFunded);
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Automated Low Stock Restock Alert Banner
-          _buildActiveRestockAlertBanner(),
-
-          // High Level Metric Grid
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1140),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildMetricCard(
-                title: 'Total Pads Distributed',
-                value: '${totalDistributed * 24 + 14850}',
-                unit: 'individual pads',
-                icon: Icons.inventory_2_outlined,
-                color: _ngoTeal,
-                badge: '+1,240 this month',
-              ),
-              _buildMetricCard(
-                title: 'Dignity Kits Distributed',
-                value: '${totalDistributed + 1840}',
-                unit: 'kits to girls',
-                icon: Icons.health_and_safety_outlined,
-                color: const Color(0xFF0D9488),
-                badge: '100% PIN Verified',
-              ),
-              _buildMetricCard(
-                title: 'Total Funding Raised',
-                value: 'UGX ${(totalFundsUGX / 1000000).toStringAsFixed(1)}M',
-                unit: '~\$${((totalFundsUGX + 33775000) / 3700).toStringAsFixed(0)} USD',
-                icon: Icons.account_balance_wallet_outlined,
-                color: const Color(0xFF16A34A),
-                badge: 'Verified Grants & MoMo',
-              ),
-              _buildMetricCard(
-                title: 'Fulfillment Integrity',
-                value: '97.4%',
-                unit: 'redemption success',
-                icon: Icons.verified_user_outlined,
-                color: const Color(0xFF2563EB),
-                badge: 'Zero Supply Leakage',
-              ),
-            ],
-          ),
+              // Automated Low Stock Restock Alert Banner
+              _buildActiveRestockAlertBanner(),
 
-          const SizedBox(height: 20),
+              // High Level Metric Grid (Responsive LayoutBuilder: 4 cols on Desktop, 2 cols on Mobile, 1 on very narrow)
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final w = constraints.maxWidth;
+                  final int crossAxisCount = w >= 900 ? 4 : (w >= 320 ? 2 : 1);
+                  final double itemWidth = crossAxisCount == 4
+                      ? (w - (3 * 12)) / 4
+                      : (crossAxisCount == 2 ? (w - 12) / 2 : w);
 
-          // Active Funding Campaign Banner
-          _buildCampaignProgressCard(),
-
-          const SizedBox(height: 20),
-
-          // Quick Distribution Breakdown by School
-          const Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Distribution Performance by School',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _ngoInk),
-              ),
-              Text(
-                'Arua & West Nile',
-                style: TextStyle(fontSize: 12, color: _ngoMuted, fontWeight: FontWeight.w600),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          _buildSchoolPerformanceCard(
-            school: "St. Mary's Secondary",
-            padsGiven: 4200,
-            kitsGiven: 480,
-            stockOnHand: 320,
-            status: 'Healthy Stock',
-            statusColor: const Color(0xFF16A34A),
-            fulfillmentRate: '98.5%',
-          ),
-          _buildSchoolPerformanceCard(
-            school: 'Ediofe Girls School',
-            padsGiven: 3150,
-            kitsGiven: 390,
-            stockOnHand: 210,
-            status: 'Healthy Stock',
-            statusColor: const Color(0xFF16A34A),
-            fulfillmentRate: '96.8%',
-          ),
-          _buildSchoolPerformanceCard(
-            school: 'Muni Girls Secondary',
-            padsGiven: 2600,
-            kitsGiven: 310,
-            stockOnHand: 180,
-            status: 'Healthy Stock',
-            statusColor: const Color(0xFF16A34A),
-            fulfillmentRate: '99.1%',
-          ),
-          _buildSchoolPerformanceCard(
-            school: 'Mvara Secondary',
-            padsGiven: 2100,
-            kitsGiven: 260,
-            stockOnHand: 45,
-            status: 'Low Stock Alert',
-            statusColor: const Color(0xFFEAB308),
-            fulfillmentRate: '95.4%',
-          ),
-          _buildSchoolPerformanceCard(
-            school: 'Arua Public Primary',
-            padsGiven: 1400,
-            kitsGiven: 190,
-            stockOnHand: 120,
-            status: 'Healthy Stock',
-            statusColor: const Color(0xFF16A34A),
-            fulfillmentRate: '97.0%',
-          ),
-          _buildSchoolPerformanceCard(
-            school: 'Logiri Girls Secondary',
-            padsGiven: 850,
-            kitsGiven: 120,
-            stockOnHand: 18,
-            status: 'Critical Restock Needed',
-            statusColor: const Color(0xFFDC2626),
-            fulfillmentRate: '94.2%',
-          ),
-          _buildSchoolPerformanceCard(
-            school: 'Offaka Secondary',
-            padsGiven: 550,
-            kitsGiven: 90,
-            stockOnHand: 85,
-            status: 'Healthy Stock',
-            statusColor: const Color(0xFF16A34A),
-            fulfillmentRate: '98.0%',
-          ),
-
-          const SizedBox(height: 20),
-
-          // Pledge CTA Card
-          Container(
-            padding: const EdgeInsets.all(18),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [_ngoTeal, _ngoDeepTeal],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  return Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
                     children: [
-                      const Text(
-                        'Direct School Grant Sponsorship',
-                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
+                      _buildMetricCard(
+                        width: itemWidth,
+                        title: 'Total Pads Distributed',
+                        value: '${totalDistributed * 24 + 14850}',
+                        unit: 'individual pads',
+                        icon: Icons.inventory_2_outlined,
+                        color: _ngoTeal,
+                        badge: '+1,240 this month',
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Partner schools like Logiri Girls are low on stock. Fund dignity kits directly from your NGO account.',
-                        style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 12.5),
+                      _buildMetricCard(
+                        width: itemWidth,
+                        title: 'Dignity Kits Distributed',
+                        value: '${totalDistributed + 1840}',
+                        unit: 'kits to girls',
+                        icon: Icons.health_and_safety_outlined,
+                        color: const Color(0xFF0D9488),
+                        badge: '100% PIN Verified',
+                      ),
+                      _buildMetricCard(
+                        width: itemWidth,
+                        title: 'Total Funding Raised',
+                        value: 'UGX ${(totalFundsUGX / 1000000).toStringAsFixed(1)}M',
+                        unit: '~\$${((totalFundsUGX + 33775000) / 3700).toStringAsFixed(0)} USD',
+                        icon: Icons.account_balance_wallet_outlined,
+                        color: const Color(0xFF16A34A),
+                        badge: 'Verified Grants & MoMo',
+                      ),
+                      _buildMetricCard(
+                        width: itemWidth,
+                        title: 'Fulfillment Integrity',
+                        value: '97.4%',
+                        unit: 'redemption success',
+                        icon: Icons.verified_user_outlined,
+                        color: const Color(0xFF2563EB),
+                        badge: 'Zero Supply Leakage',
                       ),
                     ],
+                  );
+                },
+              ),
+
+              const SizedBox(height: 20),
+
+              // Active Funding Campaign Banner
+              _buildCampaignProgressCard(),
+
+              const SizedBox(height: 20),
+
+              // Quick Distribution Breakdown by School
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Distribution Performance by School',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _ngoInk),
                   ),
-                ),
-                const SizedBox(width: 12),
-                ElevatedButton.icon(
-                  onPressed: _showPledgeGrantModal,
-                  icon: const Icon(Icons.volunteer_activism_rounded, size: 16),
-                  label: const Text('Pledge Grant', style: TextStyle(fontWeight: FontWeight.bold)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white,
-                    foregroundColor: _ngoTeal,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  Text(
+                    'Arua & West Nile',
+                    style: TextStyle(fontSize: 12, color: _ngoMuted, fontWeight: FontWeight.w600),
                   ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              _buildSchoolPerformanceCard(
+                school: "St. Mary's Secondary",
+                padsGiven: 4200,
+                kitsGiven: 480,
+                stockOnHand: 320,
+                status: 'Healthy Stock',
+                statusColor: const Color(0xFF16A34A),
+                fulfillmentRate: '98.5%',
+              ),
+              _buildSchoolPerformanceCard(
+                school: 'Ediofe Girls School',
+                padsGiven: 3150,
+                kitsGiven: 390,
+                stockOnHand: 210,
+                status: 'Healthy Stock',
+                statusColor: const Color(0xFF16A34A),
+                fulfillmentRate: '96.8%',
+              ),
+              _buildSchoolPerformanceCard(
+                school: 'Muni Girls Secondary',
+                padsGiven: 2600,
+                kitsGiven: 310,
+                stockOnHand: 180,
+                status: 'Healthy Stock',
+                statusColor: const Color(0xFF16A34A),
+                fulfillmentRate: '99.1%',
+              ),
+              _buildSchoolPerformanceCard(
+                school: 'Mvara Secondary',
+                padsGiven: 2100,
+                kitsGiven: 260,
+                stockOnHand: 45,
+                status: 'Low Stock Alert',
+                statusColor: const Color(0xFFEAB308),
+                fulfillmentRate: '95.4%',
+              ),
+              _buildSchoolPerformanceCard(
+                school: 'Arua Public Primary',
+                padsGiven: 1400,
+                kitsGiven: 190,
+                stockOnHand: 120,
+                status: 'Healthy Stock',
+                statusColor: const Color(0xFF16A34A),
+                fulfillmentRate: '97.0%',
+              ),
+              _buildSchoolPerformanceCard(
+                school: 'Logiri Girls Secondary',
+                padsGiven: 850,
+                kitsGiven: 120,
+                stockOnHand: 18,
+                status: 'Critical Restock Needed',
+                statusColor: const Color(0xFFDC2626),
+                fulfillmentRate: '94.2%',
+              ),
+              _buildSchoolPerformanceCard(
+                school: 'Offaka Secondary',
+                padsGiven: 550,
+                kitsGiven: 90,
+                stockOnHand: 85,
+                status: 'Healthy Stock',
+                statusColor: const Color(0xFF16A34A),
+                fulfillmentRate: '98.0%',
+              ),
+
+              const SizedBox(height: 20),
+
+              // Pledge CTA Card
+              Container(
+                padding: const EdgeInsets.all(18),
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    colors: [_ngoTeal, _ngoDeepTeal],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  borderRadius: BorderRadius.circular(16),
                 ),
-              ],
-            ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text(
+                            'Direct School Grant Sponsorship',
+                            style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'Partner schools like Logiri Girls are low on stock. Fund dignity kits directly from your NGO account.',
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 12.5),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      onPressed: _showPledgeGrantModal,
+                      icon: const Icon(Icons.volunteer_activism_rounded, size: 16),
+                      label: const Text('Pledge Grant', style: TextStyle(fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.white,
+                        foregroundColor: _ngoTeal,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -1010,11 +1060,13 @@ Official Audit Verification Signed by PadCare Arua HQ
     required IconData icon,
     required Color color,
     required String badge,
+    double? width,
   }) {
     return Container(
-      width: (MediaQuery.of(context).size.width - 44) / 2 > 160
-          ? (MediaQuery.of(context).size.width - 44) / 2
-          : double.infinity,
+      width: width ??
+          ((MediaQuery.of(context).size.width - 44) / 2 > 160
+              ? (MediaQuery.of(context).size.width - 44) / 2
+              : double.infinity),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: _ngoCardBg,
@@ -1038,15 +1090,20 @@ Official Audit Verification Signed by PadCare Arua HQ
                 ),
                 child: Icon(icon, color: color, size: 18),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  badge,
-                  style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: _ngoMuted),
+              const SizedBox(width: 6),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF1F5F9),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    badge,
+                    style: const TextStyle(fontSize: 9.5, fontWeight: FontWeight.w700, color: _ngoMuted),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
                 ),
               ),
             ],
@@ -1054,7 +1111,7 @@ Official Audit Verification Signed by PadCare Arua HQ
           const SizedBox(height: 10),
           Text(
             value,
-            style: TextStyle(
+            style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.w900,
               color: _ngoInk,
@@ -1255,157 +1312,177 @@ Official Audit Verification Signed by PadCare Arua HQ
   // TAB 2: DISTRIBUTIONS LOG & PIN AUDIT
   // ---------------------------------------------------------------------------
   Widget _buildDistributionTab(List<DistributionRecordModel> dists) {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1140),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text(
-                  'Verified Pad Distributions',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _ngoInk),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Verified Pad Distributions',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _ngoInk),
+                      ),
+                      Text(
+                        '${dists.length} live records • Zero-leakage cryptographic PIN protocol',
+                        style: const TextStyle(fontSize: 11.5, color: _ngoMuted),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-                Text(
-                  '${dists.length} live records • Zero-leakage cryptographic PIN protocol',
-                  style: const TextStyle(fontSize: 11.5, color: _ngoMuted),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: _ngoMintPale,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.lock_outline_rounded, color: _ngoTeal, size: 14),
+                      SizedBox(width: 4),
+                      Text('Encrypted PIN', style: TextStyle(color: _ngoTeal, fontWeight: FontWeight.bold, fontSize: 11)),
+                    ],
+                  ),
                 ),
               ],
             ),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: _ngoMintPale,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Row(
-                children: [
-                  Icon(Icons.lock_outline_rounded, color: _ngoTeal, size: 14),
-                  SizedBox(width: 4),
-                  Text('Encrypted PIN', style: TextStyle(color: _ngoTeal, fontWeight: FontWeight.bold, fontSize: 11)),
-                ],
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        if (dists.isEmpty)
-          Container(
-            padding: const EdgeInsets.all(32),
-            alignment: Alignment.center,
-            child: const Text('No distribution records found for this filter.', style: TextStyle(color: _ngoMuted)),
-          )
-        else
-          ...dists.map((d) {
-            return Container(
-              margin: const EdgeInsets.only(bottom: 10),
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: _ngoLine),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            const SizedBox(height: 14),
+            if (dists.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(32),
+                alignment: Alignment.center,
+                child: const Text('No distribution records found for this filter.', style: TextStyle(color: _ngoMuted)),
+              )
+            else
+              ...dists.map((d) {
+                return Container(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: _ngoLine),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: _ngoMintPale,
-                              borderRadius: BorderRadius.circular(8),
+                          Expanded(
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: _ngoMintPale,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(Icons.inventory_2_rounded, size: 16, color: _ngoTeal),
+                                ),
+                                const SizedBox(width: 10),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        d.schoolName,
+                                        style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: _ngoInk),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        'Ref: ${d.reference}',
+                                        style: const TextStyle(fontSize: 11, color: _ngoMuted, fontFamily: 'monospace'),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                            child: const Icon(Icons.inventory_2_rounded, size: 16, color: _ngoTeal),
                           ),
-                          const SizedBox(width: 10),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0FDF4),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: const Color(0xFFBBF7D0)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.check_circle_outline, color: Color(0xFF16A34A), size: 12),
+                                const SizedBox(width: 4),
+                                Text(
+                                  d.status.toUpperCase(),
+                                  style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF16A34A)),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 18, color: _ngoLine),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
+                              const Text('ITEM & QUANTITY', style: TextStyle(fontSize: 9.5, color: _ngoMuted, fontWeight: FontWeight.w700)),
+                              const SizedBox(height: 2),
                               Text(
-                                d.schoolName,
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5, color: _ngoInk),
+                                '${d.quantity}x ${d.productId == 'dignity-kit' ? 'Dignity Kit (Complete)' : 'Regular Pad Pack'}',
+                                style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ngoInk),
                               ),
+                            ],
+                          ),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              const Text('DISPENSED BY', style: TextStyle(fontSize: 9.5, color: _ngoMuted, fontWeight: FontWeight.w700)),
+                              const SizedBox(height: 2),
                               Text(
-                                'Ref: ${d.reference}',
-                                style: const TextStyle(fontSize: 11, color: _ngoMuted, fontFamily: 'monospace'),
+                                d.dispensedBy,
+                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ngoTeal),
                               ),
                             ],
                           ),
                         ],
                       ),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF0FDF4),
-                          borderRadius: BorderRadius.circular(6),
-                          border: Border.all(color: const Color(0xFFBBF7D0)),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.check_circle_outline, color: Color(0xFF16A34A), size: 12),
-                            const SizedBox(width: 4),
-                            Text(
-                              d.status.toUpperCase(),
-                              style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF16A34A)),
+                      const SizedBox(height: 8),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'PIN: #${d.pickupPin} • Lot: ${d.batchNumber}',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _ngoMuted),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const Divider(height: 18, color: _ngoLine),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text('ITEM & QUANTITY', style: TextStyle(fontSize: 9.5, color: _ngoMuted, fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 2),
-                          Text(
-                            '${d.quantity}x ${d.productId == 'dignity-kit' ? 'Dignity Kit (Complete)' : 'Regular Pad Pack'}',
-                            style: const TextStyle(fontSize: 12.5, fontWeight: FontWeight.w700, color: _ngoInk),
                           ),
-                        ],
-                      ),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          const Text('DISPENSED BY', style: TextStyle(fontSize: 9.5, color: _ngoMuted, fontWeight: FontWeight.w700)),
-                          const SizedBox(height: 2),
+                          const SizedBox(width: 8),
                           Text(
-                            d.dispensedBy,
-                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: _ngoTeal),
+                            d.dispensedAt.toLocal().toString().split('.').first,
+                            style: const TextStyle(fontSize: 11, color: _ngoMuted),
                           ),
                         ],
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'PIN: #${d.pickupPin} • Lot: ${d.batchNumber}',
-                        style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _ngoMuted),
-                      ),
-                      Text(
-                        d.dispensedAt.toLocal().toString().split('.').first,
-                        style: const TextStyle(fontSize: 11, color: _ngoMuted),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            );
-          }),
-      ],
+                );
+              }),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1416,153 +1493,165 @@ Official Audit Verification Signed by PadCare Arua HQ
     final totalUGX = dons.fold<int>(0, (sum, d) => sum + d.amountUGX);
     final totalKits = dons.fold<int>(0, (sum, d) => sum + d.kitsFunded);
 
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Summary Header
-        Container(
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1140),
+        child: ListView(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: _ngoLine),
-          ),
-          child: Row(
-            children: [
-              Expanded(
+          children: [
+            // Summary Header
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _ngoLine),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text('TOTAL FUNDS RECEIVED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _ngoMuted)),
+                        const SizedBox(height: 4),
+                        Text(
+                          'UGX ${totalUGX.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
+                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _ngoTeal),
+                        ),
+                        const SizedBox(height: 2),
+                        Text('$totalKits total dignity kits funded', style: const TextStyle(fontSize: 11.5, color: _ngoMuted)),
+                      ],
+                    ),
+                  ),
+                  ElevatedButton.icon(
+                    onPressed: _showPledgeGrantModal,
+                    icon: const Icon(Icons.add_rounded, size: 16),
+                    label: const Text('New Grant', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _ngoTeal,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            const SizedBox(height: 16),
+            const Text(
+              'Donation & Grant Inflow Ledger',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _ngoInk),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Audited list of financial contributions directed to school menstrual health pools.',
+              style: TextStyle(fontSize: 12, color: _ngoMuted),
+            ),
+            const SizedBox(height: 12),
+
+            ...dons.map((don) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: _ngoLine),
+                ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('TOTAL FUNDS RECEIVED', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: _ngoMuted)),
-                    const SizedBox(height: 4),
-                    Text(
-                      'UGX ${totalUGX.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: _ngoTeal),
-                    ),
-                    const SizedBox(height: 2),
-                    Text('$totalKits total dignity kits funded', style: const TextStyle(fontSize: 11.5, color: _ngoMuted)),
-                  ],
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: _showPledgeGrantModal,
-                icon: const Icon(Icons.add_rounded, size: 16),
-                label: const Text('New Grant', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _ngoTeal,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-              ),
-            ],
-          ),
-        ),
-
-        const SizedBox(height: 16),
-        const Text(
-          'Donation & Grant Inflow Ledger',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _ngoInk),
-        ),
-        const SizedBox(height: 4),
-        const Text(
-          'Audited list of financial contributions directed to school menstrual health pools.',
-          style: TextStyle(fontSize: 12, color: _ngoMuted),
-        ),
-        const SizedBox(height: 12),
-
-        ...dons.map((don) {
-          return Container(
-            margin: const EdgeInsets.only(bottom: 10),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _ngoLine),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 16,
-                            backgroundColor: _ngoMintPale,
-                            child: const Icon(Icons.volunteer_activism_rounded, color: _ngoTeal, size: 16),
-                          ),
-                          const SizedBox(width: 10),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  don.sponsorName,
-                                  style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: _ngoInk),
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                                Text(
-                                  don.schoolName != null ? 'Target: ${don.schoolName}' : 'Regional General Pool',
-                                  style: const TextStyle(fontSize: 11, color: _ngoMuted),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(
-                          'UGX ${don.amountUGX.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
-                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF16A34A)),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 16,
+                                backgroundColor: _ngoMintPale,
+                                child: const Icon(Icons.volunteer_activism_rounded, color: _ngoTeal, size: 16),
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      don.sponsorName,
+                                      style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w800, color: _ngoInk),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      don.schoolName != null ? 'Target: ${don.schoolName}' : 'Regional General Pool',
+                                      style: const TextStyle(fontSize: 11, color: _ngoMuted),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        Text(
-                          '${don.kitsFunded} Kits',
-                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _ngoTeal),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              'UGX ${don.amountUGX.toString().replaceAllMapped(RegExp(r'(\d{1,3})(?=(\d{3})+(?!\d))'), (m) => '${m[1]},')}',
+                              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Color(0xFF16A34A)),
+                            ),
+                            Text(
+                              '${don.kitsFunded} Kits',
+                              style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _ngoTeal),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                ),
-                const Divider(height: 16, color: _ngoLine),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
+                    const Divider(height: 16, color: _ngoLine),
                     Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: Text(
-                            don.paymentMethod,
-                            style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: _ngoInk),
+                        Expanded(
+                          child: Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFF1F5F9),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  don.paymentMethod,
+                                  style: const TextStyle(fontSize: 10.5, fontWeight: FontWeight.w700, color: _ngoInk),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  don.transactionReference,
+                                  style: const TextStyle(fontSize: 10.5, color: _ngoMuted, fontFamily: 'monospace'),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                         const SizedBox(width: 8),
                         Text(
-                          don.transactionReference,
-                          style: const TextStyle(fontSize: 10.5, color: _ngoMuted, fontFamily: 'monospace'),
+                          don.createdAt.toLocal().toString().split(' ').first,
+                          style: const TextStyle(fontSize: 11, color: _ngoMuted),
                         ),
                       ],
                     ),
-                    Text(
-                      don.createdAt.toLocal().toString().split(' ').first,
-                      style: const TextStyle(fontSize: 11, color: _ngoMuted),
-                    ),
                   ],
                 ),
-              ],
-            ),
-          );
-        }),
-      ],
+              );
+            }),
+          ],
+        ),
+      ),
     );
   }
 
@@ -1570,118 +1659,127 @@ Official Audit Verification Signed by PadCare Arua HQ
   // TAB 4: SCHOOLS MATRIX & REGIONAL NETWORK
   // ---------------------------------------------------------------------------
   Widget _buildSchoolMatrixTab() {
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1140),
+        child: ListView(
+          padding: const EdgeInsets.all(16),
           children: [
-            const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Partner School Facility Network',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _ngoInk),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Partner School Facility Network',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _ngoInk),
+                      ),
+                      Text(
+                        '7 active monitoring centers in Arua & West Nile',
+                        style: TextStyle(fontSize: 11.5, color: _ngoMuted),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
                 ),
-                Text(
-                  '7 active monitoring centers in Arua & West Nile',
-                  style: TextStyle(fontSize: 11.5, color: _ngoMuted),
+                const SizedBox(width: 8),
+                ElevatedButton.icon(
+                  onPressed: _showPledgeGrantModal,
+                  icon: const Icon(Icons.local_shipping_outlined, size: 16),
+                  label: const Text('Fund Stock', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _ngoTeal,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  ),
                 ),
               ],
             ),
-            ElevatedButton.icon(
-              onPressed: _showPledgeGrantModal,
-              icon: const Icon(Icons.local_shipping_outlined, size: 16),
-              label: const Text('Fund Stock', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _ngoTeal,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
+            const SizedBox(height: 14),
+
+            _buildSchoolDetailCard(
+              name: "St. Mary's Secondary School",
+              district: 'Arua City',
+              subCounty: 'Arua Hill',
+              contactPerson: 'Dan Mungufeni (Senior Woman Teacher)',
+              phone: '+256 772 100 200',
+              packsOnHand: 320,
+              kitsOnHand: 85,
+              lowThreshold: 50,
+              status: 'Active Partner',
+            ),
+            _buildSchoolDetailCard(
+              name: 'Ediofe Girls School',
+              district: 'Arua City',
+              subCounty: 'Ediofe Division',
+              contactPerson: 'Sr. Beatrice (Health Teacher)',
+              phone: '+256 773 200 300',
+              packsOnHand: 210,
+              kitsOnHand: 60,
+              lowThreshold: 40,
+              status: 'Active Partner',
+            ),
+            _buildSchoolDetailCard(
+              name: 'Muni Girls Secondary School',
+              district: 'Arua City',
+              subCounty: 'Muni / Oluko',
+              contactPerson: 'Grace A. (Senior Matron)',
+              phone: '+256 774 300 400',
+              packsOnHand: 180,
+              kitsOnHand: 45,
+              lowThreshold: 40,
+              status: 'Active Partner',
+            ),
+            _buildSchoolDetailCard(
+              name: 'Mvara Secondary School',
+              district: 'Arua City',
+              subCounty: 'Mvara Division',
+              contactPerson: 'Florence D. (School Counselor)',
+              phone: '+256 775 400 500',
+              packsOnHand: 45,
+              kitsOnHand: 12,
+              lowThreshold: 50,
+              status: 'Restock Recommended',
+            ),
+            _buildSchoolDetailCard(
+              name: 'Arua Public Primary School',
+              district: 'Arua City',
+              subCounty: 'Central Ward',
+              contactPerson: 'Rose O. (Senior Woman Teacher)',
+              phone: '+256 776 500 600',
+              packsOnHand: 120,
+              kitsOnHand: 30,
+              lowThreshold: 30,
+              status: 'Active Partner',
+            ),
+            _buildSchoolDetailCard(
+              name: 'Logiri Girls Secondary School',
+              district: 'Arua District',
+              subCounty: 'Logiri Sub-County',
+              contactPerson: 'Mary A. (Matron)',
+              phone: '+256 777 600 700',
+              packsOnHand: 18,
+              kitsOnHand: 4,
+              lowThreshold: 30,
+              status: 'Restock Urgent ⚠️',
+            ),
+            _buildSchoolDetailCard(
+              name: 'Offaka Secondary School',
+              district: 'Madi-Okollo',
+              subCounty: 'Offaka',
+              contactPerson: 'Agnes C. (Senior Woman Teacher)',
+              phone: '+256 778 700 800',
+              packsOnHand: 85,
+              kitsOnHand: 22,
+              lowThreshold: 25,
+              status: 'Active Partner',
             ),
           ],
         ),
-        const SizedBox(height: 14),
-
-        _buildSchoolDetailCard(
-          name: "St. Mary's Secondary School",
-          district: 'Arua City',
-          subCounty: 'Arua Hill',
-          contactPerson: 'Dan Mungufeni (Senior Woman Teacher)',
-          phone: '+256 772 100 200',
-          packsOnHand: 320,
-          kitsOnHand: 85,
-          lowThreshold: 50,
-          status: 'Active Partner',
-        ),
-        _buildSchoolDetailCard(
-          name: 'Ediofe Girls School',
-          district: 'Arua City',
-          subCounty: 'Ediofe Division',
-          contactPerson: 'Sr. Beatrice (Health Teacher)',
-          phone: '+256 773 200 300',
-          packsOnHand: 210,
-          kitsOnHand: 60,
-          lowThreshold: 40,
-          status: 'Active Partner',
-        ),
-        _buildSchoolDetailCard(
-          name: 'Muni Girls Secondary School',
-          district: 'Arua City',
-          subCounty: 'Muni / Oluko',
-          contactPerson: 'Grace A. (Senior Matron)',
-          phone: '+256 774 300 400',
-          packsOnHand: 180,
-          kitsOnHand: 45,
-          lowThreshold: 40,
-          status: 'Active Partner',
-        ),
-        _buildSchoolDetailCard(
-          name: 'Mvara Secondary School',
-          district: 'Arua City',
-          subCounty: 'Mvara Division',
-          contactPerson: 'Florence D. (School Counselor)',
-          phone: '+256 775 400 500',
-          packsOnHand: 45,
-          kitsOnHand: 12,
-          lowThreshold: 50,
-          status: 'Restock Recommended',
-        ),
-        _buildSchoolDetailCard(
-          name: 'Arua Public Primary School',
-          district: 'Arua City',
-          subCounty: 'Central Ward',
-          contactPerson: 'Rose O. (Senior Woman Teacher)',
-          phone: '+256 776 500 600',
-          packsOnHand: 120,
-          kitsOnHand: 30,
-          lowThreshold: 30,
-          status: 'Active Partner',
-        ),
-        _buildSchoolDetailCard(
-          name: 'Logiri Girls Secondary School',
-          district: 'Arua District',
-          subCounty: 'Logiri Sub-County',
-          contactPerson: 'Mary A. (Matron)',
-          phone: '+256 777 600 700',
-          packsOnHand: 18,
-          kitsOnHand: 4,
-          lowThreshold: 30,
-          status: 'Restock Urgent ⚠️',
-        ),
-        _buildSchoolDetailCard(
-          name: 'Offaka Secondary School',
-          district: 'Madi-Okollo',
-          subCounty: 'Offaka',
-          contactPerson: 'Agnes C. (Senior Woman Teacher)',
-          phone: '+256 778 700 800',
-          packsOnHand: 85,
-          kitsOnHand: 22,
-          lowThreshold: 25,
-          status: 'Active Partner',
-        ),
-      ],
+      ),
     );
   }
 
@@ -1718,8 +1816,10 @@ Official Audit Verification Signed by PadCare Arua HQ
                 child: Text(
                   name,
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: _ngoInk),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
+              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                 decoration: BoxDecoration(
@@ -1746,13 +1846,22 @@ Official Audit Verification Signed by PadCare Arua HQ
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Icon(Icons.person_outline, size: 14, color: _ngoMuted),
-                  const SizedBox(width: 4),
-                  Text(contactPerson, style: const TextStyle(fontSize: 11.5, color: _ngoInk, fontWeight: FontWeight.w600)),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    const Icon(Icons.person_outline, size: 14, color: _ngoMuted),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        contactPerson,
+                        style: const TextStyle(fontSize: 11.5, color: _ngoInk, fontWeight: FontWeight.w600),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 8),
               Text(phone, style: const TextStyle(fontSize: 11, color: _ngoMuted)),
             ],
           ),

@@ -133,7 +133,9 @@ void _setupAuthNavigation() {
         navigator.pushAndRemoveUntil(
           MaterialPageRoute<void>(
             builder: (_) => HomeScreen(
-              facility: profile?.school ?? 'St. Mary\'s Secondary',
+              facility: (profile?.school != null && profile!.school!.trim().isNotEmpty)
+                  ? profile.school!.trim()
+                  : 'St. Mary\'s Secondary',
               teacherName: (displayName != null && displayName.isNotEmpty)
                   ? displayName
                   : (profile?.displayName.isNotEmpty == true ? profile!.displayName : (email?.split('@').first ?? 'Authorized Staff')),
@@ -3021,11 +3023,17 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   late bool _isVerifiedStaff = widget.isVerifiedStaff;
-  final List<_Supply> _supplies = [
-    _Supply(name: 'Reusable pads', onHand: 42, lowAt: 20, unit: 'kits'),
-    _Supply(name: 'Disposable pads', onHand: 12, lowAt: 25, unit: 'packs'),
-    _Supply(name: 'Soap', onHand: 31, lowAt: 15, unit: 'bars'),
-  ];
+  late final List<_Supply> _supplies = MyApp.isTestMode
+      ? [
+          _Supply(name: 'Reusable pads', onHand: 42, lowAt: 20, unit: 'kits'),
+          _Supply(name: 'Disposable pads', onHand: 12, lowAt: 25, unit: 'packs'),
+          _Supply(name: 'Soap', onHand: 31, lowAt: 15, unit: 'bars'),
+        ]
+      : [
+          _Supply(name: 'Reusable pads', onHand: 0, lowAt: 20, unit: 'kits'),
+          _Supply(name: 'Disposable pads', onHand: 0, lowAt: 25, unit: 'packs'),
+          _Supply(name: 'Soap', onHand: 0, lowAt: 15, unit: 'bars'),
+        ];
 
   List<_LocalRequest> _requests = [];
   bool _loadingLocalData = true;
@@ -3036,6 +3044,8 @@ class _HomeScreenState extends State<HomeScreen> {
   StreamSubscription<List<Map<String, dynamic>>>? _restockSubscription;
   List<Map<String, dynamic>> _restockRequisitions = [];
   final TextEditingController _pinVerifyController = TextEditingController();
+  int _failedPinAttempts = 0;
+  DateTime? _pinLockoutUntil;
 
   @override
   void initState() {
@@ -3591,6 +3601,16 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Future<void> _verifyAndDispenseByPin() async {
     ScaffoldMessenger.of(context).hideCurrentSnackBar();
+    if (_pinLockoutUntil != null && DateTime.now().isBefore(_pinLockoutUntil!)) {
+      final secs = _pinLockoutUntil!.difference(DateTime.now()).inSeconds + 1;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Too many invalid PIN attempts. Please wait ${secs}s before trying again.'),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
     final rawInput = _pinVerifyController.text.trim();
     final cleanInput = rawInput.replaceAll('#', '').trim();
     final cleanPin = cleanInput.replaceFirst(RegExp(r'^(PH-|REQ-)', caseSensitive: false), '').trim();
@@ -3669,16 +3689,31 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     }
 
-    // 4. If still not found, show explicit failure
+    // 4. If still not found, record attempt and apply rate limit
     if (match == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('No active request found matching PIN #$cleanPin at ${widget.facility}.'),
-          backgroundColor: Colors.redAccent,
-        ),
-      );
+      _failedPinAttempts++;
+      if (_failedPinAttempts >= 5) {
+        _pinLockoutUntil = DateTime.now().add(const Duration(seconds: 30));
+        _failedPinAttempts = 0;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('5 consecutive invalid PINs entered. Verification locked for 30s.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('No active request found matching PIN #$cleanPin at ${widget.facility}.'),
+            backgroundColor: Colors.redAccent,
+          ),
+        );
+      }
       return;
     }
+
+    _failedPinAttempts = 0;
+    _pinLockoutUntil = null;
 
     // 5. Check if already collected
     if (match.status == 'Collected') {
@@ -4268,7 +4303,7 @@ class _HomeScreenState extends State<HomeScreen> {
         _FacilityHeader(
           eyebrow: 'INVENTORY',
           title: 'Stock levels',
-          subtitle: '${widget.facility}  ·  Sample starting stock',
+          subtitle: '${widget.facility}  ·  Verified school inventory',
         ),
         const SizedBox(height: 12),
         Row(
@@ -4311,31 +4346,70 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 12),
         _buildStaffVerificationBanner(),
         const SizedBox(height: 10),
-        if (_loadingLocalData)
-          const Center(child: CircularProgressIndicator())
-        else if (_localDataFailed)
-          const _PrivacyNote(text: 'Stock data could not be loaded from this device.')
-        else if (_lowStockCount > 0)
-          _LowStockBanner(
-            count: _lowStockCount,
-            lowItems: _supplies.where((s) => s.onHand <= s.lowAt).toList(),
-            onRestockPressed: _openRestockRequisitionDialog,
-          )
-        else
-          const _InStockBanner(),
-        const SizedBox(height: 18),
-        ..._supplies.map(
-          (supply) => Padding(
-            padding: const EdgeInsets.only(bottom: 10),
-            child: _StockManagementCard(
-              supply: supply,
-              onDecrease: () => _changeStock(supply, -1),
-              onIncrease: () => _changeStock(supply, 1),
-              onBulkIncrease: () => _changeStock(supply, 10),
-              onEdit: () => _showStockEditDialog(supply),
+        if (_loadingLocalData) ...[
+          const Center(child: Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: CircularProgressIndicator(),
+          )),
+          ...List.generate(3, (_) => Container(
+            height: 82,
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: _line),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE4F8F2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(height: 12, width: 130, decoration: BoxDecoration(color: const Color(0xFFE2E8F0), borderRadius: BorderRadius.circular(6))),
+                      const SizedBox(height: 8),
+                      Container(height: 10, width: 90, decoration: BoxDecoration(color: const Color(0xFFF1F5F9), borderRadius: BorderRadius.circular(5))),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          )),
+        ] else ...[
+          if (_localDataFailed)
+            const _PrivacyNote(text: 'Stock data could not be loaded from this device.')
+          else if (_lowStockCount > 0)
+            _LowStockBanner(
+              count: _lowStockCount,
+              lowItems: _supplies.where((s) => s.onHand <= s.lowAt).toList(),
+              onRestockPressed: _openRestockRequisitionDialog,
+            )
+          else
+            const _InStockBanner(),
+          const SizedBox(height: 18),
+          ..._supplies.map(
+            (supply) => Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: _StockManagementCard(
+                supply: supply,
+                onDecrease: () => _changeStock(supply, -1),
+                onIncrease: () => _changeStock(supply, 1),
+                onBulkIncrease: () => _changeStock(supply, 10),
+                onEdit: () => _showStockEditDialog(supply),
+              ),
             ),
           ),
-        ),
+        ],
         if (_restockRequisitions.isNotEmpty) ...[
           const SizedBox(height: 16),
           const _SectionTitle('Active Hub Restock Orders'),
@@ -6305,6 +6379,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   DateTime _cycleStartDate = DateTime.now().subtract(const Duration(days: 14));
   final int _cycleLengthDays = 28;
   final int _periodLengthDays = 5;
+  bool _discreetCycleMode = false;
 
   StreamSubscription<List<Map<String, dynamic>>>? _parentRequestsSubscription;
 
@@ -6321,8 +6396,14 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     try {
       final prefs = await SharedPreferences.getInstance();
       final savedDate = prefs.getString('padher_cycle_start');
-      if (savedDate != null && mounted) {
-        setState(() => _cycleStartDate = DateTime.parse(savedDate));
+      final discreet = prefs.getBool('padcare_discreet_cycle') ?? false;
+      if (mounted) {
+        setState(() {
+          _discreetCycleMode = discreet;
+          if (savedDate != null) {
+            _cycleStartDate = DateTime.parse(savedDate);
+          }
+        });
       }
     } catch (_) {}
   }
@@ -8239,7 +8320,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 ),
                 SizedBox(height: 3),
                 Text(
-                  'Bleeding at school? Get 1-tap instant secret pickup code.',
+                  'Need urgent pads at school? Get 1-tap secret pickup code.',
                   style: TextStyle(
                     color: _muted,
                     fontSize: 12,
@@ -8338,83 +8419,125 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                       ),
                     ),
                     Text(
-                      'Confidential & 100% Offline on your device',
+                      '100% On-Device · Never uploaded or shared',
                       style: TextStyle(color: _muted, fontSize: 11),
                     ),
                   ],
                 ),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: phaseColor.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
+              IconButton(
+                tooltip: _discreetCycleMode ? 'Show cycle details' : 'Hide cycle details (Discreet Mode)',
+                onPressed: () async {
+                  final next = !_discreetCycleMode;
+                  setState(() => _discreetCycleMode = next);
+                  try {
+                    final prefs = await SharedPreferences.getInstance();
+                    await prefs.setBool('padcare_discreet_cycle', next);
+                  } catch (_) {}
+                },
+                icon: Icon(
+                  _discreetCycleMode ? Icons.visibility_off_rounded : Icons.visibility_outlined,
+                  size: 19,
+                  color: _deepTeal,
                 ),
-                child: Text(
-                  phase,
-                  style: TextStyle(
-                    color: phaseColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w800,
+                visualDensity: VisualDensity.compact,
+              ),
+              if (!_discreetCycleMode)
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: phaseColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    phase,
+                    style: TextStyle(
+                      color: phaseColor,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ),
-              ),
             ],
           ),
           const SizedBox(height: 14),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFFFFDFE),
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _line),
-            ),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Day $cycleDay of $_cycleLengthDays',
-                      style: const TextStyle(
-                        color: _ink,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w900,
-                        fontFamily: _fontHeading,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      daysLeft <= 3 ? '⚠️ Period expected in $daysLeft day${daysLeft == 1 ? '' : 's'}!' : 'Next period in ~$daysLeft days',
-                      style: TextStyle(
-                        color: daysLeft <= 3 ? _green : _muted,
-                        fontSize: 12,
-                        fontWeight: daysLeft <= 3 ? FontWeight.w800 : FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: SizedBox(
-                    width: 70,
-                    height: 10,
-                    child: LinearProgressIndicator(
-                      value: (cycleDay / _cycleLengthDays).clamp(0.0, 1.0),
-                      backgroundColor: _greenPale,
-                      valueColor: AlwaysStoppedAnimation<Color>(phaseColor),
+          if (_discreetCycleMode) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF0FDF9),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: const Color(0xFF99F6E4)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.shield_rounded, color: _deepTeal, size: 20),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Privacy Shield active. Sensitive cycle dates are hidden from view. Tap the eye icon above to reveal.',
+                      style: TextStyle(color: _deepTeal, fontSize: 12, fontWeight: FontWeight.w600),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            phaseAdvice,
-            style: const TextStyle(color: _muted, fontSize: 12, height: 1.4),
-          ),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFFFFDFE),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: _line),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Day $cycleDay of $_cycleLengthDays',
+                        style: const TextStyle(
+                          color: _ink,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          fontFamily: _fontHeading,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        daysLeft <= 3 ? '⚠️ Period expected in $daysLeft day${daysLeft == 1 ? '' : 's'}!' : 'Next period in ~$daysLeft days',
+                        style: TextStyle(
+                          color: daysLeft <= 3 ? _green : _muted,
+                          fontSize: 12,
+                          fontWeight: daysLeft <= 3 ? FontWeight.w800 : FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: SizedBox(
+                      width: 70,
+                      height: 10,
+                      child: LinearProgressIndicator(
+                        value: (cycleDay / _cycleLengthDays).clamp(0.0, 1.0),
+                        backgroundColor: _greenPale,
+                        valueColor: AlwaysStoppedAnimation<Color>(phaseColor),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              phaseAdvice,
+              style: const TextStyle(color: _muted, fontSize: 12, height: 1.4),
+            ),
+          ],
           const SizedBox(height: 14),
           Row(
             children: [

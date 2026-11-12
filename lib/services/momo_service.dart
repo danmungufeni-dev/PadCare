@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'firebase_service.dart';
+import 'offline_queue_service.dart';
 
 /// PadCare Mobile Money & Community Sponsorship Service.
 /// 
@@ -32,22 +33,29 @@ class MoMoDonation {
 
   Map<String, dynamic> toJson() => {
     'id': id,
+    'donationId': id,
     'donorName': donorName,
     'phone': phone,
+    'amount': amountUgx,
     'amountUgx': amountUgx,
+    'currency': 'UGX',
+    'reference': id,
     'provider': provider,
     'sponsoredKits': sponsoredKits,
+    'kitsFunded': sponsoredKits,
     'status': status,
     'createdAt': createdAt.toIso8601String(),
+    if (AuthService.currentUser?.uid != null) 'sponsorUid': AuthService.currentUser!.uid,
+    if (AuthService.currentUser?.uid != null) 'uid': AuthService.currentUser!.uid,
   };
 
   factory MoMoDonation.fromJson(Map<String, dynamic> json) => MoMoDonation(
-    id: json['id'] as String? ?? '',
-    donorName: json['donorName'] as String? ?? 'Anonymous Donor',
+    id: json['id'] as String? ?? json['donationId'] as String? ?? '',
+    donorName: json['donorName'] as String? ?? json['sponsorName'] as String? ?? 'Anonymous Donor',
     phone: json['phone'] as String? ?? '',
-    amountUgx: (json['amountUgx'] as num?)?.toInt() ?? 3000,
-    provider: json['provider'] as String? ?? 'MTN Mobile Money',
-    sponsoredKits: (json['sponsoredKits'] as num?)?.toInt() ?? 1,
+    amountUgx: (json['amountUgx'] as num?)?.toInt() ?? (json['amount'] as num?)?.toInt() ?? 3000,
+    provider: json['provider'] as String? ?? json['paymentMethod'] as String? ?? 'MTN Mobile Money',
+    sponsoredKits: (json['sponsoredKits'] as num?)?.toInt() ?? (json['kitsFunded'] as num?)?.toInt() ?? 1,
     status: json['status'] as String? ?? 'completed',
     createdAt: DateTime.tryParse(json['createdAt'] as String? ?? '') ?? DateTime.now(),
   );
@@ -145,7 +153,17 @@ class MoMoService {
         return true;
       } catch (e) {
         debugPrint('MoMoService donation error: $e');
+        await OfflineQueueService.enqueue(
+          type: 'record_donation',
+          payload: donation.toJson(),
+        );
+        return true;
       }
+    } else {
+      await OfflineQueueService.enqueue(
+        type: 'record_donation',
+        payload: donation.toJson(),
+      );
     }
 
     return true; // Graceful success in offline mode

@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
 import '../services/firebase_service.dart';
@@ -510,137 +511,139 @@ class _LoginHeroState extends State<LoginHero> {
                       letterSpacing: -0.4,
                     ),
                   ),
-                  const SizedBox(height: 14),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE4F8F2),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: const Color(0xFFA5EAC5)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Row(
-                          children: [
-                            Icon(Icons.touch_app_rounded, size: 14, color: Color(0xFF116B78)),
-                            SizedBox(width: 5),
-                            Text(
-                              '1-Tap Quick Demo Logins',
-                              style: TextStyle(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                color: Color(0xFF116B78),
+                  if (kDebugMode || PadCareAuthNavigator.testMode) ...[
+                    const SizedBox(height: 14),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE4F8F2),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFA5EAC5)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(
+                            children: [
+                              Icon(Icons.touch_app_rounded, size: 14, color: Color(0xFF116B78)),
+                              SizedBox(width: 5),
+                              Text(
+                                '1-Tap Quick Demo Logins',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF116B78),
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: InkWell(
-                                onTap: () {
-                                  _emailController.text = 'devgtnation@gmail.com';
-                                  _passwordController.text = 'PadCare2026!';
-                                  _handleSignIn();
-                                },
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: const Color(0xFFDCECEB)),
-                                  ),
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.school_outlined, size: 14, color: Color(0xFF116B78)),
-                                      SizedBox(width: 6),
-                                      Flexible(
-                                        child: Text(
-                                          'Dan M. (Teacher)',
-                                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF172B36)),
-                                          overflow: TextOverflow.ellipsis,
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () {
+                                    _emailController.text = 'devgtnation@gmail.com';
+                                    _passwordController.text = 'PadCare2026!';
+                                    _handleSignIn();
+                                  },
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: const Color(0xFFDCECEB)),
+                                    ),
+                                    child: const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.school_outlined, size: 14, color: Color(0xFF116B78)),
+                                        SizedBox(width: 6),
+                                        Flexible(
+                                          child: Text(
+                                            'Dan M. (Teacher)',
+                                            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF172B36)),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: InkWell(
-                                onTap: () {
-                                  _emailController.text = 'abetinichlas@gmail.com';
-                                  _passwordController.text = 'PadCare2026!';
-                                  _handleSignIn();
-                                },
-                                borderRadius: BorderRadius.circular(10),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(color: const Color(0xFFDCECEB)),
-                                  ),
-                                  child: const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.family_restroom_outlined, size: 14, color: Color(0xFF116B78)),
-                                      SizedBox(width: 6),
-                                      Flexible(
-                                        child: Text(
-                                          'Nicholas A. (Parent)',
-                                          style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF172B36)),
-                                          overflow: TextOverflow.ellipsis,
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: InkWell(
+                                  onTap: () {
+                                    _emailController.text = 'abetinichlas@gmail.com';
+                                    _passwordController.text = 'PadCare2026!';
+                                    _handleSignIn();
+                                  },
+                                  borderRadius: BorderRadius.circular(10),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 8),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white,
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(color: const Color(0xFFDCECEB)),
+                                    ),
+                                    child: const Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.family_restroom_outlined, size: 14, color: Color(0xFF116B78)),
+                                        SizedBox(width: 6),
+                                        Flexible(
+                                          child: Text(
+                                            'Nicholas A. (Parent)',
+                                            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF172B36)),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        InkWell(
-                          key: const ValueKey('demo-ngo-chip'),
-                          onTap: () {
-                            _emailController.text = 'ngo@padcare.org';
-                            _passwordController.text = 'PadCare2026!';
-                            _handleSignIn();
-                          },
-                          borderRadius: BorderRadius.circular(10),
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFFE4F8F2),
-                              borderRadius: BorderRadius.circular(10),
-                              border: Border.all(color: const Color(0xFF35B9B4).withValues(alpha: 0.4)),
-                            ),
-                            child: const Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.handshake_outlined, size: 15, color: Color(0xFF116B78)),
-                                SizedBox(width: 6),
-                                Flexible(
-                                  child: Text(
-                                    'UNFPA / NGO Partner (Dashboard)',
-                                    style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF116B78)),
-                                    overflow: TextOverflow.ellipsis,
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          InkWell(
+                            key: const ValueKey('demo-ngo-chip'),
+                            onTap: () {
+                              _emailController.text = 'ngo@padcare.org';
+                              _passwordController.text = 'PadCare2026!';
+                              _handleSignIn();
+                            },
+                            borderRadius: BorderRadius.circular(10),
+                            child: Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFE4F8F2),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(color: const Color(0xFF35B9B4).withValues(alpha: 0.4)),
+                              ),
+                              child: const Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(Icons.handshake_outlined, size: 15, color: Color(0xFF116B78)),
+                                  SizedBox(width: 6),
+                                  Flexible(
+                                    child: Text(
+                                      'UNFPA / NGO Partner (Dashboard)',
+                                      style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700, color: Color(0xFF116B78)),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                ),
-                              ],
+                                ],
+                              ),
                             ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
                   if (_errorMessage != null) ...[
                     const SizedBox(height: 14),
                     Container(
@@ -807,123 +810,125 @@ class _LoginHeroState extends State<LoginHero> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 10),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: const Color(0xFFDCECEB)),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: Color(0x0A000000),
-                          blurRadius: 8,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: const [
-                            Icon(Icons.bolt_rounded, size: 16, color: Color(0xFF0D9488)),
-                            SizedBox(width: 5),
-                            Text(
-                              'Creator & Demo Access',
-                              style: TextStyle(
-                                color: Color(0xFF116B78),
-                                fontSize: 12,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 10),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () {
-                                  PadCareAuthNavigator.openApp(
-                                    context,
-                                    email: 'devgtnation@gmail.com',
-                                    role: 'teacher',
-                                    displayName: 'Dan Mungufeni (Lead Dev)',
-                                    photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
-                                  );
-                                },
-                                icon: const Icon(Icons.school_outlined, size: 15, color: Color(0xFF116B78)),
-                                label: const Text('Dan Mungufeni', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF172B36),
-                                  side: const BorderSide(color: Color(0xFFDCECEB)),
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  if (kDebugMode || PadCareAuthNavigator.testMode) ...[
+                    const SizedBox(height: 10),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: const Color(0xFFDCECEB)),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x0A000000),
+                            blurRadius: 8,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: const [
+                              Icon(Icons.bolt_rounded, size: 16, color: Color(0xFF0D9488)),
+                              SizedBox(width: 5),
+                              Text(
+                                'Creator & Demo Access',
+                                style: TextStyle(
+                                  color: Color(0xFF116B78),
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  letterSpacing: 0.3,
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              child: OutlinedButton.icon(
-                                onPressed: () {
-                                  PadCareAuthNavigator.openApp(
-                                    context,
-                                    email: 'abetinichlas@gmail.com',
-                                    role: 'parent',
-                                    displayName: 'Abeti Acadri Nicholas',
-                                    photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
-                                  );
-                                },
-                                icon: const Icon(Icons.family_restroom_outlined, size: 15, color: Color(0xFF116B78)),
-                                label: const Text('Abeti Nicholas', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
-                                style: OutlinedButton.styleFrom(
-                                  foregroundColor: const Color(0xFF172B36),
-                                  side: const BorderSide(color: Color(0xFFDCECEB)),
-                                  padding: const EdgeInsets.symmetric(vertical: 10),
-                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ],
+                          ),
+                          const SizedBox(height: 10),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    PadCareAuthNavigator.openApp(
+                                      context,
+                                      email: 'devgtnation@gmail.com',
+                                      role: 'teacher',
+                                      displayName: 'Dan Mungufeni (Lead Dev)',
+                                      photoUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+                                    );
+                                  },
+                                  icon: const Icon(Icons.school_outlined, size: 15, color: Color(0xFF116B78)),
+                                  label: const Text('Dan Mungufeni', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF172B36),
+                                    side: const BorderSide(color: Color(0xFFDCECEB)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
-                        Wrap(
-                          alignment: WrapAlignment.center,
-                          spacing: 6,
-                          children: [
-                            ActionChip(
-                              label: const Text('Fill Dan (devgtnation)', style: TextStyle(fontSize: 10.5, color: Color(0xFF116B78))),
-                              avatar: const Icon(Icons.school, size: 14, color: Color(0xFF116B78)),
-                              backgroundColor: const Color(0xFFE4F8F2),
-                              side: const BorderSide(color: Color(0xFFA5EAC5)),
-                              visualDensity: VisualDensity.compact,
-                              onPressed: () {
-                                setState(() {
-                                  _emailController.text = 'devgtnation@gmail.com';
-                                  _passwordController.text = 'PadCare2026!';
-                                });
-                              },
-                            ),
-                            ActionChip(
-                              label: const Text('Fill Nicholas (abeti)', style: TextStyle(fontSize: 10.5, color: Color(0xFF116B78))),
-                              avatar: const Icon(Icons.family_restroom, size: 14, color: Color(0xFF116B78)),
-                              backgroundColor: const Color(0xFFE4F8F2),
-                              side: const BorderSide(color: Color(0xFFA5EAC5)),
-                              visualDensity: VisualDensity.compact,
-                              onPressed: () {
-                                setState(() {
-                                  _emailController.text = 'abetinichlas@gmail.com';
-                                  _passwordController.text = 'PadCare2026!';
-                                });
-                              },
-                            ),
-                          ],
-                        ),
-                      ],
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed: () {
+                                    PadCareAuthNavigator.openApp(
+                                      context,
+                                      email: 'abetinichlas@gmail.com',
+                                      role: 'parent',
+                                      displayName: 'Abeti Acadri Nicholas',
+                                      photoUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80',
+                                    );
+                                  },
+                                  icon: const Icon(Icons.family_restroom_outlined, size: 15, color: Color(0xFF116B78)),
+                                  label: const Text('Abeti Nicholas', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF172B36),
+                                    side: const BorderSide(color: Color(0xFFDCECEB)),
+                                    padding: const EdgeInsets.symmetric(vertical: 10),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            alignment: WrapAlignment.center,
+                            spacing: 6,
+                            children: [
+                              ActionChip(
+                                label: const Text('Fill Dan (devgtnation)', style: TextStyle(fontSize: 10.5, color: Color(0xFF116B78))),
+                                avatar: const Icon(Icons.school, size: 14, color: Color(0xFF116B78)),
+                                backgroundColor: const Color(0xFFE4F8F2),
+                                side: const BorderSide(color: Color(0xFFA5EAC5)),
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () {
+                                  setState(() {
+                                    _emailController.text = 'devgtnation@gmail.com';
+                                    _passwordController.text = 'PadCare2026!';
+                                  });
+                                },
+                              ),
+                              ActionChip(
+                                label: const Text('Fill Nicholas (abeti)', style: TextStyle(fontSize: 10.5, color: Color(0xFF116B78))),
+                                avatar: const Icon(Icons.family_restroom, size: 14, color: Color(0xFF116B78)),
+                                backgroundColor: const Color(0xFFE4F8F2),
+                                side: const BorderSide(color: Color(0xFFA5EAC5)),
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () {
+                                  setState(() {
+                                    _emailController.text = 'abetinichlas@gmail.com';
+                                    _passwordController.text = 'PadCare2026!';
+                                  });
+                                },
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                  ],
             const Divider(height: 28),
             Wrap(
               alignment: WrapAlignment.center,
@@ -3068,93 +3073,118 @@ class Welcome extends StatelessWidget {
                     style: TextStyle(color: scheme.onPrimary),
                   ),
                 ),
-                const SizedBox(height: 10),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    color: scheme.onPrimary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Column(
-                    children: [
-                      Text(
-                        'Creator & Demo Access',
-                        style: TextStyle(
-                          color: scheme.onPrimary.withValues(alpha: 0.9),
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: 0.5,
+                if (kDebugMode || PadCareAuthNavigator.testMode) ...[
+                  const SizedBox(height: 10),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: scheme.onPrimary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'Creator & Demo Access',
+                          style: TextStyle(
+                            color: scheme.onPrimary.withValues(alpha: 0.9),
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w600,
+                            letterSpacing: 0.5,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                PadCareAuthNavigator.openApp(
-                                  context,
-                                  email: 'devgtnation@gmail.com',
-                                  role: 'teacher',
-                                  displayName: 'Dan Mungufeni',
-                                );
-                              },
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: scheme.onPrimary,
-                                side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
-                                padding: const EdgeInsets.symmetric(vertical: 9),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  PadCareAuthNavigator.openApp(
+                                    context,
+                                    email: 'devgtnation@gmail.com',
+                                    role: 'teacher',
+                                    displayName: 'Dan Mungufeni',
+                                  );
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: scheme.onPrimary,
+                                  side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
+                                  padding: const EdgeInsets.symmetric(vertical: 9),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                child: const Text('Dan M. (Teacher)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                               ),
-                              child: const Text('Dan M. (Teacher)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: OutlinedButton(
-                              onPressed: () {
-                                PadCareAuthNavigator.openApp(
-                                  context,
-                                  email: 'abetinichlas@gmail.com',
-                                  role: 'parent',
-                                  displayName: 'Nicholas Acadri',
-                                );
-                              },
-                              style: OutlinedButton.styleFrom(
-                                foregroundColor: scheme.onPrimary,
-                                side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
-                                padding: const EdgeInsets.symmetric(vertical: 9),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: () {
+                                  PadCareAuthNavigator.openApp(
+                                    context,
+                                    email: 'abetinichlas@gmail.com',
+                                    role: 'parent',
+                                    displayName: 'Nicholas Acadri',
+                                  );
+                                },
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: scheme.onPrimary,
+                                  side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
+                                  padding: const EdgeInsets.symmetric(vertical: 9),
+                                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                ),
+                                child: const Text('Nicholas A. (Parent)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                               ),
-                              child: const Text('Nicholas A. (Parent)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      SizedBox(
-                        width: double.infinity,
-                        child: OutlinedButton.icon(
-                          onPressed: () {
-                            PadCareAuthNavigator.openApp(
-                              context,
-                              email: 'ngo@padcare.org',
-                              role: 'ngo',
-                              displayName: 'UNFPA Uganda / NGO Partner',
-                            );
-                          },
-                          icon: const Icon(Icons.handshake_outlined, size: 15),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: scheme.onPrimary,
-                            side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
-                            padding: const EdgeInsets.symmetric(vertical: 9),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          label: const Text('UNFPA / NGO Partner (Dashboard)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ],
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 8),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton.icon(
+                            onPressed: () {
+                              PadCareAuthNavigator.openApp(
+                                context,
+                                email: 'ngo@padcare.org',
+                                role: 'ngo',
+                                displayName: 'UNFPA Uganda / NGO Partner',
+                              );
+                            },
+                            icon: const Icon(Icons.handshake_outlined, size: 15),
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: scheme.onPrimary,
+                              side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.6)),
+                              padding: const EdgeInsets.symmetric(vertical: 9),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            label: const Text('UNFPA / NGO Partner (Dashboard)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
+                ] else ...[
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        PadCareAuthNavigator.openApp(
+                          context,
+                          email: 'guest@padcare.org',
+                          role: 'parent',
+                          displayName: 'Guest Support Seeker',
+                        );
+                      },
+                      icon: const Icon(Icons.bolt_rounded, size: 18),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: scheme.onPrimary,
+                        side: BorderSide(color: scheme.onPrimary.withValues(alpha: 0.65)),
+                        padding: const EdgeInsets.symmetric(vertical: 13),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      label: const Text('Emergency Pad Access (No Account)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13.5)),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 8),
                 Wrap(
                   alignment: WrapAlignment.center,

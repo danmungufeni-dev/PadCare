@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/firebase_service.dart';
+import '../../services/offline_queue_service.dart';
 import '../../shared/widgets/brand_widgets.dart';
 
 const Color _ngoTeal = Color(0xFF116B78);
@@ -64,7 +65,12 @@ class _NgoDashboardScreenState extends State<NgoDashboardScreen>
 
   Future<void> _refreshData() async {
     setState(() => _isRefreshing = true);
-    await Future<void>.delayed(const Duration(milliseconds: 600));
+    try {
+      await Future.wait([
+        OfflineQueueService.flush(),
+        SchoolService.fetchSchoolNames(),
+      ]);
+    } catch (_) {}
     if (mounted) {
       setState(() => _isRefreshing = false);
       ScaffoldMessenger.of(context).showSnackBar(
@@ -843,8 +849,16 @@ Official Audit Verification Signed by PadCare Arua HQ
   // ---------------------------------------------------------------------------
   Widget _buildOverviewTab(List<DistributionRecordModel> dists, List<DonationModel> dons) {
     final totalDistributed = dists.fold<int>(0, (sum, d) => sum + d.quantity);
+    final totalPadsCount = dists.fold<int>(
+      0,
+      (sum, d) => sum + (d.productId.toLowerCase().contains('kit') ? d.quantity * 10 : d.quantity * 8),
+    );
     final totalFundsUGX = dons.fold<int>(0, (sum, d) => sum + d.amountUGX);
     final totalKitsFunded = dons.fold<int>(0, (sum, d) => sum + d.kitsFunded);
+    final verifiedDists = dists.where((d) => d.pickupPin.isNotEmpty && d.status == 'completed').length;
+    final integrityPct = dists.isEmpty
+        ? '100%'
+        : '${((verifiedDists / dists.length) * 100).toStringAsFixed(1)}%';
 
     return Center(
       child: ConstrainedBox(
@@ -873,17 +887,17 @@ Official Audit Verification Signed by PadCare Arua HQ
                       _buildMetricCard(
                         width: itemWidth,
                         title: 'Total Pads Distributed',
-                        value: '${totalDistributed * 24 + 14850}',
-                        unit: 'individual pads',
+                        value: '$totalPadsCount',
+                        unit: 'verified individual pads',
                         icon: Icons.inventory_2_outlined,
                         color: _ngoTeal,
-                        badge: '+1,240 this month',
+                        badge: '${dists.length} audit logs',
                       ),
                       _buildMetricCard(
                         width: itemWidth,
                         title: 'Dignity Kits Distributed',
-                        value: '${totalDistributed + 1840}',
-                        unit: 'kits to girls',
+                        value: '$totalDistributed',
+                        unit: 'kits & packs dispensed',
                         icon: Icons.health_and_safety_outlined,
                         color: const Color(0xFF0D9488),
                         badge: '100% PIN Verified',
@@ -891,20 +905,20 @@ Official Audit Verification Signed by PadCare Arua HQ
                       _buildMetricCard(
                         width: itemWidth,
                         title: 'Total Funding Raised',
-                        value: 'UGX ${(totalFundsUGX / 1000000).toStringAsFixed(1)}M',
-                        unit: '~\$${((totalFundsUGX + 33775000) / 3700).toStringAsFixed(0)} USD',
+                        value: 'UGX ${(totalFundsUGX / 1000000).toStringAsFixed(2)}M',
+                        unit: '~\$${(totalFundsUGX / 3700).toStringAsFixed(0)} USD ($totalKitsFunded kits)',
                         icon: Icons.account_balance_wallet_outlined,
                         color: const Color(0xFF16A34A),
-                        badge: 'Verified Grants & MoMo',
+                        badge: '${dons.length} verified records',
                       ),
                       _buildMetricCard(
                         width: itemWidth,
                         title: 'Fulfillment Integrity',
-                        value: '97.4%',
+                        value: integrityPct,
                         unit: 'redemption success',
                         icon: Icons.verified_user_outlined,
                         color: const Color(0xFF2563EB),
-                        badge: 'Zero Supply Leakage',
+                        badge: 'Documented PIN Audit',
                       ),
                     ],
                   );
@@ -922,79 +936,61 @@ Official Audit Verification Signed by PadCare Arua HQ
               const Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'Distribution Performance by School',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _ngoInk),
+                  Expanded(
+                    child: Text(
+                      'Distribution Performance by School',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: _ngoInk),
+                      overflow: TextOverflow.ellipsis,
+                    ),
                   ),
+                  SizedBox(width: 8),
                   Text(
-                    'Arua & West Nile',
+                    'Live Records',
                     style: TextStyle(fontSize: 12, color: _ngoMuted, fontWeight: FontWeight.w600),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
-              _buildSchoolPerformanceCard(
-                school: "St. Mary's Secondary",
-                padsGiven: 4200,
-                kitsGiven: 480,
-                stockOnHand: 320,
-                status: 'Healthy Stock',
-                statusColor: const Color(0xFF16A34A),
-                fulfillmentRate: '98.5%',
-              ),
-              _buildSchoolPerformanceCard(
-                school: 'Ediofe Girls School',
-                padsGiven: 3150,
-                kitsGiven: 390,
-                stockOnHand: 210,
-                status: 'Healthy Stock',
-                statusColor: const Color(0xFF16A34A),
-                fulfillmentRate: '96.8%',
-              ),
-              _buildSchoolPerformanceCard(
-                school: 'Muni Girls Secondary',
-                padsGiven: 2600,
-                kitsGiven: 310,
-                stockOnHand: 180,
-                status: 'Healthy Stock',
-                statusColor: const Color(0xFF16A34A),
-                fulfillmentRate: '99.1%',
-              ),
-              _buildSchoolPerformanceCard(
-                school: 'Mvara Secondary',
-                padsGiven: 2100,
-                kitsGiven: 260,
-                stockOnHand: 45,
-                status: 'Low Stock Alert',
-                statusColor: const Color(0xFFEAB308),
-                fulfillmentRate: '95.4%',
-              ),
-              _buildSchoolPerformanceCard(
-                school: 'Arua Public Primary',
-                padsGiven: 1400,
-                kitsGiven: 190,
-                stockOnHand: 120,
-                status: 'Healthy Stock',
-                statusColor: const Color(0xFF16A34A),
-                fulfillmentRate: '97.0%',
-              ),
-              _buildSchoolPerformanceCard(
-                school: 'Logiri Girls Secondary',
-                padsGiven: 850,
-                kitsGiven: 120,
-                stockOnHand: 18,
-                status: 'Critical Restock Needed',
-                statusColor: const Color(0xFFDC2626),
-                fulfillmentRate: '94.2%',
-              ),
-              _buildSchoolPerformanceCard(
-                school: 'Offaka Secondary',
-                padsGiven: 550,
-                kitsGiven: 90,
-                stockOnHand: 85,
-                status: 'Healthy Stock',
-                statusColor: const Color(0xFF16A34A),
-                fulfillmentRate: '98.0%',
+              StreamBuilder<List<SchoolModel>>(
+                stream: SchoolService.streamSchools(),
+                builder: (context, schoolSnap) {
+                  final schools = schoolSnap.data ?? [];
+                  if (schools.isEmpty) {
+                    return const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Text(
+                        'No verified partner schools registered yet.',
+                        style: TextStyle(color: _ngoMuted, fontSize: 13),
+                      ),
+                    );
+                  }
+                  return Column(
+                    children: schools.map((school) {
+                      final schoolDists = dists
+                          .where((d) => d.schoolName == school.name || d.schoolId == school.schoolId)
+                          .toList();
+                      final kitsGiven = schoolDists.fold<int>(0, (s, d) => s + d.quantity);
+                      final padsGiven = schoolDists.fold<int>(
+                        0,
+                        (s, d) => s + (d.productId.toLowerCase().contains('kit') ? d.quantity * 10 : d.quantity * 8),
+                      );
+                      final verified = schoolDists.where((d) => d.status == 'completed').length;
+                      final rate = schoolDists.isEmpty
+                          ? '100%'
+                          : '${((verified / schoolDists.length) * 100).toStringAsFixed(0)}%';
+                      final isActive = school.status == 'active';
+                      return _buildSchoolPerformanceCard(
+                        school: school.name,
+                        padsGiven: padsGiven,
+                        kitsGiven: kitsGiven,
+                        stockOnHand: schoolDists.length,
+                        status: isActive ? 'Verified Partner' : school.status.toUpperCase(),
+                        statusColor: isActive ? const Color(0xFF16A34A) : const Color(0xFFEAB308),
+                        fulfillmentRate: rate,
+                      );
+                    }).toList(),
+                  );
+                },
               ),
 
               const SizedBox(height: 20),

@@ -1436,12 +1436,14 @@ class FirestoreService {
         final schoolRef = _db!.collection('schools').doc(school);
         final schoolSnap = await transaction.get(schoolRef);
 
-        int currentKits = 100;
-        int currentPacks = 150;
+        int currentKits = 0;
+        int currentPacks = 0;
         if (schoolSnap.exists) {
           final sData = schoolSnap.data() ?? {};
-          currentKits = (sData['kitsOnHand'] as num?)?.toInt() ?? 100;
-          currentPacks = (sData['packsOnHand'] as num?)?.toInt() ?? 150;
+          currentKits = (sData['kitsOnHand'] as num?)?.toInt() ?? 0;
+          currentPacks = (sData['packsOnHand'] as num?)?.toInt() ?? 0;
+        } else {
+          throw Exception('No verified inventory record found for $school. Please record initial stock delivery before dispensing.');
         }
 
         final isKit = product.toLowerCase().contains('kit');

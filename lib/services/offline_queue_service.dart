@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_service.dart';
@@ -158,7 +159,24 @@ class OfflineQueueService {
               );
               success = res['success'] == true;
               break;
+            case 'record_donation':
+              final docId = task.payload['id']?.toString() ?? task.payload['donationId']?.toString() ?? '';
+              if (docId.isNotEmpty && FirebaseService.isFirebaseAvailable) {
+                await FirebaseFirestore.instance.collection('donations').doc(docId).set({
+                  ...task.payload,
+                  'updatedAt': FieldValue.serverTimestamp(),
+                }, SetOptions(merge: true));
+                success = true;
+              } else {
+                success = false;
+              }
+              break;
+            case 'record_dispensation':
+              await FirestoreService.recordDispensation(task.payload);
+              success = true;
+              break;
             default:
+              debugPrint('OfflineQueueService: Unknown task type ${task.type}');
               success = true;
           }
         } catch (e) {

@@ -19,19 +19,40 @@ try {
     Write-Host "Deploying to GitHub Pages (gh-pages branch)..." -ForegroundColor Cyan
     $tempDir = [System.IO.Path]::Combine([System.IO.Path]::GetTempPath(), "padcare-ghpages-" + [System.Guid]::NewGuid().ToString())
     New-Item -ItemType Directory -Path $tempDir -Force | Out-Null
-    Get-ChildItem -Path "build\web" -Exclude "padcare.apk" | Copy-Item -Destination $tempDir -Recurse -Force
 
     Push-Location $tempDir
     try {
-        git init | Out-Null
+        $cloneSuccess = $false
+        try {
+            git clone --depth 1 --branch gh-pages $originUrl .
+            $cloneSuccess = $true
+        } catch {
+            Write-Host "Could not shallow-clone gh-pages branch, initializing fresh branch..." -ForegroundColor Yellow
+            git init | Out-Null
+            git checkout -B gh-pages | Out-Null
+            git remote add origin $originUrl
+        }
+
         git config user.name "PadCare Team"
         git config user.email "dev@padcare.org"
         git config http.postBuffer 524288000
-        git checkout -B gh-pages | Out-Null
+        git config http.lowSpeedLimit 1000
+        git config http.lowSpeedTime 60
+
+        if ($cloneSuccess) {
+            Get-ChildItem -Path . -Exclude ".git" | Remove-Item -Recurse -Force
+        }
+
+        Get-ChildItem -Path "$repoRoot\build\web" | Where-Object { $_.Name -ne "padcare.apk" } | Copy-Item -Destination . -Recurse -Force
+
         git add -A
-        git commit -m "deploy: automated web build with auto-updated release APK integration" | Out-Null
-        git remote add origin $originUrl
-        git push -f origin gh-pages
+        $status = git status --porcelain
+        if ($status) {
+            git commit -m "deploy: automated web build with auto-updated release APK integration" | Out-Null
+            git push origin gh-pages
+        } else {
+            Write-Host "No changes detected on gh-pages." -ForegroundColor Green
+        }
         Write-Host "Successfully deployed to GitHub Pages!" -ForegroundColor Green
         Write-Host "Live Website: https://danmungufeni-dev.github.io/PadCare/" -ForegroundColor Green
         Write-Host "Direct Auto-Updated APK: https://github.com/danmungufeni-dev/PadCare/releases/latest/download/padcare.apk" -ForegroundColor Green

@@ -3,7 +3,12 @@ import 'dart:convert';
 import 'dart:html' as html;
 
 void openExternalUrl(String url) {
-  html.window.open(url, '_blank');
+  final lower = url.toLowerCase();
+  if (lower.startsWith('tel:') || lower.startsWith('sms:') || lower.startsWith('mailto:')) {
+    html.window.location.href = url;
+  } else {
+    html.window.open(url, '_blank');
+  }
 }
 
 void downloadCsvFile(String filename, String content) {

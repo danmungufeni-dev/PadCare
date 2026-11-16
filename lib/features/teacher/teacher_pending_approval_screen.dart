@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../services/communication_service.dart';
 import '../../services/firebase_service.dart';
 import '../../main.dart';
 
@@ -99,22 +100,77 @@ class _TeacherPendingApprovalScreenState extends State<TeacherPendingApprovalScr
                 color: const Color(0xFFF1F5F9),
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: const Column(
+              child: Column(
                 children: [
-                  Row(
-                    children: [
-                      Icon(Icons.phone_outlined, size: 18, color: Color(0xFF116B78)),
-                      SizedBox(width: 8),
-                      Text('+256 772 100 200', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                    ],
+                  InkWell(
+                    onTap: () => CommunicationService.showContactOptionsModal(
+                      context,
+                      phone: '+256 772 100 200',
+                      title: 'PadCare Admin Helpline',
+                      defaultMessage: 'Hello Admin! I am teacher ${widget.teacherName} requesting verification for ${widget.school}.',
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.phone_outlined, size: 18, color: Color(0xFF116B78)),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text('+256 772 100 200', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.chat_bubble_outline, size: 16, color: Colors.green),
+                            tooltip: 'WhatsApp',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => CommunicationService.openWhatsApp(
+                              context,
+                              '+256772100200',
+                              message: 'Hello Admin! I am teacher ${widget.teacherName} requesting verification for ${widget.school}.',
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.sms_outlined, size: 16, color: Color(0xFF7C3AED)),
+                            tooltip: 'SMS',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => CommunicationService.sendSms(
+                              context,
+                              '+256772100200',
+                              body: 'Hello Admin! I am teacher ${widget.teacherName} requesting verification for ${widget.school}.',
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.call, size: 16, color: Color(0xFF116B78)),
+                            tooltip: 'Call',
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => CommunicationService.makeCall(context, '+256772100200'),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
-                  SizedBox(height: 8),
-                  Row(
-                    children: [
-                      Icon(Icons.email_outlined, size: 18, color: Color(0xFF116B78)),
-                      SizedBox(width: 8),
-                      Text('admin@padcare.org', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                    ],
+                  const Divider(height: 12),
+                  InkWell(
+                    onTap: () => CommunicationService.promptEmailOptions(
+                      context,
+                      'admin@padcare.org',
+                      subject: 'Teacher Account Verification: ${widget.school}',
+                      body: 'Hello PadCare Admin team,\n\nI am teacher ${widget.teacherName} from ${widget.school}. Please verify my account.',
+                    ),
+                    borderRadius: BorderRadius.circular(8),
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          Icon(Icons.email_outlined, size: 18, color: Color(0xFF116B78)),
+                          SizedBox(width: 8),
+                          Expanded(
+                            child: Text('admin@padcare.org', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                          ),
+                          Text('Email / Gmail Web', style: TextStyle(color: Color(0xFF116B78), fontSize: 11, fontWeight: FontWeight.w700)),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),

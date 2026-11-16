@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../services/url_launcher_stub.dart'
-    if (dart.library.html) '../services/url_launcher_web.dart';
-import '../services/whatsapp_service.dart';
+import '../services/communication_service.dart';
 
 // ---------------------------------------------------------------------------
 // 1. AboutPage
@@ -266,26 +264,29 @@ class _ContactPageState extends State<ContactPage> {
   }
 
   void _launchEmail(String email) {
-    try {
-      openExternalUrl('mailto:$email?subject=${Uri.encodeComponent("PadCare Inquiry")}');
-    } catch (_) {}
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Opening email app for $email')),
+    CommunicationService.promptEmailOptions(
+      context,
+      email,
+      subject: 'PadCare Inquiry',
     );
   }
 
   void _launchPhone(String phone) {
-    try {
-      openExternalUrl('tel:$phone');
-    } catch (_) {}
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Calling $phone...')),
+    CommunicationService.makeCall(context, phone);
+  }
+
+  void _launchSms(String phone) {
+    CommunicationService.sendSms(
+      context,
+      phone,
+      body: 'Hello PadCare Helpline! I have an inquiry regarding community period care.',
     );
   }
 
   void _launchWhatsApp(String phone) {
-    WhatsAppService.launchMessage(
-      phone: phone,
+    CommunicationService.openWhatsApp(
+      context,
+      phone,
       message: 'Hello PadCare Team! I have an inquiry regarding community period care.',
     );
   }
@@ -372,53 +373,109 @@ class _ContactPageState extends State<ContactPage> {
                   ListTile(
                     leading: const Icon(Icons.email, color: Color(0xFF116B78)),
                     title: const Text('devgtnation@gmail.com'),
-                    subtitle: const Text('Lead Developer / GTNationDEV'),
-                    trailing: const Icon(Icons.send_rounded, size: 18),
+                    subtitle: const Text('Lead Developer / GTNationDEV  ·  Email App or Gmail Web'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.email_outlined, color: Color(0xFF116B78)),
+                          tooltip: 'Open in Email App',
+                          onPressed: () => CommunicationService.launchEmailApp(context, 'devgtnation@gmail.com', subject: 'PadCare Inquiry'),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.language_rounded, color: Color(0xFFDC2626)),
+                          tooltip: 'Open Gmail Website',
+                          onPressed: () => CommunicationService.launchGmailWeb(context, 'devgtnation@gmail.com', subject: 'PadCare Inquiry'),
+                        ),
+                      ],
+                    ),
                     onTap: () => _launchEmail('devgtnation@gmail.com'),
                   ),
                   const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.email_outlined, color: Color(0xFF116B78)),
                     title: const Text('abetinichlas@gmail.com'),
-                    subtitle: const Text('Operations & Community Support'),
-                    trailing: const Icon(Icons.send_rounded, size: 18),
+                    subtitle: const Text('Operations & Community Support  ·  Email App or Gmail Web'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.email_outlined, color: Color(0xFF116B78)),
+                          tooltip: 'Open in Email App',
+                          onPressed: () => CommunicationService.launchEmailApp(context, 'abetinichlas@gmail.com', subject: 'PadCare Inquiry'),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.language_rounded, color: Color(0xFFDC2626)),
+                          tooltip: 'Open Gmail Website',
+                          onPressed: () => CommunicationService.launchGmailWeb(context, 'abetinichlas@gmail.com', subject: 'PadCare Inquiry'),
+                        ),
+                      ],
+                    ),
                     onTap: () => _launchEmail('abetinichlas@gmail.com'),
                   ),
                   const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.phone, color: Color(0xFF116B78)),
                     title: const Text('+256 778 625 624'),
-                    subtitle: const Text('Call or WhatsApp helpline'),
+                    subtitle: const Text('Call, SMS, or WhatsApp helpline'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
                           icon: const Icon(Icons.chat_bubble_outline, color: Colors.green),
-                          onPressed: () => _launchWhatsApp('256778625624'),
+                          onPressed: () => _launchWhatsApp('+256778625624'),
                           tooltip: 'WhatsApp chat',
                         ),
-                        const Icon(Icons.call, size: 18),
+                        IconButton(
+                          icon: const Icon(Icons.sms_outlined, color: Color(0xFF7C3AED)),
+                          onPressed: () => _launchSms('+256778625624'),
+                          tooltip: 'SMS message app',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.call, color: Color(0xFF116B78)),
+                          onPressed: () => _launchPhone('+256778625624'),
+                          tooltip: 'Phone call app',
+                        ),
                       ],
                     ),
-                    onTap: () => _launchPhone('+256778625624'),
+                    onTap: () => CommunicationService.showContactOptionsModal(
+                      context,
+                      phone: '+256 778 625 624',
+                      title: 'PadCare Primary Helpline',
+                      defaultMessage: 'Hello PadCare Helpline! I need support regarding sanitary pad distribution.',
+                    ),
                   ),
                   const Divider(height: 1),
                   ListTile(
                     leading: const Icon(Icons.phone_in_talk, color: Color(0xFF116B78)),
                     title: const Text('+256 783 669 967'),
-                    subtitle: const Text('Secondary helpline / Support'),
+                    subtitle: const Text('Call, SMS, or WhatsApp secondary helpline'),
                     trailing: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         IconButton(
                           icon: const Icon(Icons.chat_bubble_outline, color: Colors.green),
-                          onPressed: () => _launchWhatsApp('256783669967'),
+                          onPressed: () => _launchWhatsApp('+256783669967'),
                           tooltip: 'WhatsApp chat',
                         ),
-                        const Icon(Icons.call, size: 18),
+                        IconButton(
+                          icon: const Icon(Icons.sms_outlined, color: Color(0xFF7C3AED)),
+                          onPressed: () => _launchSms('+256783669967'),
+                          tooltip: 'SMS message app',
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.call, color: Color(0xFF116B78)),
+                          onPressed: () => _launchPhone('+256783669967'),
+                          tooltip: 'Phone call app',
+                        ),
                       ],
                     ),
-                    onTap: () => _launchPhone('+256783669967'),
+                    onTap: () => CommunicationService.showContactOptionsModal(
+                      context,
+                      phone: '+256 783 669 967',
+                      title: 'PadCare Secondary Helpline',
+                      defaultMessage: 'Hello PadCare Support! I need assistance with period equity.',
+                    ),
                   ),
                 ],
               ),
@@ -604,26 +661,29 @@ class TeamPage extends StatelessWidget {
   const TeamPage({super.key});
 
   void _openEmail(BuildContext context, String email) {
-    try {
-      openExternalUrl('mailto:$email?subject=${Uri.encodeComponent("PadCare Collaboration")}');
-    } catch (_) {}
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Opening email app for $email')),
+    CommunicationService.promptEmailOptions(
+      context,
+      email,
+      subject: 'PadCare Collaboration',
     );
   }
 
   void _openPhone(BuildContext context, String phone) {
-    try {
-      openExternalUrl('tel:$phone');
-    } catch (_) {}
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Calling $phone...')),
+    CommunicationService.makeCall(context, phone);
+  }
+
+  void _openSms(BuildContext context, String phone) {
+    CommunicationService.sendSms(
+      context,
+      phone,
+      body: 'Hello! Reaching out regarding the PadCare initiative in Uganda.',
     );
   }
 
-  void _openWhatsApp(String phone) {
-    WhatsAppService.launchMessage(
-      phone: phone,
+  void _openWhatsApp(BuildContext context, String phone) {
+    CommunicationService.openWhatsApp(
+      context,
+      phone,
       message: 'Hello! I am reaching out regarding the PadCare initiative in Uganda.',
     );
   }
@@ -775,32 +835,36 @@ class TeamPage extends StatelessWidget {
                     const SizedBox(height: 14),
                     const Divider(height: 1),
                     const SizedBox(height: 10),
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _openEmail(context, email),
-                            icon: const Icon(Icons.email_outlined, size: 16),
-                            label: const Text('Email', style: TextStyle(fontSize: 12)),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                            ),
+                        OutlinedButton.icon(
+                          onPressed: () => _openEmail(context, email),
+                          icon: const Icon(Icons.email_outlined, size: 15),
+                          label: const Text('Email', style: TextStyle(fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           ),
                         ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => _openPhone(context, phone),
-                            icon: const Icon(Icons.phone_outlined, size: 16),
-                            label: const Text('Call', style: TextStyle(fontSize: 12)),
-                            style: OutlinedButton.styleFrom(
-                              padding: const EdgeInsets.symmetric(vertical: 8),
-                            ),
+                        OutlinedButton.icon(
+                          onPressed: () => _openPhone(context, phone),
+                          icon: const Icon(Icons.phone_outlined, size: 15),
+                          label: const Text('Call', style: TextStyle(fontSize: 12)),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                           ),
                         ),
-                        const SizedBox(width: 8),
+                        OutlinedButton.icon(
+                          onPressed: () => _openSms(context, phone),
+                          icon: const Icon(Icons.sms_outlined, size: 15, color: Color(0xFF7C3AED)),
+                          label: const Text('Message', style: TextStyle(fontSize: 12, color: Color(0xFF7C3AED))),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                          ),
+                        ),
                         IconButton(
-                          onPressed: () => _openWhatsApp(phone),
+                          onPressed: () => _openWhatsApp(context, phone),
                           icon: const Icon(Icons.chat_bubble_outline, color: Colors.green),
                           tooltip: 'Chat on WhatsApp',
                           style: IconButton.styleFrom(

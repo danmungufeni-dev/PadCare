@@ -9,6 +9,7 @@ import 'services/geo_service.dart';
 import 'services/momo_service.dart';
 import 'services/offline_queue_service.dart';
 import 'services/pwa_service.dart';
+import 'services/communication_service.dart';
 import 'services/whatsapp_service.dart';
 import 'services/url_launcher_stub.dart'
     if (dart.library.html) 'services/url_launcher_web.dart';
@@ -7261,37 +7262,86 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   style: TextStyle(color: _ink, fontWeight: FontWeight.w800, fontSize: 16),
                 ),
                 const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFE4F0EE)),
+                InkWell(
+                  onTap: () => CommunicationService.showContactOptionsModal(
+                    context,
+                    phone: point.phone,
+                    title: point.name,
+                    defaultMessage: 'Hello! I am reaching out regarding menstrual hygiene support at ${point.name}.',
                   ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.phone_outlined, color: _deepTeal, size: 18),
-                      const SizedBox(width: 10),
-                      Text(
-                        point.phone,
-                        style: const TextStyle(color: _ink, fontWeight: FontWeight.w700, fontSize: 13),
-                      ),
-                      const Spacer(),
-                      FilledButton.tonal(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Dialing ${point.phone}...')),
-                          );
-                        },
-                        style: FilledButton.styleFrom(
-                          backgroundColor: const Color(0xFFE4F8F2),
-                          foregroundColor: _deepTeal,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          visualDensity: VisualDensity.compact,
+                  borderRadius: BorderRadius.circular(14),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFFE4F0EE)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            const Icon(Icons.phone_outlined, color: _deepTeal, size: 18),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                point.phone,
+                                style: const TextStyle(color: _ink, fontWeight: FontWeight.w700, fontSize: 13),
+                              ),
+                            ),
+                          ],
                         ),
-                        child: const Text('Call', style: TextStyle(fontWeight: FontWeight.w800)),
-                      ),
-                    ],
+                        const SizedBox(height: 10),
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children: [
+                            FilledButton.tonalIcon(
+                              onPressed: () => CommunicationService.makeCall(context, point.phone),
+                              icon: const Icon(Icons.call, size: 14),
+                              label: const Text('Call', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFFE4F8F2),
+                                foregroundColor: _deepTeal,
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                            FilledButton.tonalIcon(
+                              onPressed: () => CommunicationService.sendSms(
+                                context,
+                                point.phone,
+                                body: 'Hello! Inquiring about PadCare supplies at ${point.name}.',
+                              ),
+                              icon: const Icon(Icons.sms_outlined, size: 14),
+                              label: const Text('SMS', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFFEDE9FE),
+                                foregroundColor: const Color(0xFF7C3AED),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                            FilledButton.tonalIcon(
+                              onPressed: () => CommunicationService.openWhatsApp(
+                                context,
+                                point.phone,
+                                message: 'Hello! Inquiring about PadCare supplies at ${point.name}.',
+                              ),
+                              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 14),
+                              label: const Text('WhatsApp', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFFDCFCE7),
+                                foregroundColor: const Color(0xFF15803D),
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                visualDensity: VisualDensity.compact,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 14),
@@ -9765,11 +9815,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 ),
               ),
               FilledButton.tonal(
-                onPressed: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Calling Arua Adolescent Health Helpline: 0800 200 600...')),
-                  );
-                },
+                onPressed: () => CommunicationService.makeCall(context, '0800200600'),
                 style: FilledButton.styleFrom(
                   backgroundColor: _deepTeal,
                   foregroundColor: Colors.white,
@@ -10217,6 +10263,55 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   value: '$_userEmergencyContact (${_userEmergencyPhone.isNotEmpty ? _userEmergencyPhone : 'No phone'})',
                   onTap: _openEditIndividualDetailsModal,
                 ),
+                if (_userEmergencyPhone.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, left: 28),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
+                        FilledButton.tonalIcon(
+                          onPressed: () => CommunicationService.makeCall(context, _userEmergencyPhone),
+                          icon: const Icon(Icons.call, size: 13),
+                          label: const Text('Call', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                        FilledButton.tonalIcon(
+                          onPressed: () => CommunicationService.sendSms(
+                            context,
+                            _userEmergencyPhone,
+                            body: 'Hello $_userEmergencyContact! This is $_userDisplayName reaching out from PadCare.',
+                          ),
+                          icon: const Icon(Icons.sms_outlined, size: 13),
+                          label: const Text('SMS', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFEDE9FE),
+                            foregroundColor: const Color(0xFF7C3AED),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                        FilledButton.tonalIcon(
+                          onPressed: () => CommunicationService.openWhatsApp(
+                            context,
+                            _userEmergencyPhone,
+                            message: 'Hello $_userEmergencyContact! This is $_userDisplayName reaching out from PadCare.',
+                          ),
+                          icon: const Icon(Icons.chat_bubble_outline_rounded, size: 13),
+                          label: const Text('WhatsApp', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700)),
+                          style: FilledButton.styleFrom(
+                            backgroundColor: const Color(0xFFDCFCE7),
+                            foregroundColor: const Color(0xFF15803D),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            visualDensity: VisualDensity.compact,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
               ],
               const SizedBox(height: 8),
               _buildProfileDetailRow(

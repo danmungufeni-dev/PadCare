@@ -432,6 +432,16 @@ void main() {
       expect(find.text('Abeti Nicholas'), findsOneWidget);
     });
 
+    testWidgets('LoginHero does not display magic link, pin lock, or biometrics buttons', (
+      tester,
+    ) async {
+      await tester.pumpWidget(testWrapper(const LoginHero()));
+
+      expect(find.text('Magic link'), findsNothing);
+      expect(find.text('PIN lock'), findsNothing);
+      expect(find.text('Biometrics'), findsNothing);
+    });
+
     testWidgets('SignupTerms displays avatar selector and saves profile with photo', (
       tester,
     ) async {

@@ -931,46 +931,6 @@ class _LoginHeroState extends State<LoginHero> {
                       ),
                     ),
                   ],
-            const Divider(height: 28),
-            Wrap(
-              alignment: WrapAlignment.center,
-              spacing: 8,
-              children: [
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const MagicLink(),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.auto_awesome, size: 18),
-                  label: const Text('Magic link'),
-                ),
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const PinLock(),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.pin, size: 18),
-                  label: const Text('PIN lock'),
-                ),
-                TextButton.icon(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute<void>(
-                        builder: (_) => const BiometricUnlock(),
-                      ),
-                    );
-                  },
-                  icon: const Icon(Icons.fingerprint, size: 18),
-                  label: const Text('Biometrics'),
-                ),
-              ],
-            ),
             const SizedBox(height: 16),
           ],
         ),

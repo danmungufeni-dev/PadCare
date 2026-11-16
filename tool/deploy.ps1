@@ -26,6 +26,7 @@ try {
         git init | Out-Null
         git config user.name "PadCare Team"
         git config user.email "dev@padcare.org"
+        git config http.postBuffer 524288000
         git checkout -B gh-pages | Out-Null
         git add -A
         git commit -m "deploy: automated web build with auto-updated release APK integration" | Out-Null

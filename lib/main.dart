@@ -21,6 +21,7 @@ import 'features/inventory/dispense_confirmation_dialog.dart';
 import 'features/ngo/ngo_dashboard_screen.dart';
 import 'features/map/arua_map.dart';
 import 'features/splash/splash_screen.dart';
+import 'features/ai_assistant/ai_assistant_screen.dart';
 
 export 'auth/auth_screens.dart';
 export 'info/info_screens.dart';
@@ -30,6 +31,8 @@ export 'features/inventory/dispense_confirmation_dialog.dart';
 export 'features/ngo/ngo_dashboard_screen.dart';
 export 'features/map/arua_map.dart';
 export 'features/splash/splash_screen.dart';
+export 'features/ai_assistant/ai_assistant_screen.dart';
+export 'services/ai_assistant_service.dart';
 export 'shared/widgets/brand_widgets.dart';
 
 typedef _Supply = Supply;
@@ -3598,6 +3601,59 @@ class _HomeScreenState extends State<HomeScreen> {
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                 ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0FAF7),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFD6ECE6)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE4F8F2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.favorite_rounded, color: _deepTeal, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PadCare Companion AI',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: _ink),
+                    ),
+                    Text(
+                      'Counseling & hygiene guidance for students',
+                      style: TextStyle(fontSize: 11, color: _muted),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  backgroundColor: _deepTeal,
+                  foregroundColor: Colors.white,
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const AiAssistantScreen(),
+                    ),
+                  );
+                },
+                child: const Text('Ask AI', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -8148,6 +8204,25 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
           ),
         ],
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        key: const ValueKey('ask-ai-fab'),
+        onPressed: _openAiAssistant,
+        backgroundColor: _deepTeal,
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.favorite_rounded, size: 20),
+        label: const Text('Ask AI', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13)),
+      ),
+    );
+  }
+
+  void _openAiAssistant() {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => AiAssistantScreen(
+          onFindPadsRequested: () => setState(() => _selectedIndex = 1),
+          onCycleTrackerRequested: () => setState(() => _selectedIndex = 0),
+        ),
+      ),
     );
   }
 
@@ -8552,10 +8627,65 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             ],
           ),
         ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFF0FAF7),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFD6ECE6)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE4F8F2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Icon(Icons.favorite_rounded, color: _deepTeal, size: 20),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'PadCare Companion AI',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: _ink),
+                    ),
+                    Text(
+                      'Counseling & hygiene guidance for students',
+                      style: TextStyle(fontSize: 11, color: _muted),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton.tonal(
+                style: FilledButton.styleFrom(
+                  backgroundColor: _deepTeal,
+                  foregroundColor: Colors.white,
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
+                onPressed: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute<void>(
+                      builder: (_) => const AiAssistantScreen(),
+                    ),
+                  );
+                },
+                child: const Text('Ask AI', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 14),
         _buildEmergencySOSCard(),
         const SizedBox(height: 14),
         _buildCyclePredictorCard(),
+        const SizedBox(height: 14),
+        _buildAiCompanionCard(),
         const SizedBox(height: 22),
         const Text(
           'Explore Categories',
@@ -8621,20 +8751,21 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             borderRadius: BorderRadius.circular(18),
             border: Border.all(color: const Color(0xFFC8EBE1)),
           ),
-          child: Row(
+          child: Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              const Expanded(
-                child: Text(
-                  'Every act of care\nmakes a difference.',
-                  style: TextStyle(
-                    color: _ink,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    height: 1.25,
-                  ),
+              const Text(
+                'Every act of care\nmakes a difference.',
+                style: TextStyle(
+                  color: _ink,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  height: 1.25,
                 ),
               ),
-              const SizedBox(width: 8),
               ElevatedButton(
                 onPressed: _openDonationSheet,
                 style: ElevatedButton.styleFrom(
@@ -8974,6 +9105,133 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 ),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAiCompanionCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(color: const Color(0xFFD6F0EA)),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x0C000000),
+            blurRadius: 10,
+            offset: Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(9),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE4F8F2),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFFA5EAC5)),
+                ),
+                child: const Icon(Icons.favorite_rounded, color: _deepTeal, size: 22),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Text(
+                          'PadCare Companion',
+                          style: TextStyle(
+                            fontSize: 15.5,
+                            fontWeight: FontWeight.w800,
+                            color: _ink,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFE4F8F2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFFA5EAC5)),
+                          ),
+                          child: const Text(
+                            'AI Guide',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
+                              color: _deepTeal,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 2),
+                    const Text(
+                      '100% Confidential • Stigma-free health & hygiene guidance',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: Color(0xFF6B8487),
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Text(
+            'Ask private questions about painful cramps, cycle irregularities, hygiene, or where to find free emergency pads.',
+            style: TextStyle(fontSize: 13, color: _ink, height: 1.35),
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            children: [
+              '🩸 Relieving cramps',
+              '🎒 Period started in class',
+              '🕒 How often to change',
+              '📍 Finding free pads',
+            ].map((topic) {
+              return ActionChip(
+                label: Text(topic, style: const TextStyle(fontSize: 11, color: _deepTeal, fontWeight: FontWeight.w600)),
+                backgroundColor: const Color(0xFFF7FCFA),
+                side: const BorderSide(color: Color(0xFFD6F0EA)),
+                visualDensity: VisualDensity.compact,
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                onPressed: _openAiAssistant,
+              );
+            }).toList(),
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              key: const ValueKey('chat-ai-companion-btn'),
+              onPressed: _openAiAssistant,
+              style: FilledButton.styleFrom(
+                backgroundColor: _deepTeal,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              icon: const Icon(Icons.chat_bubble_outline_rounded, size: 17),
+              label: const Text(
+                'Chat Confidentially with AI Companion',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+              ),
+            ),
           ),
         ],
       ),
@@ -9823,6 +10081,45 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   visualDensity: VisualDensity.compact,
                 ),
                 child: const Text('Call', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 12)),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xFFE4F8F2),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0xFFA5EAC5)),
+          ),
+          child: Row(
+            children: [
+              const Icon(Icons.favorite_rounded, color: _deepTeal, size: 22),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Have personal health questions?',
+                      style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: _deepTeal),
+                    ),
+                    Text(
+                      'Chat privately with PadCare AI Companion',
+                      style: TextStyle(fontSize: 11.5, color: Color(0xFF456166)),
+                    ),
+                  ],
+                ),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: _deepTeal,
+                  visualDensity: VisualDensity.compact,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                ),
+                onPressed: _openAiAssistant,
+                child: const Text('Ask AI', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
               ),
             ],
           ),

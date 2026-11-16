@@ -44,6 +44,7 @@ dependencies:
   latlong2: ^0.10.1
   crypto: ^3.0.6
   url_launcher: ^6.3.3
+  http: ^1.2.0
 
 dev_dependencies:
   flutter_test:

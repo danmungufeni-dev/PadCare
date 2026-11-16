@@ -178,10 +178,10 @@ void main() {
       }
     });
 
-    testWidgets('Demo teacher Dan Mungufeni logs in directly as verified staff', (tester) async {
+    testWidgets('Demo teacher Dan Mungufeni logs in directly as verified staff with valid password', (tester) async {
       final result = await AuthService.signIn(
         email: 'devgtnation@gmail.com',
-        password: 'anyPassword123',
+        password: 'PadCare2026!',
       );
       expect(result.isSuccess, isTrue);
       expect(result.profile?.authorized, isTrue);
@@ -201,6 +201,22 @@ void main() {
 
       expect(find.textContaining('Verified School Staff: Dan Mungufeni'), findsOneWidget);
       expect(find.textContaining('Identity not yet confirmed'), findsNothing);
+    });
+
+    test('Demo account strictly rejects incorrect password', () async {
+      final badResult = await AuthService.signIn(
+        email: 'devgtnation@gmail.com',
+        password: 'wrongPassword123!',
+      );
+      expect(badResult.isSuccess, isFalse);
+      expect(badResult.errorMessage, contains('Invalid email or password'));
+
+      final badResultNicholas = await AuthService.signIn(
+        email: 'abetinichlas@gmail.com',
+        password: 'anyInvalidPassword',
+      );
+      expect(badResultNicholas.isSuccess, isFalse);
+      expect(badResultNicholas.errorMessage, contains('Invalid email or password'));
     });
   });
 }

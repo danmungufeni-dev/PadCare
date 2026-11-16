@@ -440,10 +440,10 @@ void main() {
       expect(find.text('Profile Avatar (Synced with Firebase Storage)'), findsOneWidget);
     });
 
-    test('AuthService demo sign in returns UserProfile and photoUrl', () async {
+    test('AuthService demo sign in returns UserProfile and photoUrl with valid password', () async {
       final resultDan = await AuthService.signIn(
         email: 'devgtnation@gmail.com',
-        password: 'any',
+        password: 'PadCare2026!',
       );
       expect(resultDan.isSuccess, isTrue);
       expect(resultDan.photoUrl, isNotNull);
@@ -452,12 +452,53 @@ void main() {
 
       final resultNicholas = await AuthService.signIn(
         email: 'abetinichlas@gmail.com',
-        password: 'any',
+        password: 'PadCare2026!',
       );
       expect(resultNicholas.isSuccess, isTrue);
       expect(resultNicholas.photoUrl, isNotNull);
       expect(resultNicholas.profile?.role, equals('parent'));
       expect(resultNicholas.profile?.displayName, contains('Nicholas'));
+    });
+
+    test('AuthService strictly rejects wrong password for demo and regular accounts', () async {
+      // Demo email with wrong password
+      final wrongDemoResult = await AuthService.signIn(
+        email: 'devgtnation@gmail.com',
+        password: 'WrongPassword999!',
+      );
+      expect(wrongDemoResult.isSuccess, isFalse);
+      expect(wrongDemoResult.errorMessage, contains('Invalid email or password'));
+
+      // Empty password
+      final emptyPwdResult = await AuthService.signIn(
+        email: 'devgtnation@gmail.com',
+        password: '',
+      );
+      expect(emptyPwdResult.isSuccess, isFalse);
+
+      // Offline registered account password verification
+      final regResult = await AuthService.register(
+        email: 'teacher.uganda@padcare.org',
+        password: 'MySecretPassword123!',
+        displayName: 'Uganda Teacher',
+        role: 'teacher',
+      );
+      expect(regResult.isSuccess, isTrue);
+
+      // Sign in with correct password
+      final validLogin = await AuthService.signIn(
+        email: 'teacher.uganda@padcare.org',
+        password: 'MySecretPassword123!',
+      );
+      expect(validLogin.isSuccess, isTrue);
+
+      // Sign in with WRONG password
+      final invalidLogin = await AuthService.signIn(
+        email: 'teacher.uganda@padcare.org',
+        password: 'IncorrectPassword!',
+      );
+      expect(invalidLogin.isSuccess, isFalse);
+      expect(invalidLogin.errorMessage, contains('Invalid email or password'));
     });
 
     test('StorageService handles avatar upload and caching safely', () async {
@@ -525,6 +566,39 @@ void main() {
       await tester.tap(find.text('Dan M. (Teacher)'));
       await tester.pump();
       expect(find.text('devgtnation@gmail.com'), findsOneWidget);
+    });
+
+    testWidgets('LoginHero displays error when wrong password is submitted with correct email', (tester) async {
+      tester.view.physicalSize = const Size(800, 1400);
+      addTearDown(tester.view.resetPhysicalSize);
+
+      bool loginSucceeded = false;
+      await tester.pumpWidget(
+        testWrapper(
+          LoginHero(
+            onLoginSuccess: () => loginSucceeded = true,
+          ),
+        ),
+      );
+
+      // Enter valid demo email with incorrect password
+      final emailFields = find.byType(TextField);
+      expect(emailFields, findsNWidgets(2)); // email and password
+
+      await tester.enterText(emailFields.at(0), 'devgtnation@gmail.com');
+      await tester.enterText(emailFields.at(1), 'wrongPassword999!');
+      await tester.pump();
+
+      // Tap Sign In button
+      final signInButton = find.widgetWithText(FilledButton, 'Sign in');
+      await tester.ensureVisible(signInButton);
+      await tester.tap(signInButton);
+      await tester.pumpAndSettle();
+
+      // Must NOT succeed
+      expect(loginSucceeded, isFalse);
+      // Must show error message
+      expect(find.textContaining('Invalid email or password'), findsOneWidget);
     });
 
     testWidgets('EmailVerification renders email and blocks unverified progression', (tester) async {

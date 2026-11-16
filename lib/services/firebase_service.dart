@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../firebase_options.dart';
 import 'school_service.dart';
 
@@ -331,48 +332,93 @@ class AuthService {
     return const Stream.empty();
   }
 
-  /// Signs in using Firebase Auth, or graceful local mock if offline/not configured.
+  /// Authorized demo passwords accepted for pre-verified demo accounts.
+  /// Stored as SHA-256 hashes to prevent plaintext credentials in the client binary.
+  static const Set<String> _authorizedDemoPasswordHashes = {
+    '7681e4797ec6609ac4f28d341bfbf3b4df0fc3b91306c3a8b0ace80137ff2669', // Hash of PadCare2026!
+    'd183b094de34be54653c50cc8f5d61beee291aafacde852cbbc67dbf74e14330', // Hash of PadCareAdmin@2026
+    '6e05cd72f90e7ed4b215f7c8f9852aea933cee4604b1ac1d0634cab48f213ee6', // Hash of PadCareAdmin2026
+    'cd9a43b18e7db05fb6c608f773ef5ec388c4b1f508c71f5f569585759e1ea2ff', // Hash of padcare@admin2026
+  };
+
+  /// In-memory password hash cache for testing and fast offline verification
+  static final Map<String, String> _memoryPasswordHashes = {};
+
+  /// Checks if the provided password matches an authorized demo account password.
+  static bool isAuthorizedDemoPassword(String password) {
+    final clean = password.trim();
+    if (clean.isEmpty) return false;
+    final hash = sha256.convert(utf8.encode(clean)).toString();
+    return _authorizedDemoPasswordHashes.contains(hash);
+  }
+
+  /// Caches password hash locally for offline login validation.
+  static Future<void> _saveOfflinePasswordHash(String email, String password) async {
+    final cleanEmail = email.trim().toLowerCase();
+    final cleanPwd = password.trim();
+    if (cleanEmail.isEmpty || cleanPwd.isEmpty) return;
+    final hash = sha256.convert(utf8.encode(cleanPwd)).toString();
+    _memoryPasswordHashes[cleanEmail] = hash;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('offline_pwd_hash_$cleanEmail', hash);
+    } catch (_) {}
+  }
+
+  /// Validates password hash for offline logins.
+  static Future<bool> verifyOfflinePassword(String email, String password) async {
+    final cleanEmail = email.trim().toLowerCase();
+    final cleanPwd = password.trim();
+    if (cleanEmail.isEmpty || cleanPwd.isEmpty) return false;
+    final hash = sha256.convert(utf8.encode(cleanPwd)).toString();
+
+    // Check memory cache first
+    if (_memoryPasswordHashes.containsKey(cleanEmail)) {
+      return _memoryPasswordHashes[cleanEmail] == hash;
+    }
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final storedHash = prefs.getString('offline_pwd_hash_$cleanEmail');
+      if (storedHash != null) {
+        _memoryPasswordHashes[cleanEmail] = storedHash;
+        return storedHash == hash;
+      }
+    } catch (_) {}
+
+    return false;
+  }
+
+  /// Signs in using Firebase Auth, or verified credentials if offline/demo.
+  /// Never permits login with an incorrect password.
   static Future<AuthResult> signIn({
     required String email,
     required String password,
   }) async {
     final cleanEmail = email.trim();
+    final cleanPassword = password.trim();
+
     if (cleanEmail.isEmpty) {
       return const AuthResult(
         isSuccess: false,
         errorMessage: 'Please enter a valid email address.',
       );
     }
-    if (password.trim().isEmpty) {
+    if (cleanPassword.isEmpty) {
       return const AuthResult(
         isSuccess: false,
         errorMessage: 'Please enter your password.',
       );
     }
 
-    // Demo account bypass for evaluations, tests, and offline field demos
     final lowerEmail = cleanEmail.toLowerCase();
-    if (FirestoreService.isPreverifiedDemoEmail(lowerEmail)) {
-      final demoProfile = FirestoreService.getPreverifiedDemoProfile(lowerEmail)!;
-      await FirestoreService.saveUserProfile(demoProfile);
-      if (demoProfile.photoUrl != null) {
-        StorageService.setCachedAvatar(cleanEmail, demoProfile.photoUrl!);
-        StorageService.setCachedAvatar(demoProfile.uid, demoProfile.photoUrl!);
-        StorageService.setCachedAvatar('demo-$cleanEmail', demoProfile.photoUrl!);
-      }
-      return AuthResult(
-        isSuccess: true,
-        fallbackEmail: cleanEmail,
-        photoUrl: demoProfile.photoUrl,
-        profile: demoProfile,
-      );
-    }
+    final isDemoEmail = FirestoreService.isPreverifiedDemoEmail(lowerEmail);
 
     if (FirebaseService.isFirebaseAvailable && _auth != null) {
       try {
         final credential = await _auth!.signInWithEmailAndPassword(
           email: cleanEmail,
-          password: password.trim(),
+          password: cleanPassword,
         );
         final user = credential.user;
         UserProfile? profile;
@@ -381,14 +427,16 @@ class AuthService {
         if (user != null) {
           profile = await FirestoreService.getUserProfile(user.uid) ??
               await FirestoreService.getUserProfile(cleanEmail);
-          if (FirestoreService.isPreverifiedDemoEmail(cleanEmail) ||
-              FirestoreService.isPreverifiedDemoEmail(user.email)) {
+          if (isDemoEmail || FirestoreService.isPreverifiedDemoEmail(user.email)) {
             profile = (profile ?? FirestoreService.getPreverifiedDemoProfile(cleanEmail))
                 ?.copyWith(authorized: true, status: 'approved');
           }
           photoUrl ??= profile?.photoUrl;
           photoUrl ??= await StorageService.getProfileAvatarUrl(user.uid);
         }
+
+        // Cache password hash for offline continuity
+        await _saveOfflinePasswordHash(cleanEmail, cleanPassword);
 
         return AuthResult(
           isSuccess: true,
@@ -397,15 +445,66 @@ class AuthService {
           profile: profile,
         );
       } on FirebaseAuthException catch (e) {
-        String msg = 'Invalid email or password. Please verify your credentials.';
-        if (e.code == 'too-many-requests') {
-          msg = 'Too many failed login attempts. Please wait a moment and try again.';
-        } else if (e.code == 'user-disabled') {
-          msg = 'This account has been disabled. Please contact PadCare administration.';
+        if (e.code == 'wrong-password') {
+          return const AuthResult(
+            isSuccess: false,
+            errorMessage: 'Invalid email or password. Please verify your credentials.',
+          );
         }
-        return AuthResult(
+        if (e.code == 'too-many-requests') {
+          return const AuthResult(
+            isSuccess: false,
+            errorMessage: 'Too many failed login attempts. Please wait a moment and try again.',
+          );
+        }
+        if (e.code == 'user-disabled') {
+          return const AuthResult(
+            isSuccess: false,
+            errorMessage: 'This account has been disabled. Please contact PadCare administration.',
+          );
+        }
+
+        // e.code == 'invalid-credential' or 'user-not-found' or network failure:
+        // For pre-verified demo accounts: ONLY succeed if password matches an authorized demo password!
+        if (isDemoEmail) {
+          if (isAuthorizedDemoPassword(cleanPassword)) {
+            final demoProfile = FirestoreService.getPreverifiedDemoProfile(lowerEmail)!;
+            await FirestoreService.saveUserProfile(demoProfile);
+            if (demoProfile.photoUrl != null) {
+              StorageService.setCachedAvatar(cleanEmail, demoProfile.photoUrl!);
+              StorageService.setCachedAvatar(demoProfile.uid, demoProfile.photoUrl!);
+              StorageService.setCachedAvatar('demo-$cleanEmail', demoProfile.photoUrl!);
+            }
+            await _saveOfflinePasswordHash(cleanEmail, cleanPassword);
+            return AuthResult(
+              isSuccess: true,
+              fallbackEmail: cleanEmail,
+              photoUrl: demoProfile.photoUrl,
+              profile: demoProfile,
+            );
+          } else {
+            // Demo account with WRONG password!
+            return const AuthResult(
+              isSuccess: false,
+              errorMessage: 'Invalid email or password. Please verify your credentials.',
+            );
+          }
+        }
+
+        // For non-demo offline accounts, verify stored password hash
+        if (await verifyOfflinePassword(cleanEmail, cleanPassword)) {
+          final offlineProfile = await FirestoreService.getUserProfile(cleanEmail);
+          return AuthResult(
+            isSuccess: true,
+            fallbackEmail: cleanEmail,
+            photoUrl: offlineProfile?.photoUrl ?? StorageService.getCachedAvatar(cleanEmail),
+            profile: offlineProfile,
+          );
+        }
+
+        return const AuthResult(
           isSuccess: false,
-          errorMessage: msg,
+          errorMessage: 'Invalid email or password. Please verify your credentials.',
         );
       } catch (e) {
         return AuthResult(
@@ -415,16 +514,49 @@ class AuthService {
       }
     }
 
-    // Local / Offline fallback mode
-    final offlineProfile = await FirestoreService.getUserProfile(cleanEmail);
-    final offlinePhotoUrl = offlineProfile?.photoUrl ??
-        StorageService.getCachedAvatar(cleanEmail);
+    // Local / Offline fallback mode (Firebase Auth unavailable or disconnected)
+    if (isDemoEmail) {
+      if (isAuthorizedDemoPassword(cleanPassword)) {
+        final demoProfile = FirestoreService.getPreverifiedDemoProfile(lowerEmail)!;
+        await FirestoreService.saveUserProfile(demoProfile);
+        if (demoProfile.photoUrl != null) {
+          StorageService.setCachedAvatar(cleanEmail, demoProfile.photoUrl!);
+          StorageService.setCachedAvatar(demoProfile.uid, demoProfile.photoUrl!);
+          StorageService.setCachedAvatar('demo-$cleanEmail', demoProfile.photoUrl!);
+        }
+        await _saveOfflinePasswordHash(cleanEmail, cleanPassword);
+        return AuthResult(
+          isSuccess: true,
+          fallbackEmail: cleanEmail,
+          photoUrl: demoProfile.photoUrl,
+          profile: demoProfile,
+        );
+      } else {
+        // Demo account with WRONG password
+        return const AuthResult(
+          isSuccess: false,
+          errorMessage: 'Invalid email or password. Please verify your credentials.',
+        );
+      }
+    }
 
-    return AuthResult(
-      isSuccess: true,
-      fallbackEmail: cleanEmail,
-      photoUrl: offlinePhotoUrl,
-      profile: offlineProfile,
+    // Offline non-demo account verification against stored password hash
+    if (await verifyOfflinePassword(cleanEmail, cleanPassword)) {
+      final offlineProfile = await FirestoreService.getUserProfile(cleanEmail);
+      final offlinePhotoUrl = offlineProfile?.photoUrl ??
+          StorageService.getCachedAvatar(cleanEmail);
+
+      return AuthResult(
+        isSuccess: true,
+        fallbackEmail: cleanEmail,
+        photoUrl: offlinePhotoUrl,
+        profile: offlineProfile,
+      );
+    }
+
+    return const AuthResult(
+      isSuccess: false,
+      errorMessage: 'Invalid email or password. Please verify your credentials.',
     );
   }
 
@@ -500,6 +632,7 @@ class AuthService {
           subCounty: subCounty,
         );
         await FirestoreService.saveUserProfile(profile);
+        await _saveOfflinePasswordHash(cleanEmail, password.trim());
 
         return AuthResult(
           isSuccess: true,
@@ -543,6 +676,7 @@ class AuthService {
       subCounty: subCounty,
     );
     await FirestoreService.saveUserProfile(localProfile);
+    await _saveOfflinePasswordHash(cleanEmail, password.trim());
 
     return AuthResult(
       isSuccess: true,

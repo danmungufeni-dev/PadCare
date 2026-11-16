@@ -48,6 +48,9 @@ class UserProfile {
   final String status; // 'pending' | 'approved' | 'rejected'
   final String? photoUrl;
   final String? phoneNumber;
+  final String? subCounty;
+  final String? emergencyContact;
+  final String? emergencyPhone;
 
   const UserProfile({
     required this.uid,
@@ -59,6 +62,9 @@ class UserProfile {
     required this.status,
     this.photoUrl,
     this.phoneNumber,
+    this.subCounty,
+    this.emergencyContact,
+    this.emergencyPhone,
   });
 
   UserProfile copyWith({
@@ -71,6 +77,9 @@ class UserProfile {
     String? status,
     String? photoUrl,
     String? phoneNumber,
+    String? subCounty,
+    String? emergencyContact,
+    String? emergencyPhone,
   }) {
     return UserProfile(
       uid: uid ?? this.uid,
@@ -82,6 +91,9 @@ class UserProfile {
       status: status ?? this.status,
       photoUrl: photoUrl ?? this.photoUrl,
       phoneNumber: phoneNumber ?? this.phoneNumber,
+      subCounty: subCounty ?? this.subCounty,
+      emergencyContact: emergencyContact ?? this.emergencyContact,
+      emergencyPhone: emergencyPhone ?? this.emergencyPhone,
     );
   }
 
@@ -95,6 +107,9 @@ class UserProfile {
     'status': status,
     if (photoUrl != null) 'photoUrl': photoUrl,
     if (phoneNumber != null) 'phoneNumber': phoneNumber,
+    if (subCounty != null) 'subCounty': subCounty,
+    if (emergencyContact != null) 'emergencyContact': emergencyContact,
+    if (emergencyPhone != null) 'emergencyPhone': emergencyPhone,
   };
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
@@ -107,6 +122,9 @@ class UserProfile {
     status: json['status'] as String? ?? ((json['role'] == 'parent' || json['role'] == 'ngo') ? 'approved' : 'pending'),
     photoUrl: json['photoUrl'] as String?,
     phoneNumber: json['phoneNumber'] as String?,
+    subCounty: json['subCounty'] as String?,
+    emergencyContact: json['emergencyContact'] as String?,
+    emergencyPhone: json['emergencyPhone'] as String?,
   );
 }
 
@@ -418,6 +436,7 @@ class AuthService {
     String role = 'parent',
     String? school,
     String? phoneNumber,
+    String? subCounty,
     Uint8List? avatarBytes,
     String? photoUrl,
   }) async {
@@ -478,6 +497,7 @@ class AuthService {
           status: isPreverified ? 'approved' : 'pending_approval',
           photoUrl: finalPhotoUrl,
           phoneNumber: phoneNumber,
+          subCounty: subCounty,
         );
         await FirestoreService.saveUserProfile(profile);
 
@@ -520,6 +540,7 @@ class AuthService {
       status: isPreverified ? 'approved' : 'pending_approval',
       photoUrl: localPhotoUrl,
       phoneNumber: phoneNumber,
+      subCounty: subCounty,
     );
     await FirestoreService.saveUserProfile(localProfile);
 

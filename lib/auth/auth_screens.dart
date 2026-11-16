@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../services/firebase_service.dart';
 import '../services/geo_service.dart';
@@ -1743,6 +1744,8 @@ class _SignupTermsState extends State<SignupTerms> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  final _individualPhoneController = TextEditingController();
+  String _individualSubCounty = 'Arua Central';
   final _newSchoolNameController = TextEditingController();
   final _newSchoolPhoneController = TextEditingController();
   final _newSchoolAdminPasskeyController = TextEditingController();
@@ -1796,6 +1799,7 @@ class _SignupTermsState extends State<SignupTerms> {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
+    _individualPhoneController.dispose();
     _newSchoolNameController.dispose();
     _newSchoolPhoneController.dispose();
     _newSchoolAdminPasskeyController.dispose();
@@ -1909,14 +1913,30 @@ class _SignupTermsState extends State<SignupTerms> {
     });
 
     final selectedPhotoUrl = _presetAvatars[_selectedAvatarIndex];
+    final phone = _individualPhoneController.text.trim();
     final result = await AuthService.register(
       email: email,
       password: password,
       displayName: name.isNotEmpty ? name : 'PadCare User',
       role: _role,
       school: _role == 'teacher' ? _school : null,
+      phoneNumber: phone.isNotEmpty ? phone : null,
+      subCounty: _role == 'parent' ? _individualSubCounty : null,
       photoUrl: selectedPhotoUrl,
     );
+
+    if (result.isSuccess) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        if (name.isNotEmpty) await prefs.setString('padher_user_name', name);
+        if (phone.isNotEmpty) await prefs.setString('padher_user_phone', phone);
+        if (email.isNotEmpty) await prefs.setString('padher_user_email', email);
+        if (_role == 'parent') {
+          await prefs.setString('padher_user_subcounty', _individualSubCounty);
+          await prefs.setString('padher_selected_area', _individualSubCounty);
+        }
+      } catch (_) {}
+    }
 
     if (!mounted) return;
     setState(() => _loading = false);
@@ -2185,6 +2205,74 @@ class _SignupTermsState extends State<SignupTerms> {
                       setState(() => _role = set.first);
                     },
                   ),
+                  if (_role == 'parent') ...[
+                    const SizedBox(height: 14),
+                    TextField(
+                      key: const ValueKey('signup-phone-field'),
+                      controller: _individualPhoneController,
+                      keyboardType: TextInputType.phone,
+                      decoration: InputDecoration(
+                        labelText: 'Phone number (optional for SMS/WhatsApp)',
+                        hintText: '+256 700 000 000',
+                        filled: true,
+                        fillColor: Colors.white,
+                        prefixIcon: const Icon(Icons.phone_outlined, color: Color(0xFF116B78)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFF116B78), width: 1.8),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    DropdownButtonFormField<String>(
+                      key: const ValueKey('signup-subcounty-dropdown'),
+                      isExpanded: true,
+                      initialValue: _individualSubCounty,
+                      decoration: InputDecoration(
+                        labelText: 'Sub-County / Area in Arua',
+                        filled: true,
+                        fillColor: Colors.white,
+                        prefixIcon: const Icon(Icons.location_on_outlined, color: Color(0xFF116B78)),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(14),
+                          borderSide: const BorderSide(color: Color(0xFF116B78), width: 1.8),
+                        ),
+                      ),
+                      items: const [
+                        'Arua Central',
+                        'Arua Hill',
+                        'Ayivu',
+                        'Ediofe',
+                        'Oli',
+                        'Dadamu',
+                        'Manibe',
+                        'Logiri',
+                        'Offaka',
+                        'Other Arua Division',
+                      ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() => _individualSubCounty = val);
+                        }
+                      },
+                    ),
+                  ],
                   if (_role == 'teacher') ...[
                     const SizedBox(height: 14),
                     DropdownButtonFormField<String>(

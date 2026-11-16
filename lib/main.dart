@@ -148,16 +148,26 @@ void _setupAuthNavigation() {
         );
       }
     } else {
+      final effectiveUid = uid ?? AuthService.currentUser?.uid ?? email ?? '';
+      UserProfile? profile;
+      if (effectiveUid.isNotEmpty) {
+        profile = await FirestoreService.getUserProfile(effectiveUid);
+      }
       navigator.pushAndRemoveUntil(
         MaterialPageRoute<void>(
           builder: (_) => ParentHomeScreen(
             parentName: (displayName != null && displayName.isNotEmpty)
                 ? displayName
-                : (lowerEmail.contains('parent')
-                    ? 'Amina N. (Parent Demo)'
-                    : (email ?? 'PadCare Community Member')),
+                : (profile?.displayName.isNotEmpty == true
+                    ? profile!.displayName
+                    : (lowerEmail.contains('parent')
+                        ? 'Amina N. (Parent Demo)'
+                        : (email ?? 'PadCare Community Member'))),
+            email: email ?? profile?.email,
+            phoneNumber: profile?.phoneNumber,
+            subCounty: profile?.subCounty,
             onSignOut: onSignOut,
-            photoUrl: photoUrl,
+            photoUrl: photoUrl ?? profile?.photoUrl,
           ),
         ),
         (route) => false,
@@ -424,6 +434,8 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
   final _passwordController = TextEditingController();
   final _signUpEmailController = TextEditingController();
   final _signUpPasswordController = TextEditingController();
+  final _phoneController = TextEditingController();
+  String _accessSubCounty = 'Arua Central';
 
   final List<String> _schoolOptions = [..._staffFacilities];
 
@@ -443,6 +455,7 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
     _passwordController.dispose();
     _signUpEmailController.dispose();
     _signUpPasswordController.dispose();
+    _phoneController.dispose();
     super.dispose();
   }
 
@@ -558,10 +571,21 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
         );
       }
     } else {
+      final phone = _phoneController.text.trim();
+      try {
+        SharedPreferences.getInstance().then((prefs) {
+          if (name.isNotEmpty) prefs.setString('padher_user_name', name);
+          if (phone.isNotEmpty) prefs.setString('padher_user_phone', phone);
+          prefs.setString('padher_user_subcounty', _accessSubCounty);
+          prefs.setString('padher_selected_area', _accessSubCounty);
+        }).catchError((_) {});
+      } catch (_) {}
       navigator.pushReplacement(
         MaterialPageRoute<void>(
           builder: (_) => ParentHomeScreen(
             parentName: name.isEmpty ? 'Amina N.' : name,
+            phoneNumber: phone.isNotEmpty ? phone : null,
+            subCounty: _accessSubCounty,
             onSignOut: onSignOut,
           ),
         ),
@@ -577,6 +601,7 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
     final isTeacher = _role == _PortalRole.teacher;
     final isNgo = _role == _PortalRole.ngo;
     final roleStr = isNgo ? 'ngo' : (isTeacher ? 'teacher' : 'parent');
+    final phone = _phoneController.text.trim();
 
     UserProfile? profile = await FirestoreService.getUserProfile(uid);
     if (profile == null) {
@@ -588,6 +613,8 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
         school: isTeacher ? _school : null,
         authorized: !isTeacher,
         status: !isTeacher ? 'approved' : 'pending_approval',
+        phoneNumber: phone.isNotEmpty ? phone : null,
+        subCounty: isTeacher ? null : _accessSubCounty,
       );
       await FirestoreService.saveUserProfile(profile);
     }
@@ -651,6 +678,9 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
         MaterialPageRoute<void>(
           builder: (_) => ParentHomeScreen(
             parentName: name,
+            email: email.isNotEmpty ? email : (profile?.email ?? ''),
+            phoneNumber: profile?.phoneNumber ?? (phone.isNotEmpty ? phone : null),
+            subCounty: profile?.subCounty ?? _accessSubCounty,
             onSignOut: onSignOut,
           ),
         ),
@@ -1677,57 +1707,6 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
       children: [
         const _BrandLockup(),
         const SizedBox(height: 14),
-        InkWell(
-          key: const ValueKey('open-modern-auth-btn'),
-          onTap: () {
-            Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => const Welcome(),
-              ),
-            );
-          },
-          borderRadius: BorderRadius.circular(14),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-            decoration: BoxDecoration(
-              color: _greenPale,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: _mint),
-            ),
-            child: const Row(
-              children: [
-                Icon(Icons.shield_outlined, size: 20, color: _deepTeal),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Modern PadCare Authentication',
-                        style: TextStyle(
-                          color: _deepTeal,
-                          fontWeight: FontWeight.w700,
-                          fontSize: 13,
-                          fontFamily: _fontSubheading,
-                        ),
-                      ),
-                      Text(
-                        'Sign In, PIN Lock, Biometrics & 2FA',
-                        style: TextStyle(
-                          color: _muted,
-                          fontSize: 11,
-                          fontFamily: _fontBody,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Icon(Icons.arrow_forward_ios_rounded, size: 13, color: _deepTeal),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 14),
         _buildTabBar(),
         const SizedBox(height: 12),
         _softTransition(
@@ -2022,6 +2001,71 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
                 ),
               ),
             ),
+            const SizedBox(height: 14),
+            TextFormField(
+              key: const ValueKey('account-phone'),
+              controller: _phoneController,
+              keyboardType: TextInputType.phone,
+              autofillHints: const [AutofillHints.telephoneNumber],
+              decoration: InputDecoration(
+                labelText: 'Phone number (optional for SMS/WhatsApp updates)',
+                hintText: isTeacher ? '+256 700 000 000' : 'e.g. +256 772 123 456',
+                prefixIcon: const Icon(Icons.phone_outlined, color: _deepTeal, size: 20),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _line),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _line),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                  borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+                ),
+              ),
+            ),
+            if (!isTeacher) ...[
+              const SizedBox(height: 14),
+              DropdownButtonFormField<String>(
+                key: const ValueKey('account-subcounty-dropdown'),
+                isExpanded: true,
+                initialValue: _accessSubCounty,
+                decoration: InputDecoration(
+                  labelText: 'Sub-County / Area in Arua',
+                  prefixIcon: const Icon(Icons.location_on_outlined, color: _deepTeal, size: 20),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _line),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _line),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(14),
+                    borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+                  ),
+                ),
+                items: const [
+                  'Arua Central',
+                  'Arua Hill',
+                  'Ayivu',
+                  'Ediofe',
+                  'Oli',
+                  'Dadamu',
+                  'Manibe',
+                  'Logiri',
+                  'Offaka',
+                  'Other Arua Division',
+                ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setState(() => _accessSubCounty = val);
+                  }
+                },
+              ),
+            ],
             if (!MyApp.isTestMode) ...[
               const SizedBox(height: 14),
               TextFormField(
@@ -6490,11 +6534,17 @@ class ParentHomeScreen extends StatefulWidget {
     required this.parentName,
     required this.onSignOut,
     this.photoUrl,
+    this.email,
+    this.phoneNumber,
+    this.subCounty,
   });
 
   final String parentName;
   final VoidCallback onSignOut;
   final String? photoUrl;
+  final String? email;
+  final String? phoneNumber;
+  final String? subCounty;
 
   @override
   State<ParentHomeScreen> createState() => _ParentHomeScreenState();
@@ -6556,6 +6606,12 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
 
   final Set<String> _favoritePointIds = {'muni-clinic'};
   String _userDisplayName = '';
+  String _userPhoneNumber = '';
+  String _userEmail = '';
+  String _userSubCounty = 'Arua Central';
+  String _userEmergencyContact = '';
+  String _userEmergencyPhone = '';
+  String _preferredDistributionPoint = 'St. Mary\'s Secondary';
   String _selectedLearnCategory = 'All';
 
   DateTime _cycleStartDate = DateTime.now().subtract(const Duration(days: 14));
@@ -6569,9 +6625,111 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
   void initState() {
     super.initState();
     _userDisplayName = widget.parentName;
+    _userEmail = widget.email ?? '';
+    _userPhoneNumber = widget.phoneNumber ?? '';
+    if (widget.subCounty != null && widget.subCounty!.isNotEmpty) {
+      _userSubCounty = widget.subCounty!;
+      _selectedArea = widget.subCounty!;
+    }
     _loadLocalRequests();
     _loadCycleTrackerState();
+    _loadUserIndividualDetails();
     _subscribeToCloudRequests();
+  }
+
+  Future<void> _loadUserIndividualDetails() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final savedName = prefs.getString('padher_user_name');
+      final savedPhone = prefs.getString('padher_user_phone');
+      final savedEmail = prefs.getString('padher_user_email');
+      final savedSubCounty = prefs.getString('padher_user_subcounty');
+      final savedEmergency = prefs.getString('padher_emergency_contact');
+      final savedEmergencyPhone = prefs.getString('padher_emergency_phone');
+      final savedSchool = prefs.getString('padher_preferred_school');
+
+      if (mounted) {
+        setState(() {
+          if (savedName != null && savedName.isNotEmpty) {
+            _userDisplayName = savedName;
+          }
+          if (savedPhone != null && savedPhone.isNotEmpty) {
+            _userPhoneNumber = savedPhone;
+          }
+          if (savedEmail != null && savedEmail.isNotEmpty) {
+            _userEmail = savedEmail;
+          }
+          if (savedSubCounty != null && savedSubCounty.isNotEmpty) {
+            _userSubCounty = savedSubCounty;
+            _selectedArea = savedSubCounty;
+          }
+          if (savedEmergency != null && savedEmergency.isNotEmpty) {
+            _userEmergencyContact = savedEmergency;
+          }
+          if (savedEmergencyPhone != null && savedEmergencyPhone.isNotEmpty) {
+            _userEmergencyPhone = savedEmergencyPhone;
+          }
+          if (savedSchool != null && savedSchool.isNotEmpty) {
+            _preferredDistributionPoint = savedSchool;
+          }
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<void> _saveUserIndividualDetails({
+    required String name,
+    required String phone,
+    required String email,
+    required String subCounty,
+    required String emergencyContact,
+    required String emergencyPhone,
+    required String preferredSchool,
+  }) async {
+    setState(() {
+      _userDisplayName = name;
+      _userPhoneNumber = phone;
+      _userEmail = email;
+      _userSubCounty = subCounty;
+      _selectedArea = subCounty;
+      _userEmergencyContact = emergencyContact;
+      _userEmergencyPhone = emergencyPhone;
+      _preferredDistributionPoint = preferredSchool;
+    });
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('padher_user_name', name);
+      await prefs.setString('padher_user_phone', phone);
+      await prefs.setString('padher_user_email', email);
+      await prefs.setString('padher_user_subcounty', subCounty);
+      await prefs.setString('padher_emergency_contact', emergencyContact);
+      await prefs.setString('padher_emergency_phone', emergencyPhone);
+      await prefs.setString('padher_preferred_school', preferredSchool);
+      await prefs.setString('padher_selected_area', subCounty);
+
+      final user = AuthService.currentUser;
+      if (user != null) {
+        final currentProfile = await FirestoreService.getUserProfile(user.uid);
+        final updated = (currentProfile ?? UserProfile(
+          uid: user.uid,
+          email: email.isNotEmpty ? email : (user.email ?? ''),
+          displayName: name,
+          role: 'parent',
+          authorized: true,
+          status: 'approved',
+        )).copyWith(
+          displayName: name,
+          email: email.isNotEmpty ? email : null,
+          phoneNumber: phone.isNotEmpty ? phone : null,
+          subCounty: subCounty,
+          emergencyContact: emergencyContact.isNotEmpty ? emergencyContact : null,
+          emergencyPhone: emergencyPhone.isNotEmpty ? emergencyPhone : null,
+          school: preferredSchool.isNotEmpty ? preferredSchool : null,
+        );
+        await FirestoreService.saveUserProfile(updated);
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadCycleTrackerState() async {
@@ -8060,10 +8218,10 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             width: 48,
             height: 48,
             child: Tooltip(
-              message: 'Sign out',
+              message: 'View Profile & Settings',
               child: InkWell(
-                key: const ValueKey('sign-out-control'),
-                onTap: widget.onSignOut,
+                key: const ValueKey('profile-nav-btn'),
+                onTap: () => setState(() => _selectedIndex = 4),
                 customBorder: const CircleBorder(),
                 child: Center(
                   child: Stack(
@@ -8109,7 +8267,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                             ],
                           ),
                           child: const Icon(
-                            Icons.logout_rounded,
+                            Icons.person_rounded,
                             size: 9,
                             color: _deepTeal,
                           ),
@@ -9966,7 +10124,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
         const _FacilityHeader(
           eyebrow: 'SETTINGS & ACCOUNT',
           title: 'Profile & Access',
-          subtitle: 'Manage roles, distribution points, and local preferences.',
+          subtitle: 'Manage your personal details, distribution points, and local preferences.',
         ),
         const SizedBox(height: 18),
         Container(
@@ -9976,44 +10134,111 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
             borderRadius: BorderRadius.circular(20),
             border: Border.all(color: const Color(0xFFE4F0EE)),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              CircleAvatar(
-                radius: 28,
-                backgroundColor: const Color(0xFFE0F2EF),
-                backgroundImage: (widget.photoUrl != null &&
-                        (widget.photoUrl!.startsWith('http://') ||
-                            widget.photoUrl!.startsWith('https://')))
-                    ? NetworkImage(widget.photoUrl!)
-                    : null,
-                child: (widget.photoUrl != null &&
-                        (widget.photoUrl!.startsWith('http://') ||
-                            widget.photoUrl!.startsWith('https://')))
-                    ? null
-                    : Text(
-                        _userDisplayName.isEmpty
-                            ? 'PA'
-                            : _userDisplayName.substring(0, 1).toUpperCase(),
-                        style: const TextStyle(
-                            fontSize: 22,
-                            fontWeight: FontWeight.w900,
-                            color: _deepTeal),
-                      ),
-              ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _userDisplayName.isEmpty ? 'Parent account' : _userDisplayName,
-                      style: const TextStyle(color: _ink, fontSize: 17, fontWeight: FontWeight.w800),
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: const Color(0xFFE0F2EF),
+                    backgroundImage: (widget.photoUrl != null &&
+                            (widget.photoUrl!.startsWith('http://') ||
+                                widget.photoUrl!.startsWith('https://')))
+                        ? NetworkImage(widget.photoUrl!)
+                        : null,
+                    child: (widget.photoUrl != null &&
+                            (widget.photoUrl!.startsWith('http://') ||
+                                widget.photoUrl!.startsWith('https://')))
+                        ? null
+                        : Text(
+                            _userDisplayName.isEmpty
+                                ? 'PA'
+                                : _userDisplayName.substring(0, 1).toUpperCase(),
+                            style: const TextStyle(
+                                fontSize: 22,
+                                fontWeight: FontWeight.w900,
+                                color: _deepTeal),
+                          ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _userDisplayName.isEmpty ? 'Community Member' : _userDisplayName,
+                          style: const TextStyle(color: _ink, fontSize: 17, fontWeight: FontWeight.w800),
+                        ),
+                        const SizedBox(height: 3),
+                        const Text('Individual & Community Access', style: TextStyle(color: _muted, fontSize: 13)),
+                        const SizedBox(height: 3),
+                        Text('Sub-County: $_userSubCounty', style: const TextStyle(color: _deepTeal, fontSize: 12, fontWeight: FontWeight.w700)),
+                      ],
                     ),
-                    const SizedBox(height: 3),
-                    const Text('Parent or guardian access', style: TextStyle(color: _muted, fontSize: 13)),
-                    const SizedBox(height: 3),
-                    Text('Location: $_selectedArea', style: const TextStyle(color: _deepTeal, fontSize: 12, fontWeight: FontWeight.w700)),
-                  ],
+                  ),
+                  IconButton(
+                    key: const ValueKey('edit-profile-details-icon-btn'),
+                    onPressed: _openEditIndividualDetailsModal,
+                    icon: const Icon(Icons.edit_outlined, color: _deepTeal),
+                    tooltip: 'Edit Details',
+                  ),
+                ],
+              ),
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Divider(color: Color(0xFFF1F5F9), height: 1),
+              ),
+              _buildProfileDetailRow(
+                icon: Icons.phone_outlined,
+                label: 'Phone Number',
+                value: _userPhoneNumber.isNotEmpty ? _userPhoneNumber : 'Not set (Tap to add)',
+                onTap: _openEditIndividualDetailsModal,
+              ),
+              const SizedBox(height: 8),
+              _buildProfileDetailRow(
+                icon: Icons.email_outlined,
+                label: 'Email',
+                value: _userEmail.isNotEmpty ? _userEmail : 'Not set (Tap to add)',
+                onTap: _openEditIndividualDetailsModal,
+              ),
+              const SizedBox(height: 8),
+              _buildProfileDetailRow(
+                icon: Icons.location_city_outlined,
+                label: 'Sub-County / Area',
+                value: _userSubCounty.isNotEmpty ? _userSubCounty : 'Arua Central',
+                onTap: _openEditIndividualDetailsModal,
+              ),
+              if (_userEmergencyContact.isNotEmpty || _userEmergencyPhone.isNotEmpty) ...[
+                const SizedBox(height: 8),
+                _buildProfileDetailRow(
+                  icon: Icons.emergency_outlined,
+                  label: 'Emergency Contact',
+                  value: '$_userEmergencyContact (${_userEmergencyPhone.isNotEmpty ? _userEmergencyPhone : 'No phone'})',
+                  onTap: _openEditIndividualDetailsModal,
+                ),
+              ],
+              const SizedBox(height: 8),
+              _buildProfileDetailRow(
+                icon: Icons.storefront_outlined,
+                label: 'Preferred Pickup Point',
+                value: _preferredDistributionPoint.isNotEmpty ? _preferredDistributionPoint : _pickupSchool,
+                onTap: _openEditIndividualDetailsModal,
+              ),
+              const SizedBox(height: 14),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton.icon(
+                  key: const ValueKey('edit-details-btn'),
+                  onPressed: _openEditIndividualDetailsModal,
+                  icon: const Icon(Icons.edit_note_rounded, size: 18),
+                  label: const Text('Add or Update Personal Details', style: TextStyle(fontWeight: FontWeight.w700)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _deepTeal,
+                    side: const BorderSide(color: Color(0xFFC7E7E2)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    padding: const EdgeInsets.symmetric(vertical: 11),
+                  ),
                 ),
               ),
             ],
@@ -10047,16 +10272,6 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               ),
             );
           },
-        ),
-        const SizedBox(height: 10),
-        ListTile(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          tileColor: Colors.white,
-          leading: const Icon(Icons.shield_outlined, color: _deepTeal),
-          title: const Text('PadCare Security & Auth Suite', style: TextStyle(fontWeight: FontWeight.w700, color: _ink)),
-          subtitle: const Text('PIN lock, Biometrics, 2FA, Magic Link & Password Reset'),
-          trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 14),
-          onTap: _openAuthSuiteModal,
         ),
         const SizedBox(height: 10),
         ListTile(
@@ -10132,129 +10347,402 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     );
   }
 
-  void _openAuthSuiteModal() {
+  Widget _buildProfileDetailRow({
+    required IconData icon,
+    required String label,
+    required String value,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+        child: Row(
+          children: [
+            Icon(icon, size: 16, color: _deepTeal),
+            const SizedBox(width: 8),
+            Text(
+              '$label: ',
+              style: const TextStyle(
+                color: _muted,
+                fontSize: 12.5,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Expanded(
+              child: Text(
+                value,
+                style: const TextStyle(
+                  color: _ink,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w700,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, size: 16, color: _muted),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _openEditIndividualDetailsModal() {
+    final nameCtrl = TextEditingController(text: _userDisplayName);
+    final phoneCtrl = TextEditingController(text: _userPhoneNumber);
+    final emailCtrl = TextEditingController(text: _userEmail);
+    final emergencyNameCtrl = TextEditingController(text: _userEmergencyContact);
+    final emergencyPhoneCtrl = TextEditingController(text: _userEmergencyPhone);
+    String selectedSubCounty = _userSubCounty.isNotEmpty ? _userSubCounty : 'Arua Central';
+    String selectedSchool = _preferredDistributionPoint.isNotEmpty ? _preferredDistributionPoint : 'St. Mary\'s Secondary';
+
+    const subCounties = [
+      'Arua Central',
+      'Arua Hill',
+      'Ayivu',
+      'Ediofe',
+      'Oli',
+      'Dadamu',
+      'Manibe',
+      'Logiri',
+      'Offaka',
+      'Other Arua Division',
+    ];
+
+    final schoolOptions = [
+      'St. Mary\'s Secondary',
+      'Ediofe Girls School',
+      'Oli Primary School',
+      'Muni Girls Secondary School',
+      'Arua Public Primary School',
+      'Arua Regional Referral Hospital',
+      'Muni Health Centre',
+    ];
+
+    if (!subCounties.contains(selectedSubCounty)) {
+      selectedSubCounty = subCounties.first;
+    }
+    if (!schoolOptions.contains(selectedSchool)) {
+      selectedSchool = schoolOptions.first;
+    }
+
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: Colors.white,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(26)),
       ),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 44,
-                  height: 5,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFD0DFDC),
-                    borderRadius: BorderRadius.circular(2.5),
+      builder: (context) => StatefulBuilder(
+        builder: (context, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(
+            22,
+            16,
+            22,
+            MediaQuery.of(context).viewInsets.bottom + 28,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Center(
+                  child: Container(
+                    width: 44,
+                    height: 5,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFD0DFDC),
+                      borderRadius: BorderRadius.circular(2.5),
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'PadCare Authentication Suite',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: _ink),
-              ),
-              const SizedBox(height: 6),
-              const Text(
-                'Select any authentication component to test or view:',
-                style: TextStyle(fontSize: 13, color: _muted),
-              ),
-              const SizedBox(height: 14),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  ActionChip(
-                    avatar: const Icon(Icons.celebration_outlined, size: 16),
-                    label: const Text('Welcome Screen'),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const Welcome()));
-                    },
+                const SizedBox(height: 18),
+                Row(
+                  children: [
+                    Container(
+                      width: 42,
+                      height: 42,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE4F8F2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Icon(
+                        Icons.manage_accounts_rounded,
+                        color: _deepTeal,
+                        size: 22,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    const Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Edit Personal Details',
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                              color: _ink,
+                              fontFamily: _fontHeading,
+                            ),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Update your contact details and home location.',
+                            style: TextStyle(
+                              fontSize: 12.5,
+                              color: _muted,
+                              fontFamily: _fontBody,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                TextFormField(
+                  key: const ValueKey('edit-individual-name-field'),
+                  controller: nameCtrl,
+                  textCapitalization: TextCapitalization.words,
+                  decoration: InputDecoration(
+                    labelText: 'Full Name / Display Name',
+                    hintText: 'e.g. Amina Nakato',
+                    prefixIcon: const Icon(Icons.person_outline_rounded, color: _deepTeal, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+                    ),
                   ),
-                  ActionChip(
-                    avatar: const Icon(Icons.lock_person_rounded, size: 16),
-                    label: const Text('Login Hero'),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const LoginHero()));
-                    },
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  key: const ValueKey('edit-individual-phone-field'),
+                  controller: phoneCtrl,
+                  keyboardType: TextInputType.phone,
+                  decoration: InputDecoration(
+                    labelText: 'Phone Number (SMS / WhatsApp)',
+                    hintText: 'e.g. +256 772 123 456',
+                    prefixIcon: const Icon(Icons.phone_outlined, color: _deepTeal, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+                    ),
                   ),
-                  ActionChip(
-                    avatar: const Icon(Icons.share_outlined, size: 16),
-                    label: const Text('Social Login'),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SocialLogin()));
-                    },
+                ),
+                const SizedBox(height: 14),
+                TextFormField(
+                  key: const ValueKey('edit-individual-email-field'),
+                  controller: emailCtrl,
+                  keyboardType: TextInputType.emailAddress,
+                  decoration: InputDecoration(
+                    labelText: 'Email Address',
+                    hintText: 'e.g. amina@example.com',
+                    prefixIcon: const Icon(Icons.email_outlined, color: _deepTeal, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+                    ),
                   ),
-                  ActionChip(
-                    avatar: const Icon(Icons.app_registration, size: 16),
-                    label: const Text('Signup with Terms'),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const SignupTerms()));
-                    },
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  key: const ValueKey('edit-individual-subcounty-dropdown'),
+                  isExpanded: true,
+                  initialValue: selectedSubCounty,
+                  decoration: InputDecoration(
+                    labelText: 'Sub-County / Residence in Arua',
+                    prefixIcon: const Icon(Icons.location_on_outlined, color: _deepTeal, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+                    ),
                   ),
-                  ActionChip(
-                    avatar: const Icon(Icons.mail_lock_outlined, size: 16),
-                    label: const Text('Email Verification'),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const EmailVerification()));
-                    },
+                  items: subCounties
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setModalState(() => selectedSubCounty = val);
+                    }
+                  },
+                ),
+                const SizedBox(height: 14),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        key: const ValueKey('edit-individual-emergency-name-field'),
+                        controller: emergencyNameCtrl,
+                        textCapitalization: TextCapitalization.words,
+                        decoration: InputDecoration(
+                          labelText: 'Emergency Contact Name',
+                          hintText: 'e.g. Auntie Florence',
+                          prefixIcon: const Icon(Icons.contact_phone_outlined, color: _deepTeal, size: 20),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: TextFormField(
+                        key: const ValueKey('edit-individual-emergency-phone-field'),
+                        controller: emergencyPhoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          labelText: 'Emergency Phone',
+                          hintText: '+256 700 000 000',
+                          prefixIcon: const Icon(Icons.emergency_outlined, color: _deepTeal, size: 20),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+                DropdownButtonFormField<String>(
+                  key: const ValueKey('edit-individual-school-dropdown'),
+                  isExpanded: true,
+                  initialValue: selectedSchool,
+                  decoration: InputDecoration(
+                    labelText: 'Preferred Distribution / Pickup Center',
+                    prefixIcon: const Icon(Icons.school_outlined, color: _deepTeal, size: 20),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: Color(0xFFDCECEB)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(14),
+                      borderSide: const BorderSide(color: _deepTeal, width: 1.5),
+                    ),
                   ),
-                  ActionChip(
-                    avatar: const Icon(Icons.auto_awesome, size: 16),
-                    label: const Text('Magic Link'),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const MagicLink()));
+                  items: schoolOptions
+                      .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) {
+                      setModalState(() => selectedSchool = val);
+                    }
+                  },
+                ),
+                const SizedBox(height: 22),
+                SizedBox(
+                  width: double.infinity,
+                  height: 50,
+                  child: ElevatedButton.icon(
+                    key: const ValueKey('save-individual-details-btn'),
+                    onPressed: () async {
+                      final updatedName = nameCtrl.text.trim();
+                      final updatedPhone = phoneCtrl.text.trim();
+                      final updatedEmail = emailCtrl.text.trim();
+                      final updatedEmergencyName = emergencyNameCtrl.text.trim();
+                      final updatedEmergencyPhone = emergencyPhoneCtrl.text.trim();
+
+                      Navigator.pop(context);
+
+                      await _saveUserIndividualDetails(
+                        name: updatedName.isNotEmpty ? updatedName : _userDisplayName,
+                        phone: updatedPhone,
+                        email: updatedEmail,
+                        subCounty: selectedSubCounty,
+                        emergencyContact: updatedEmergencyName,
+                        emergencyPhone: updatedEmergencyPhone,
+                        preferredSchool: selectedSchool,
+                      );
+
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: const [
+                                Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+                                SizedBox(width: 8),
+                                Expanded(child: Text('Profile details updated successfully!')),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF0F766E),
+                            duration: const Duration(seconds: 3),
+                          ),
+                        );
+                      }
                     },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: _deepTeal,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      elevation: 0,
+                    ),
+                    icon: const Icon(Icons.check_rounded, size: 20),
+                    label: const Text(
+                      'Save Details',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+                    ),
                   ),
-                  ActionChip(
-                    avatar: const Icon(Icons.pin, size: 16),
-                    label: const Text('PIN Lock'),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const PinLock()));
-                    },
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.fingerprint, size: 16),
-                    label: const Text('Biometric Unlock'),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const BiometricUnlock()));
-                    },
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.verified_user_outlined, size: 16),
-                    label: const Text('Two-Factor 2FA'),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const TwoFactor()));
-                    },
-                  ),
-                  ActionChip(
-                    avatar: const Icon(Icons.password_outlined, size: 16),
-                    label: const Text('Reset Password'),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => const ResetPassword()));
-                    },
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

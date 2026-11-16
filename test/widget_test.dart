@@ -80,6 +80,7 @@ void main() {
       find.byKey(const ValueKey('account-name')),
       'Amina N.',
     );
+    await tester.ensureVisible(find.byKey(const ValueKey('submit-access')));
     await tester.tap(find.byKey(const ValueKey('submit-access')));
     await tester.pumpAndSettle();
 
@@ -188,7 +189,10 @@ void main() {
     final requestId = request['id'] as String;
     expect(request['school'], 'Oli Primary School');
 
-    await tester.tap(find.byKey(const ValueKey('sign-out-control')));
+    await tester.tap(find.byKey(const ValueKey('profile-nav-btn')));
+    await tester.pumpAndSettle();
+    await tester.ensureVisible(find.byKey(const ValueKey('sign-out-control-listtile')));
+    await tester.tap(find.byKey(const ValueKey('sign-out-control-listtile')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Senior woman teacher'));
     await tester.pumpAndSettle();

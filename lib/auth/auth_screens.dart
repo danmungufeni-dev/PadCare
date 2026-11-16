@@ -9,7 +9,7 @@ import '../info/info_screens.dart';
 import '../services/url_launcher_stub.dart'
     if (dart.library.html) '../services/url_launcher_web.dart';
 
-/// Navigation coordinator for PadCare Authentication Suite.
+/// Navigation coordinator for PadCare Authentication.
 /// Allows decoupled navigation into PadCare home screens.
 class PadCareAuthNavigator {
   static bool testMode = false;

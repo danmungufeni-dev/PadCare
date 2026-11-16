@@ -277,7 +277,7 @@ class SupportPoint {
     required this.inStock,
     required this.isVerified,
     required this.directions,
-    required this.mapOffsetPercent,
+    this.mapOffsetPercent = const Offset(0.50, 0.50),
     required this.pinLabel,
     this.supplies = 'Pads & kits',
     this.instructions = 'Walk in and ask for adolescent health or matron desk. Confidential and free.',

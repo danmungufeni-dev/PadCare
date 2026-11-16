@@ -2,9 +2,10 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'firebase_service.dart';
+import 'geo_service.dart';
 import 'offline_queue_service.dart';
 
-/// Represents a participating school facility in PadCare.
+/// Represents a participating school, hospital, or dispensing center facility in PadCare.
 class SchoolModel {
   final String schoolId;
   final String name;
@@ -15,6 +16,9 @@ class SchoolModel {
   final String contactEmail;
   final String? logoUrl;
   final String status; // 'active' | 'pending' | 'suspended'
+  final String facilityType; // 'School' | 'Hospital' | 'Dispensing Center'
+  final double latitude;
+  final double longitude;
   final List<String> assignedStaffUids;
   final DateTime createdAt;
 
@@ -28,6 +32,9 @@ class SchoolModel {
     this.contactEmail = 'school@padcare.org',
     this.logoUrl,
     this.status = 'active',
+    this.facilityType = 'School',
+    this.latitude = 3.0210,
+    this.longitude = 30.9115,
     this.assignedStaffUids = const [],
     required this.createdAt,
   });
@@ -35,6 +42,7 @@ class SchoolModel {
   Map<String, dynamic> toJson() => {
     'schoolId': schoolId,
     'name': name,
+    'facilityType': facilityType,
     'registrationNumber': registrationNumber,
     'district': district,
     'subCounty': subCounty,
@@ -42,14 +50,22 @@ class SchoolModel {
     'contactEmail': contactEmail,
     if (logoUrl != null) 'logoUrl': logoUrl,
     'status': status,
+    'latitude': latitude,
+    'longitude': longitude,
     'assignedStaffUids': assignedStaffUids,
     'createdAt': createdAt.toIso8601String(),
   };
 
   factory SchoolModel.fromJson(Map<String, dynamic> json) {
+    final latRaw = json['latitude'] ?? json['lat'];
+    final lonRaw = json['longitude'] ?? json['lon'] ?? json['lng'];
+    final lat = latRaw != null ? (double.tryParse(latRaw.toString()) ?? 3.0210) : 3.0210;
+    final lon = lonRaw != null ? (double.tryParse(lonRaw.toString()) ?? 30.9115) : 30.9115;
+    final fType = (json['facilityType'] ?? json['type'] ?? 'School').toString();
+
     return SchoolModel(
       schoolId: (json['schoolId'] ?? json['id'] ?? json['name'] ?? '').toString(),
-      name: (json['name'] ?? 'Unnamed School').toString(),
+      name: (json['name'] ?? 'Unnamed Facility').toString(),
       registrationNumber: (json['registrationNumber'] ?? 'UNREGISTERED').toString(),
       district: (json['district'] ?? 'Arua').toString(),
       subCounty: (json['subCounty'] ?? 'Arua Hill').toString(),
@@ -57,6 +73,9 @@ class SchoolModel {
       contactEmail: (json['contactEmail'] ?? 'school@padcare.org').toString(),
       logoUrl: json['logoUrl'] as String?,
       status: (json['status'] ?? 'active').toString(),
+      facilityType: fType,
+      latitude: lat,
+      longitude: lon,
       assignedStaffUids: (json['assignedStaffUids'] is List)
           ? List<String>.from(json['assignedStaffUids'] as List)
           : const [],
@@ -150,6 +169,9 @@ class SchoolService {
     return list;
   }
 
+  /// Returns all unique facilities (schools, hospitals, dispensing centers) in memory cache.
+  static List<SchoolModel> get cachedSchools => _memorySchools.values.toSet().toList();
+
   /// Fetches schools from Firestore `schools` collection and updates memory cache.
   static Future<List<String>> fetchSchoolNames() async {
     if (!FirebaseService.isFirebaseAvailable || _db == null) {
@@ -161,6 +183,8 @@ class SchoolService {
         final school = SchoolModel.fromJson(doc.data());
         _memorySchools[school.schoolId] = school;
         _memorySchools[school.name] = school;
+        GeoService.registerFacilityCoordinates(school.schoolId, school.latitude, school.longitude);
+        GeoService.registerFacilityCoordinates(school.name, school.latitude, school.longitude);
       }
     } catch (e) {
       debugPrint('SchoolService fetchSchoolNames error: $e');
@@ -172,6 +196,10 @@ class SchoolService {
   static Future<void> saveSchool(SchoolModel school, {bool enqueueOffline = true}) async {
     _memorySchools[school.schoolId] = school;
     _memorySchools[school.name] = school;
+
+    // Register captured GPS coordinates in GeoService registry
+    GeoService.registerFacilityCoordinates(school.schoolId, school.latitude, school.longitude);
+    GeoService.registerFacilityCoordinates(school.name, school.latitude, school.longitude);
 
     if (enqueueOffline) {
       unawaited(

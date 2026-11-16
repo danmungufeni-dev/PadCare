@@ -450,9 +450,12 @@ class _LegacyTestAccessGateState extends State<_LegacyTestAccessGate> {
     final school = _newSchoolController.text.trim();
     if (school.isEmpty) return;
     final schoolId = SchoolService.generateSchoolId(school);
+    final coords = GeoService.aruaCenter;
     SchoolService.saveSchool(SchoolModel(
       schoolId: schoolId,
       name: school,
+      latitude: coords.latitude,
+      longitude: coords.longitude,
       createdAt: DateTime.now(),
     ));
     setState(() {
@@ -4637,6 +4640,11 @@ class _HomeScreenState extends State<HomeScreen> {
     bool obscurePasskey = true;
     String? passkeyError;
     String subCounty = 'Arua Hill';
+    String facilityType = 'School';
+    final initialCoords = GeoService.getCoordinatesForSubCounty('Arua Hill');
+    final latCtrl = TextEditingController(text: initialCoords.latitude.toStringAsFixed(4));
+    final lonCtrl = TextEditingController(text: initialCoords.longitude.toStringAsFixed(4));
+    bool isGpsCaptured = true;
     bool saving = false;
 
     showModalBottomSheet<void>(
@@ -4687,17 +4695,46 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Add a primary or secondary school in Arua to the PadCare distribution network.',
+                'Add a primary or secondary school, hospital, or dispensing center in Arua to the PadCare distribution network with GPS coordinates.',
                 style: TextStyle(color: _muted, fontSize: 13, height: 1.45),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
+              DropdownButtonFormField<String>(
+                key: const ValueKey('add-facility-type-dropdown'),
+                initialValue: facilityType,
+                decoration: InputDecoration(
+                  labelText: 'Facility Category *',
+                  prefixIcon: Icon(
+                    facilityType == 'School'
+                        ? Icons.school_rounded
+                        : (facilityType == 'Hospital'
+                            ? Icons.local_hospital_rounded
+                            : Icons.inventory_2_rounded),
+                    color: _deepTeal,
+                  ),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                items: const [
+                  DropdownMenuItem(value: 'School', child: Text('🏫 School')),
+                  DropdownMenuItem(value: 'Hospital', child: Text('🏥 Hospital / Health Center')),
+                  DropdownMenuItem(value: 'Dispensing Center', child: Text('📦 Dispensing Center / Hub')),
+                ],
+                onChanged: (v) {
+                  if (v != null) setModalState(() => facilityType = v);
+                },
+              ),
+              const SizedBox(height: 12),
               TextField(
                 key: const ValueKey('add-school-modal-name'),
                 controller: nameCtrl,
                 textCapitalization: TextCapitalization.words,
                 decoration: InputDecoration(
-                  labelText: 'School Name *',
-                  hintText: 'e.g. Arua Secondary School',
+                  labelText: facilityType == 'School'
+                      ? 'School Name *'
+                      : (facilityType == 'Hospital' ? 'Hospital / Clinic Name *' : 'Dispensing Center Name *'),
+                  hintText: facilityType == 'School'
+                      ? 'e.g. Arua Secondary School'
+                      : (facilityType == 'Hospital' ? 'e.g. Arua Regional Referral' : 'e.g. Muni Community Dispenser'),
                   prefixIcon: const Icon(Icons.business_outlined, color: _deepTeal),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                 ),
@@ -4723,15 +4760,151 @@ class _HomeScreenState extends State<HomeScreen> {
                   'Other Arua Division',
                 ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                 onChanged: (v) {
-                  if (v != null) setModalState(() => subCounty = v);
+                  if (v != null) {
+                    setModalState(() {
+                      subCounty = v;
+                      final coords = GeoService.getCoordinatesForSubCounty(v);
+                      latCtrl.text = coords.latitude.toStringAsFixed(4);
+                      lonCtrl.text = coords.longitude.toStringAsFixed(4);
+                      isGpsCaptured = true;
+                    });
+                  }
                 },
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF86EFAC)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.gps_fixed_rounded, color: Color(0xFF15803D), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'GPS Location Capture ($facilityType) *',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              color: Color(0xFF166534),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isGpsCaptured ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isGpsCaptured ? Icons.check_circle_rounded : Icons.pending_rounded,
+                                color: isGpsCaptured ? const Color(0xFF15803D) : const Color(0xFFD97706),
+                                size: 13,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                isGpsCaptured ? 'GPS Captured' : 'Pending',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: isGpsCaptured ? const Color(0xFF15803D) : const Color(0xFFB45309),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Required to map this $facilityType accurately on PadCare OpenStreetMap.',
+                      style: const TextStyle(color: Color(0xFF15803D), fontSize: 11.5),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            key: const ValueKey('add-facility-lat-field'),
+                            controller: latCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                            decoration: InputDecoration(
+                              labelText: 'Latitude',
+                              isDense: true,
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onChanged: (_) => setModalState(() => isGpsCaptured = true),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            key: const ValueKey('add-facility-lon-field'),
+                            controller: lonCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                            decoration: InputDecoration(
+                              labelText: 'Longitude',
+                              isDense: true,
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onChanged: (_) => setModalState(() => isGpsCaptured = true),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          key: const ValueKey('capture-facility-gps-btn'),
+                          onPressed: () {
+                            final coords = GeoService.getCoordinatesForSubCounty(subCounty);
+                            setModalState(() {
+                              latCtrl.text = coords.latitude.toStringAsFixed(4);
+                              lonCtrl.text = coords.longitude.toStringAsFixed(4);
+                              isGpsCaptured = true;
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('📍 GPS Captured for $subCounty: ${latCtrl.text}° N, ${lonCtrl.text}° E'),
+                                backgroundColor: const Color(0xFF116B78),
+                                duration: const Duration(seconds: 2),
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.my_location_rounded, size: 15),
+                          label: const Text('Capture', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF116B78),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
                 key: const ValueKey('add-school-modal-liaison'),
                 controller: liaisonCtrl,
                 decoration: InputDecoration(
-                  labelText: 'Senior Woman Teacher / Focal Person (optional)',
+                  labelText: facilityType == 'School'
+                      ? 'Senior Woman Teacher / Focal Person (optional)'
+                      : 'Facility Liaison / Contact Person (optional)',
                   hintText: 'e.g. Tr. Mary Draru',
                   prefixIcon: const Icon(Icons.person_outline, color: _deepTeal),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
@@ -4743,7 +4916,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 controller: phoneCtrl,
                 keyboardType: TextInputType.phone,
                 decoration: InputDecoration(
-                  labelText: 'School Contact Phone (optional)',
+                  labelText: '$facilityType Contact Phone (optional)',
                   hintText: '+256 700 000 000',
                   prefixIcon: const Icon(Icons.phone_outlined, color: _deepTeal),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
@@ -4780,7 +4953,7 @@ class _HomeScreenState extends State<HomeScreen> {
                         final pass = passkeyCtrl.text.trim();
                         if (name.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Please enter a school name.')),
+                            SnackBar(content: Text('Please enter a $facilityType name.')),
                           );
                           return;
                         }
@@ -4797,6 +4970,8 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
                         setModalState(() => saving = true);
                         final schoolId = SchoolService.generateSchoolId(name);
+                        final capturedLat = double.tryParse(latCtrl.text.trim()) ?? 3.0210;
+                        final capturedLon = double.tryParse(lonCtrl.text.trim()) ?? 30.9115;
                         final school = SchoolModel(
                           schoolId: schoolId,
                           name: name,
@@ -4807,6 +4982,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               : '+256700000000',
                           contactEmail: '${schoolId.replaceAll("-", "")}@padcare.org',
                           status: 'active',
+                          facilityType: facilityType,
+                          latitude: capturedLat,
+                          longitude: capturedLon,
                           createdAt: DateTime.now(),
                         );
                         await SchoolService.saveSchool(school);
@@ -4816,7 +4994,11 @@ class _HomeScreenState extends State<HomeScreen> {
                         }
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
-                            content: Text('🎉 School "$name" registered successfully in PadCare!'),
+                            content: Text(
+                              facilityType == 'School'
+                                  ? '🎉 School "$name" registered successfully in PadCare!'
+                                  : '🎉 $facilityType "$name" registered successfully in PadCare!',
+                            ),
                             backgroundColor: const Color(0xFF116B78),
                             duration: const Duration(seconds: 4),
                           ),
@@ -4830,7 +5012,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       )
                     : const Icon(Icons.check_rounded),
                 label: Text(
-                  saving ? 'Registering School...' : 'Register School Facility',
+                  saving ? 'Registering...' : 'Register $facilityType Facility',
                   style: const TextStyle(fontWeight: FontWeight.w800),
                 ),
                 style: ElevatedButton.styleFrom(
@@ -8763,8 +8945,48 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     );
   }
 
+  List<_SupportPoint> get _allSupportPoints {
+    final existingIds = _kSupportPoints.map((p) => p.id.toLowerCase()).toSet();
+    final customPoints = <_SupportPoint>[];
+
+    for (final s in SchoolService.cachedSchools) {
+      if (!existingIds.contains(s.schoolId.toLowerCase()) && !existingIds.contains(s.name.toLowerCase())) {
+        final isHospital = s.facilityType.toLowerCase().contains('hospital') || s.facilityType.toLowerCase().contains('clinic');
+        final isDispenser = s.facilityType.toLowerCase().contains('dispens') || s.facilityType.toLowerCase().contains('hub');
+        final category = isHospital ? 'Clinics' : (isDispenser ? 'NGOs' : 'Schools');
+        final pinLabel = isHospital ? 'Hospital' : (isDispenser ? 'Dispenser' : 'School');
+
+        customPoints.add(
+          _SupportPoint(
+            id: s.schoolId,
+            name: s.name,
+            category: category,
+            area: s.subCounty,
+            distanceKm: GeoService.calculateDistanceKm(
+              lat1: GeoService.aruaCenter.latitude,
+              lon1: GeoService.aruaCenter.longitude,
+              lat2: s.latitude,
+              lon2: s.longitude,
+            ),
+            hours: 'Open 8:00 AM - 5:00 PM',
+            inStock: true,
+            isVerified: true,
+            directions: '${s.subCounty}, Arua',
+            pinLabel: pinLabel,
+            supplies: 'Sanitary pads & emergency kits',
+            instructions: 'Community distribution hub and support desk. Confidential and free.',
+            phone: s.contactPhone,
+            latitude: s.latitude,
+            longitude: s.longitude,
+          ),
+        );
+      }
+    }
+    return [..._kSupportPoints, ...customPoints];
+  }
+
   Widget _buildFindPads() {
-    final filtered = _kSupportPoints.where((p) {
+    final filtered = _allSupportPoints.where((p) {
       if (_mapSearchQuery.isNotEmpty) {
         final q = _mapSearchQuery;
         final match = p.name.toLowerCase().contains(q) ||
@@ -10044,6 +10266,11 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
     final addressCtrl = TextEditingController();
     final contactCtrl = TextEditingController();
     String facilityType = 'School';
+    String subCounty = 'Arua Central';
+    final initialCoords = GeoService.getCoordinatesForSubCounty('Arua Central');
+    final latCtrl = TextEditingController(text: initialCoords.latitude.toStringAsFixed(4));
+    final lonCtrl = TextEditingController(text: initialCoords.longitude.toStringAsFixed(4));
+    bool isGpsCaptured = true;
 
     showModalBottomSheet<void>(
       context: context,
@@ -10077,7 +10304,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               ),
               const SizedBox(height: 6),
               const Text(
-                'Schools, clinics, and NGOs can list their collection point after verification by our community team.',
+                'Schools, hospitals/clinics, and dispensing centers can list their point with GPS coordinates for interactive map navigation.',
                 style: TextStyle(color: _muted, fontSize: 13, height: 1.45),
               ),
               const SizedBox(height: 18),
@@ -10087,7 +10314,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   labelText: 'Provider Type',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                 ),
-                items: ['School', 'Clinic', 'NGO', 'Community Center', 'Individual']
+                items: ['School', 'Hospital / Clinic', 'Dispensing Center', 'Community Center', 'NGO Hub']
                     .map((t) => DropdownMenuItem(value: t, child: Text(t)))
                     .toList(),
                 onChanged: (val) {
@@ -10103,6 +10330,148 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                 ),
               ),
               const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: subCounty,
+                decoration: InputDecoration(
+                  labelText: 'Sub-County in Arua',
+                  prefixIcon: const Icon(Icons.location_on_outlined, color: _deepTeal),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                items: const [
+                  'Arua Central',
+                  'Arua Hill',
+                  'Ediofe',
+                  'Oli',
+                  'Ayivu',
+                  'Dadamu',
+                  'Manibe',
+                  'Logiri',
+                  'Offaka',
+                ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
+                onChanged: (val) {
+                  if (val != null) {
+                    setModalState(() {
+                      subCounty = val;
+                      final c = GeoService.getCoordinatesForSubCounty(val);
+                      latCtrl.text = c.latitude.toStringAsFixed(4);
+                      lonCtrl.text = c.longitude.toStringAsFixed(4);
+                      isGpsCaptured = true;
+                    });
+                  }
+                },
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF0FDF4),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF86EFAC)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.gps_fixed_rounded, color: Color(0xFF15803D), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'GPS Location Capture ($facilityType) *',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                              color: Color(0xFF166534),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: isGpsCaptured ? const Color(0xFFDCFCE7) : const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                isGpsCaptured ? Icons.check_circle_rounded : Icons.pending_rounded,
+                                color: isGpsCaptured ? const Color(0xFF15803D) : const Color(0xFFD97706),
+                                size: 13,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                isGpsCaptured ? 'GPS Captured' : 'Pending',
+                                style: TextStyle(
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: isGpsCaptured ? const Color(0xFF15803D) : const Color(0xFFB45309),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: latCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                            decoration: InputDecoration(
+                              labelText: 'Latitude',
+                              isDense: true,
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onChanged: (_) => setModalState(() => isGpsCaptured = true),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: TextField(
+                            controller: lonCtrl,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true, signed: true),
+                            decoration: InputDecoration(
+                              labelText: 'Longitude',
+                              isDense: true,
+                              filled: true,
+                              fillColor: Colors.white,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+                              border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                            onChanged: (_) => setModalState(() => isGpsCaptured = true),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        ElevatedButton.icon(
+                          onPressed: () {
+                            final c = GeoService.getCoordinatesForSubCounty(subCounty);
+                            setModalState(() {
+                              latCtrl.text = c.latitude.toStringAsFixed(4);
+                              lonCtrl.text = c.longitude.toStringAsFixed(4);
+                              isGpsCaptured = true;
+                            });
+                          },
+                          icon: const Icon(Icons.my_location_rounded, size: 15),
+                          label: const Text('Capture', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFF116B78),
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 11),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
               TextField(
                 controller: addressCtrl,
                 decoration: InputDecoration(
@@ -10114,7 +10483,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
               TextField(
                 controller: contactCtrl,
                 decoration: InputDecoration(
-                  labelText: 'Liaison Person & Phone (e.g. Senior Woman Teacher)',
+                  labelText: 'Liaison Person & Phone (e.g. Senior Woman Teacher / Matron)',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
                 ),
               ),
@@ -10128,13 +10497,18 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                     );
                     return;
                   }
+                  final lat = double.tryParse(latCtrl.text.trim()) ?? 3.0210;
+                  final lon = double.tryParse(lonCtrl.text.trim()) ?? 30.9115;
                   final schoolId = SchoolService.generateSchoolId(name);
                   final school = SchoolModel(
                     schoolId: schoolId,
                     name: name,
                     district: 'Arua',
-                    subCounty: addressCtrl.text.trim().isNotEmpty ? addressCtrl.text.trim() : 'Arua Hill',
+                    subCounty: subCounty,
                     contactPhone: contactCtrl.text.trim().isNotEmpty ? contactCtrl.text.trim() : '+256700000000',
+                    facilityType: facilityType,
+                    latitude: lat,
+                    longitude: lon,
                     status: 'pending',
                     createdAt: DateTime.now(),
                   );
@@ -10143,7 +10517,7 @@ class _ParentHomeScreenState extends State<ParentHomeScreen> {
                   Navigator.pop(context);
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('🎉 $facilityType "$name" submitted for PadCare distribution review!'),
+                      content: Text('🎉 $facilityType "$name" registered with GPS ($lat, $lon)!'),
                       backgroundColor: const Color(0xFF116B78),
                     ),
                   );

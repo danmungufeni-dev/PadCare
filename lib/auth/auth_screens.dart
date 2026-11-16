@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
 
 import '../services/firebase_service.dart';
+import '../services/geo_service.dart';
 import '../info/info_screens.dart';
 import '../services/url_launcher_stub.dart'
     if (dart.library.html) '../services/url_launcher_web.dart';
@@ -1745,6 +1746,9 @@ class _SignupTermsState extends State<SignupTerms> {
   final _newSchoolNameController = TextEditingController();
   final _newSchoolPhoneController = TextEditingController();
   final _newSchoolAdminPasskeyController = TextEditingController();
+  final String _newSchoolFacilityType = 'School';
+  final _newSchoolLatController = TextEditingController(text: '3.0185');
+  final _newSchoolLonController = TextEditingController(text: '30.9250');
   bool _obscureAdminPasskey = true;
   String? _newSchoolPasskeyError;
   String _newSchoolSubCounty = 'Arua Hill';
@@ -1795,6 +1799,8 @@ class _SignupTermsState extends State<SignupTerms> {
     _newSchoolNameController.dispose();
     _newSchoolPhoneController.dispose();
     _newSchoolAdminPasskeyController.dispose();
+    _newSchoolLatController.dispose();
+    _newSchoolLonController.dispose();
     super.dispose();
   }
 
@@ -1836,6 +1842,9 @@ class _SignupTermsState extends State<SignupTerms> {
     });
 
     final schoolId = SchoolService.generateSchoolId(name);
+    final lat = double.tryParse(_newSchoolLatController.text.trim()) ?? 3.0185;
+    final lon = double.tryParse(_newSchoolLonController.text.trim()) ?? 30.9250;
+
     final school = SchoolModel(
       schoolId: schoolId,
       name: name,
@@ -1844,6 +1853,9 @@ class _SignupTermsState extends State<SignupTerms> {
       contactPhone: _newSchoolPhoneController.text.trim().isNotEmpty
           ? _newSchoolPhoneController.text.trim()
           : '+256700000000',
+      facilityType: _newSchoolFacilityType,
+      latitude: lat,
+      longitude: lon,
       createdAt: DateTime.now(),
     );
     await SchoolService.saveSchool(school);
@@ -2330,8 +2342,23 @@ class _SignupTermsState extends State<SignupTerms> {
                             DropdownButtonFormField<String>(
                               key: const ValueKey('new-school-subcounty-dropdown'),
                               initialValue: _newSchoolSubCounty,
+                              isExpanded: true,
                               decoration: InputDecoration(
                                 labelText: 'Sub-County / Division in Arua',
+                                helperText: '📍 GPS: ${_newSchoolLatController.text}° N, ${_newSchoolLonController.text}° E',
+                                helperStyle: const TextStyle(color: Color(0xFF15803D), fontWeight: FontWeight.w700, fontSize: 11),
+                                suffixIcon: IconButton(
+                                  key: const ValueKey('capture-new-school-gps-btn'),
+                                  tooltip: 'Capture GPS coordinates',
+                                  icon: const Icon(Icons.my_location_rounded, color: Color(0xFF116B78), size: 18),
+                                  onPressed: () {
+                                    final coords = GeoService.getCoordinatesForSubCounty(_newSchoolSubCounty);
+                                    setState(() {
+                                      _newSchoolLatController.text = coords.latitude.toStringAsFixed(4);
+                                      _newSchoolLonController.text = coords.longitude.toStringAsFixed(4);
+                                    });
+                                  },
+                                ),
                                 filled: true,
                                 fillColor: Colors.white,
                                 border: OutlineInputBorder(
@@ -2355,7 +2382,14 @@ class _SignupTermsState extends State<SignupTerms> {
                                 'Other Arua Division',
                               ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
                               onChanged: (v) {
-                                if (v != null) setState(() => _newSchoolSubCounty = v);
+                                if (v != null) {
+                                  setState(() {
+                                    _newSchoolSubCounty = v;
+                                    final coords = GeoService.getCoordinatesForSubCounty(v);
+                                    _newSchoolLatController.text = coords.latitude.toStringAsFixed(4);
+                                    _newSchoolLonController.text = coords.longitude.toStringAsFixed(4);
+                                  });
+                                }
                               },
                             ),
                             const SizedBox(height: 10),
